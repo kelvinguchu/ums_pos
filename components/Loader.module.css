@@ -1,0 +1,38 @@
+.loaderContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.8); /* Optional: adds a semi-transparent background */
+}
+
+.loader {
+  width: 50px; /* Increased size for better visibility */
+  aspect-ratio: 1;
+  background: #60B99A;
+  animation: l1 1.5s infinite;
+}
+
+@keyframes l1 {
+  0%,
+  100% {
+    transform: translate(-15px, -15px);
+    box-shadow: 0 0 #F77825, 0 0 #554236;
+  }
+  40% {
+    transform: translate(15px, 15px);
+    box-shadow: -5px -5px #F77825, -10px -10px #554236;
+  }
+  50% {
+    transform: translate(15px, 15px);
+    box-shadow: 0 0 #F77825, 0 0 #554236;
+  }
+  90% {
+    transform: translate(-15px, -15px);
+    box-shadow: 5px 5px #F77825, 10px 10px #554236;
+  }
+}
