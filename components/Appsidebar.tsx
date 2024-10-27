@@ -46,7 +46,6 @@ const items = [
   { title: "Sales", url: "/sales", icon: ShoppingCart },
   { title: "Reports", url: "/reports", icon: BarChart2 },
   { title: "Users", url: "/users", icon: Users },
-  
 ];
 
 export function AppSidebar({ user }: { user: any }) {
@@ -69,7 +68,6 @@ export function AppSidebar({ user }: { user: any }) {
   }, [user?.id]);
 
   const isAdmin = userRole === "admin";
-
 
   return (
     <Sidebar className='mt-16 flex flex-col justify-between h-[calc(100vh-4rem)]'>

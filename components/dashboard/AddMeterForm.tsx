@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +41,7 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
   const [type, setType] = useState(meterTypes[0]);
   const [adderName, setAdderName] = useState("");
   const { toast } = useToast();
+  const serialNumberInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -53,6 +54,12 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
   useEffect(() => {
     localStorage.setItem('cachedAddMeters', JSON.stringify(meters));
   }, [meters]);
+
+  useEffect(() => {
+    if (serialNumberInputRef.current) {
+      serialNumberInputRef.current.focus();
+    }
+  }, []);
 
   const handleAddMeter = async () => {
     if (!serialNumber.trim()) {
@@ -91,6 +98,10 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
         description: "Meter added to the list",
         style: { backgroundColor: '#2ECC40', color: 'white' },
       });
+
+      if (serialNumberInputRef.current) {
+        serialNumberInputRef.current.focus();
+      }
     } catch (error) {
       console.error("Error checking meter existence:", error);
       toast({
@@ -164,6 +175,7 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
             onChange={(e) => setSerialNumber(e.target.value)}
             required
             className='min-w-1/2'
+            ref={serialNumberInputRef}
           />
           <Select value={type} onChange={(e) => setType(e.target.value)}>
             <SelectTrigger className='min-w-1/2 shadow-md'>

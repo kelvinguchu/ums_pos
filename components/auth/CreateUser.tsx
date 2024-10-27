@@ -20,6 +20,13 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import localFont from "next/font/local";
+
+const geistMono = localFont({
+  src: "../../public/fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
 
 export default function CreateUser({
   onClose,
@@ -65,66 +72,67 @@ export default function CreateUser({
   };
 
   return (
-    <div className='space-y-6 p-4'>
+    <div className={`${geistMono.className} space-y-6 p-4`}>
       <DialogHeader>
-        <DialogTitle className='text-xl font-bold text-gray-800'>Create User</DialogTitle>
+        <DialogTitle className='text-xl font-bold text-gray-800'>
+          Create User
+        </DialogTitle>
         <DialogDescription className='text-sm text-gray-600'>
           Create a new user account.
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={handleCreate} className='space-y-4'>
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='name'>Name</Label>
           <Input
-            id="name"
-            placeholder="First Name"
-            type="text"
+            id='name'
+            placeholder='First Name'
+            type='text'
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <div className="flex rounded-lg shadow-sm shadow-black/[.04]">
+        <div className='space-y-2'>
+          <Label htmlFor='email'>Email</Label>
+          <div className='flex rounded-lg shadow-sm shadow-black/[.04]'>
             <Input
-              id="email"
-              className="-me-px rounded-e-none shadow-none"
-              placeholder="email"
-              type="text"
+              id='email'
+              className='-me-px rounded-e-none shadow-none'
+              placeholder='email'
+              type='text'
               value={emailPrefix}
               onChange={(e) => setEmailPrefix(e.target.value)}
               required
             />
-            <span className="-z-10 inline-flex items-center rounded-e-lg border border-input bg-background px-3 text-sm text-muted-foreground">
+            <span className='-z-10 inline-flex items-center rounded-e-lg border border-input bg-background px-3 text-sm text-muted-foreground'>
               @gmail.com
             </span>
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
+        <div className='space-y-2'>
+          <Label htmlFor='password'>Password</Label>
+          <div className='relative'>
             <Input
-              id="password"
-              className="pe-9 w-full border border-gray-300 rounded-md p-2"
-              placeholder="Password"
+              id='password'
+              className='pe-9 w-full border border-gray-300 rounded-md p-2'
+              placeholder='Password'
               type={isVisible ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
             <button
-              className="absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
-              type="button"
+              className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
+              type='button'
               onClick={toggleVisibility}
               aria-label={isVisible ? "Hide password" : "Show password"}
               aria-pressed={isVisible}
-              aria-controls="password"
-            >
+              aria-controls='password'>
               {isVisible ? (
-                <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
+                <EyeOff size={16} strokeWidth={2} aria-hidden='true' />
               ) : (
-                <Eye size={16} strokeWidth={2} aria-hidden="true" />
+                <Eye size={16} strokeWidth={2} aria-hidden='true' />
               )}
             </button>
           </div>
@@ -138,7 +146,9 @@ export default function CreateUser({
             <SelectItem value='admin'>Admin</SelectItem>
           </SelectContent>
         </Select>
-        <Button type='submit' className='w-full bg-[#000080] hover:bg-[#000061] text-white'>
+        <Button
+          type='submit'
+          className='w-full bg-[#000080] hover:bg-[#000061] text-white'>
           Create User
         </Button>
       </form>
