@@ -11,12 +11,16 @@ import {
 } from "@/components/ui/table";
 import {
   getSaleBatches,
-  getTopSellingUsers,
-  getMostSellingProduct,
-  getEarningsByMeterType,
   getRemainingMetersByType,
 } from "@/lib/actions/supabaseActions";
 import { useSidebar } from "@/components/ui/sidebar";
+import localFont from "next/font/local";
+
+const geistMono = localFont({
+  src: "../public/fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
 
 interface SaleBatch {
   id: string;
@@ -30,53 +34,37 @@ interface SaleBatch {
   sale_date: string;
 }
 
-interface TopSeller {
-  user_name: string;
-  total_sales: number;
-}
-
-interface MeterTypeEarnings {
-  meter_type: string;
-  total_earnings: number;
-}
-
 interface RemainingMetersByType {
   type: string;
   remaining_meters: number;
 }
 
-const Reports: React.FC = () => {
-  const [recentSales, setRecentSales] = useState<SaleBatch[]>([]);
+const DailyReports: React.FC = () => {
+  const [todaySales, setTodaySales] = useState<SaleBatch[]>([]);
   const [remainingMetersByType, setRemainingMetersByType] = useState<
     RemainingMetersByType[]
   >([]);
-  const [topSellers, setTopSellers] = useState<TopSeller[]>([]);
-  const [mostSellingProduct, setMostSellingProduct] = useState<string>("");
-  const [earningsByMeterType, setEarningsByMeterType] = useState<
-    MeterTypeEarnings[]
-  >([]);
-  const [totalEarnings, setTotalEarnings] = useState<number>(0);
+  const [todayTotalEarnings, setTodayTotalEarnings] = useState<number>(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const sales = await getSaleBatches();
-        setRecentSales(sales.slice(0, 10));
+        
+        // Filter sales for today only
+        const today = new Date().toISOString().split('T')[0];
+        const todaysSales = sales.filter(sale => 
+          sale.sale_date.startsWith(today)
+        );
+        
+        setTodaySales(todaysSales);
 
-        const topUsers = await getTopSellingUsers();
-        setTopSellers(topUsers);
-
-        const topProduct = await getMostSellingProduct();
-        setMostSellingProduct(topProduct);
-
-        const earnings = await getEarningsByMeterType();
-        setEarningsByMeterType(earnings);
-
-        const total = earnings.reduce(
-          (sum, item) => sum + item.total_earnings,
+        // Calculate today's total earnings
+        const total = todaysSales.reduce(
+          (sum, sale) => sum + sale.total_price,
           0
         );
-        setTotalEarnings(total);
+        setTodayTotalEarnings(total);
 
         const remainingMeters = await getRemainingMetersByType();
         setRemainingMetersByType(remainingMeters);
@@ -102,14 +90,14 @@ const Reports: React.FC = () => {
 
   return (
     <div
-      className={`grid gap-4 transition-all duration-300 ease-in-out ${
+      className={`grid gap-4 transition-all duration-300 ease-in-out ${geistMono.className} ${
         state === "expanded"
-          ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-          : "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 w-[93vw]"
+          ? "grid-cols-1 md:grid-cols-2"
+          : "grid-cols-1 md:grid-cols-3 w-[93vw]"
       } w-[75vw] `}>
       <Card className='col-span-full shadow-md hover:shadow-xl'>
         <CardHeader>
-          <CardTitle>Recent Sales</CardTitle>
+          <CardTitle>Today&apos;s Sales</CardTitle>
         </CardHeader>
         <CardContent className='overflow-x-auto'>
           <Table>
@@ -119,17 +107,17 @@ const Reports: React.FC = () => {
                 <TableHead>Meter Type</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Total Price</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentSales.map((sale) => (
+              {todaySales.map((sale) => (
                 <TableRow key={sale.id}>
                   <TableCell>{sale.user_name}</TableCell>
                   <TableCell>{sale.meter_type}</TableCell>
                   <TableCell>{sale.batch_amount}</TableCell>
                   <TableCell>KES {sale.total_price.toLocaleString()}</TableCell>
-                  <TableCell>{formatDate(sale.sale_date)}</TableCell>
+                  <TableCell>{new Date(sale.sale_date).toLocaleTimeString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -179,85 +167,14 @@ const Reports: React.FC = () => {
         className={`shadow-md hover:shadow-xl ${
           state === "expanded"
             ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-2"
+            : "col-span-1 md:col-span-1"
         }`}>
         <CardHeader>
-          <CardTitle>Top Sellers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Total Sales</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topSellers.map((seller, index) => (
-                <TableRow key={index}>
-                  <TableCell>{seller.user_name}</TableCell>
-                  <TableCell>
-                    KES {seller.total_sales.toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card className='shadow-md hover:shadow-xl'>
-        <CardHeader>
-          <CardTitle>Best Seller</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className='text-2xl font-bold'>{mostSellingProduct}</p>
-        </CardContent>
-      </Card>
-
-      <Card
-        className={`shadow-md hover:shadow-xl ${
-          state === "expanded"
-            ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-2"
-        }`}>
-        <CardHeader>
-          <CardTitle>Earnings by Meter Type</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Meter Type</TableHead>
-                <TableHead>Total Earnings</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {earningsByMeterType.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{item.meter_type}</TableCell>
-                  <TableCell>
-                    KES {item.total_earnings.toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card
-        className={`shadow-md hover:shadow-xl ${
-          state === "expanded"
-            ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-2"
-        }`}>
-        <CardHeader>
-          <CardTitle>Total Earnings</CardTitle>
+          <CardTitle>Today&apos;s Total Earnings</CardTitle>
         </CardHeader>
         <CardContent>
           <p className='text-4xl font-bold'>
-            KES {totalEarnings.toLocaleString()}
+            KES {todayTotalEarnings.toLocaleString()}
           </p>
         </CardContent>
       </Card>
@@ -265,4 +182,5 @@ const Reports: React.FC = () => {
   );
 };
 
-export default Reports;
+export default DailyReports;
+

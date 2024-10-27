@@ -23,6 +23,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import localFont from "next/font/local";
 import { X } from "lucide-react";
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
+import MeterAdditionReceipt from './MeterAdditionReceipt';
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -42,6 +44,13 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
   const [adderName, setAdderName] = useState("");
   const { toast } = useToast();
   const serialNumberInputRef = useRef<HTMLInputElement>(null);
+  const [isAutoMode, setIsAutoMode] = useState(false);
+  const [autoMeterType, setAutoMeterType] = useState(meterTypes[0]);
+  const [isSubmitted, setIsSubmitted] = useState(() => {
+    return localStorage.getItem('lastSubmittedMeters') !== null;
+  });
+  const [isChecking, setIsChecking] = useState(false);
+  const [exists, setExists] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -60,6 +69,43 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
       serialNumberInputRef.current.focus();
     }
   }, []);
+
+  // Add this new effect to handle automatic addition when in auto mode
+  useEffect(() => {
+    if (isAutoMode && serialNumber.trim()) {
+      handleAutoAddMeter();
+    }
+  }, [serialNumber, isAutoMode]);
+
+  // Add this effect to maintain focus when auto mode is active
+  useEffect(() => {
+    if (isAutoMode && serialNumberInputRef.current) {
+      serialNumberInputRef.current.focus();
+    }
+  }, [isAutoMode, meters]); // Re-run when meters array changes or auto mode toggles
+
+  // Add this new effect for real-time validation
+  useEffect(() => {
+    const checkSerialNumber = async () => {
+      if (serialNumber.trim()) {
+        setIsChecking(true);
+        try {
+          const exists = await checkMeterExists(serialNumber);
+          setExists(exists);
+        } catch (error) {
+          console.error("Error checking serial number:", error);
+        } finally {
+          setIsChecking(false);
+        }
+      } else {
+        setExists(false);
+      }
+    };
+
+    // Add debounce to prevent too many API calls
+    const timeoutId = setTimeout(checkSerialNumber, 300);
+    return () => clearTimeout(timeoutId);
+  }, [serialNumber]);
 
   const handleAddMeter = async () => {
     if (!serialNumber.trim()) {
@@ -126,11 +172,20 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
         added_at: meter.addedAt,
         adder_name: adderName
       }));
+      
       await addMeters(metersToSubmit);
+      
+      // Store the submitted meters for the receipt
+      localStorage.setItem('lastSubmittedMeters', JSON.stringify(meters));
+      setIsSubmitted(true);
+      
+      // Clear the current meters list
       setMeters([]);
+      localStorage.removeItem('cachedAddMeters');
+      
       toast({
         title: "Success",
-        description: "Meters added successfully!",
+        description: "Meters added successfully! You can now download the receipt.",
         style: { backgroundColor: '#0074D9', color: 'white' },
         action: (
           <ToastAction altText="Close">Close</ToastAction>
@@ -157,45 +212,230 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
     localStorage.removeItem('cachedAddMeters');
   };
 
+  const handleAutoAddMeter = async () => {
+    try {
+      const exists = await checkMeterExists(serialNumber);
+      if (exists) {
+        toast({
+          title: "Error",
+          description: "Serial number already exists",
+          variant: "destructive",
+          style: { backgroundColor: '#FF851B', color: 'white' },
+        });
+        setSerialNumber("");
+        // Ensure focus after error
+        serialNumberInputRef.current?.focus();
+        return;
+      }
+
+      setMeters([{ 
+        serialNumber, 
+        type: autoMeterType, 
+        addedBy: currentUser.id, 
+        addedAt: new Date().toISOString() 
+      }, ...meters]);
+      setSerialNumber("");
+
+      toast({
+        title: "Success",
+        description: "Meter added to the list",
+        style: { backgroundColor: '#2ECC40', color: 'white' },
+      });
+      
+      // Ensure focus after successful addition
+      serialNumberInputRef.current?.focus();
+    } catch (error) {
+      console.error("Error checking meter existence:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add meter. Please try again.",
+        variant: "destructive",
+        style: { backgroundColor: '#FF4136', color: 'white' },
+      });
+      // Ensure focus after error
+      serialNumberInputRef.current?.focus();
+    }
+  };
+
+  const generateMeterCounts = () => {
+    const counts: { [key: string]: number } = {};
+    meters.forEach(meter => {
+      counts[meter.type] = (counts[meter.type] || 0) + 1;
+    });
+    return Object.entries(counts).map(([type, count]) => ({
+      type,
+      count
+    }));
+  };
+
+  const handleDownloadReceipt = async () => {
+    try {
+      const lastSubmittedMeters = JSON.parse(localStorage.getItem('lastSubmittedMeters') || '[]');
+      
+      const blob = await pdf(
+        <MeterAdditionReceipt
+          meterCounts={generateMeterCountsFromMeters(lastSubmittedMeters)}
+          adderName={adderName}
+        />
+      ).toBlob();
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `meter-addition-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      // Clear the submitted meters after download
+      localStorage.removeItem('lastSubmittedMeters');
+      setIsSubmitted(false);
+      
+      toast({
+        title: "Success",
+        description: "Receipt downloaded successfully!",
+        style: { backgroundColor: '#2ECC40', color: 'white' },
+      });
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast({
+        title: "Error",
+        description: "Failed to download receipt. Please try again.",
+        variant: "destructive",
+        style: { backgroundColor: '#FF4136', color: 'white' },
+      });
+    }
+  };
+
+  const generateMeterCountsFromMeters = (metersArray: any[]) => {
+    const counts: { [key: string]: number } = {};
+    metersArray.forEach((meter: any) => {
+      counts[meter.type] = (counts[meter.type] || 0) + 1;
+    });
+    return Object.entries(counts).map(([type, count]) => ({
+      type,
+      count
+    }));
+  };
+
   return (
     <div
       className={`${geistMono.className} bg-white shadow-md rounded-lg p-6 space-y-6 max-w-2xl mx-auto`}>
       <div className='flex justify-between items-center'>
         <h2 className='text-2xl font-bold mb-4 text-gray-800'>Add Meters</h2>
-        <Button onClick={handleClearForm} variant='outline'>
-          Clear Form
-        </Button>
-      </div>
-      <div className='space-y-4'>
-        <div className='flex space-x-4'>
-          <Input
-            type='text'
-            placeholder='Serial Number'
-            value={serialNumber.toUpperCase()}
-            onChange={(e) => setSerialNumber(e.target.value)}
-            required
-            className='min-w-1/2'
-            ref={serialNumberInputRef}
-          />
-          <Select value={type} onChange={(e) => setType(e.target.value)}>
-            <SelectTrigger className='min-w-1/2 shadow-md'>
-              <SelectValue>{type}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {meterTypes.map((meterType) => (
-                <SelectItem key={meterType} value={meterType}>
-                  {meterType.charAt(0).toUpperCase() + meterType.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-x-2">
+          <Button 
+            onClick={() => setIsAutoMode(!isAutoMode)} 
+            variant={isAutoMode ? 'default' : 'outline'}
+            className={isAutoMode ? 'bg-green-600 hover:bg-green-700' : ''}
+          >
+            {isAutoMode ? 'Auto Mode Active' : 'Activate Auto Mode'}
+          </Button>
+          <Button onClick={handleClearForm} variant='outline'>
+            Clear Form
+          </Button>
         </div>
-        <Button
-          onClick={handleAddMeter}
-          className='w-1/2 mx-auto bg-[#000080] hover:bg-[#000066] text-white'>
-          Add Meter
-        </Button>
       </div>
+
+      {isAutoMode ? (
+        <div className='space-y-4'>
+          <div className='flex flex-col space-y-2'>
+            <div className='flex space-x-4'>
+              <div className="flex-1">
+                <Input
+                  type='text'
+                  placeholder='Scan Serial Number'
+                  value={serialNumber.toUpperCase()}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  required
+                  className={`min-w-1/2 ${exists ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  ref={serialNumberInputRef}
+                  autoFocus
+                />
+                {serialNumber.trim() && (
+                  <div className="mt-1">
+                    {isChecking ? (
+                      <p className="text-sm text-gray-500">Checking serial number...</p>
+                    ) : exists ? (
+                      <p className="text-sm text-red-500 font-medium">
+                        Serial Number Already Exists In The Database
+                      </p>
+                    ) : (
+                      <p className="text-sm text-green-500">Serial number is available</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <Select value={autoMeterType} onChange={(e) => setAutoMeterType(e.target.value)}>
+                <SelectTrigger className='min-w-1/2 shadow-md'>
+                  <SelectValue>{autoMeterType}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {meterTypes.map((meterType) => (
+                    <SelectItem key={meterType} value={meterType}>
+                      {meterType}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Auto mode: Meters will be automatically added with type "{autoMeterType}" when scanned
+          </p>
+        </div>
+      ) : (
+        // Existing manual input form
+        <div className='space-y-4'>
+          <div className='flex flex-col space-y-2'>
+            <div className='flex space-x-4'>
+              <div className="flex-1">
+                <Input
+                  type='text'
+                  placeholder='Serial Number'
+                  value={serialNumber.toUpperCase()}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  required
+                  className={`min-w-1/2 ${exists ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  ref={serialNumberInputRef}
+                />
+                {serialNumber.trim() && (
+                  <div className="mt-1">
+                    {isChecking ? (
+                      <p className="text-sm text-gray-500">Checking serial number...</p>
+                    ) : exists ? (
+                      <p className="text-sm text-red-500 font-medium">
+                        Serial Number Already Exists In The Database
+                      </p>
+                    ) : (
+                      <p className="text-sm text-green-500">Serial number is available</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <Select value={type} onChange={(e) => setType(e.target.value)}>
+                <SelectTrigger className='min-w-1/2 shadow-md'>
+                  <SelectValue>{type}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {meterTypes.map((meterType) => (
+                    <SelectItem key={meterType} value={meterType}>
+                      {meterType.charAt(0).toUpperCase() + meterType.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button
+            onClick={handleAddMeter}
+            className='w-1/2 mx-auto bg-[#000080] hover:bg-[#000066] text-white'>
+            Add Meter
+          </Button>
+        </div>
+      )}
+
       {meters.length > 0 && (
         <div className='mt-6'>
           <h3 className='text-lg font-semibold mb-2 text-gray-700'>
@@ -238,7 +478,14 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
         <Button
           onClick={handleSubmit}
           className='w-1/2 mx-auto mt-4 bg-[#E46020] hover:bg-[#e46120] text-white'>
-          Submit New Meter Entries
+          Submit Meters
+        </Button>
+      )}
+      {isSubmitted && (
+        <Button
+          onClick={handleDownloadReceipt}
+          className='w-1/2 mx-auto mt-4 bg-[#2ECC40] hover:bg-[#28a035] text-white'>
+          Download Receipt
         </Button>
       )}
     </div>

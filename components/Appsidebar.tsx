@@ -6,7 +6,7 @@ import {
   Users,
   PlusCircle,
   DollarSign,
-  LogOut,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -30,7 +30,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { getUserProfile, signOut } from "@/lib/actions/supabaseActions";
+import { getUserProfile } from "@/lib/actions/supabaseActions";
 import SellMeters from "@/components/dashboard/SellMeters";
 import CreateUser from "@/components/auth/CreateUser";
 import localFont from "next/font/local";
@@ -45,6 +45,7 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Sales", url: "/sales", icon: ShoppingCart },
   { title: "Reports", url: "/reports", icon: BarChart2 },
+  { title: "Daily Reports", url: "/daily-reports", icon: Calendar },
   { title: "Users", url: "/users", icon: Users },
 ];
 
