@@ -14,7 +14,7 @@ export default function ReportsPage() {
   const { state } = useSidebar();
 
   return (
-    <div className={`${geistMono.className} transition-all duration-300 ease-in-out -mt-6 ${state === 'expanded' ? 'ml-4' : 'ml-4'} p-4`}>
+    <div className={`${geistMono.className} mt-4 transition-all duration-300 ease-in-out ${state === 'expanded' ? 'ml-4' : 'ml-4'} p-4`}>
       <Reports />
     </div>
   );

@@ -45,7 +45,7 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Sales", url: "/sales", icon: ShoppingCart },
   { title: "Reports", url: "/reports", icon: BarChart2 },
-  { title: "Daily Reports", url: "/daily-reports", icon: Calendar },
+  { title: "Daily Reports", url: "/daily-reports", icon: Calendar, adminOnly: true },
   { title: "Users", url: "/users", icon: Users },
 ];
 
@@ -54,6 +54,31 @@ export function AppSidebar({ user }: { user: any }) {
   const [userName, setUserName] = useState("");
   const [userRole, setUserRole] = useState("");
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
+  const [isAddMetersOpen, setIsAddMetersOpen] = useState(() => {
+    return localStorage.getItem('addMetersSheetOpen') === 'true'
+  });
+  const [isSellMetersOpen, setIsSellMetersOpen] = useState(() => {
+    return localStorage.getItem('sellMetersSheetOpen') === 'true'
+  });
+
+  // Save sheet states to localStorage
+  useEffect(() => {
+    localStorage.setItem('addMetersSheetOpen', isAddMetersOpen.toString());
+  }, [isAddMetersOpen]);
+
+  useEffect(() => {
+    localStorage.setItem('sellMetersSheetOpen', isSellMetersOpen.toString());
+  }, [isSellMetersOpen]);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup when component unmounts
+      localStorage.removeItem('addMetersSheetOpen');
+      localStorage.removeItem('sellMetersSheetOpen');
+    };
+  }, []);
+
+  const isAdmin = userRole === "admin";
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -68,8 +93,6 @@ export function AppSidebar({ user }: { user: any }) {
     fetchUserProfile();
   }, [user?.id]);
 
-  const isAdmin = userRole === "admin";
-
   return (
     <Sidebar className='mt-16 flex flex-col justify-between h-[calc(100vh-4rem)]'>
       <SidebarContent>
@@ -79,7 +102,9 @@ export function AppSidebar({ user }: { user: any }) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {items
+                .filter(item => !item.adminOnly || isAdmin)
+                .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link href={item.url}>
@@ -134,14 +159,14 @@ export function AppSidebar({ user }: { user: any }) {
                     </Dialog>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <Sheet>
+                    <Sheet open={isAddMetersOpen} onOpenChange={setIsAddMetersOpen}>
                       <SheetTrigger asChild>
                         <SidebarMenuButton>
                           <PlusCircle className='mr-2 h-4 w-4 text-green-600' />
                           <span>Add Meters</span>
                         </SidebarMenuButton>
                       </SheetTrigger>
-                      <SheetContent className='min-w-[50vw]'>
+                      <SheetContent className='min-w-[50vw] max-h-[100vh] overflow-y-auto'>
                         <SheetHeader>
                           <SheetTitle className='text-left'>
                             <Badge
@@ -158,7 +183,7 @@ export function AppSidebar({ user }: { user: any }) {
                 </>
               )}
               <SidebarMenuItem>
-                <Sheet>
+                <Sheet open={isSellMetersOpen} onOpenChange={setIsSellMetersOpen}>
                   <SheetTrigger asChild>
                     <SidebarMenuButton>
                       <DollarSign className='mr-2 h-4 w-4 text-blue-600' />

@@ -2,10 +2,16 @@
 
 import { useEffect, useState, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { signOut, getCurrentUser } from "@/lib/actions/supabaseActions";
+import { signOut, getCurrentUser, getUserProfile } from "@/lib/actions/supabaseActions";
 import Layout from "@/components/dashboard/Sidebar";
 import Navbar from "@/components/Navbar";
-import Loader from "@/components/Loader"; 
+import Loader from "@/components/Loader";
+
+// Define admin-only routes
+const ADMIN_ROUTES = ['/daily-reports'];
+
+// Define public routes that don't require authentication
+const PUBLIC_ROUTES = ['/', '/signin', '/signup', '/deactivated'];
 
 export default function AuthWrapper({
   children,
@@ -15,57 +21,80 @@ export default function AuthWrapper({
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-      if (!currentUser && !isPublicRoute(pathname)) {
-        router.push("/signin");
-      }
-    };
-    checkUser();
-  }, [router, pathname]);
-
-  // Commenting out the inactivity logout logic for now
-  // useEffect(() => {
-  //   let inactivityTimer: NodeJS.Timeout;
-
-  //   const resetInactivityTimer = () => {
-  //     clearTimeout(inactivityTimer);
-  //     inactivityTimer = setTimeout(async () => {
-  //       await signOut();
-  //       router.push("/signin");
-  //     }, 5 * 60 * 1000); // 5 minutes
-  //   };
-
-  //   if (user) {
-  //     const events = ["mousedown", "keydown", "touchstart", "scroll"];
-  //     events.forEach((event) => {
-  //       document.addEventListener(event, resetInactivityTimer);
-  //     });
-
-  //     resetInactivityTimer();
-
-  //     return () => {
-  //       events.forEach((event) => {
-  //         document.removeEventListener(event, resetInactivityTimer);
-  //       });
-  //       clearTimeout(inactivityTimer);
-  //     };
-  //   }
-  // }, [router, user]);
+  const [userRole, setUserRole] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
 
   const isPublicRoute = (path: string) => {
-    return path === "/" || path === "/signin" || path === "/signup";
+    return PUBLIC_ROUTES.includes(path);
   };
 
+  useEffect(() => {
+    const checkUserAndAccess = async () => {
+      try {
+        setIsLoading(true);
+        const currentUser = await getCurrentUser();
+
+        if (!currentUser && !isPublicRoute(pathname)) {
+          setShouldRedirect("/signin");
+          return;
+        }
+
+        if (currentUser) {
+          const profile = await getUserProfile(currentUser.id);
+          
+          if (!profile) {
+            await signOut();
+            setShouldRedirect("/signin");
+            return;
+          }
+
+          if (!profile.is_active) {
+            await signOut();
+            setShouldRedirect("/deactivated");
+            return;
+          }
+
+          setUser(currentUser);
+          setUserRole(profile.role || "");
+
+          if (ADMIN_ROUTES.includes(pathname) && profile.role !== "admin") {
+            setShouldRedirect("/dashboard");
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking user access:", error);
+        await signOut();
+        setShouldRedirect("/signin");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserAndAccess();
+  }, [pathname]);
+
+  // Handle redirects in a separate effect
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.push(shouldRedirect);
+    }
+  }, [shouldRedirect, router]);
+
+  // Allow access to public routes without checks
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
   }
 
-  if (!user) {
-    return <div> <Loader /> </div>;
+  // Show loader while checking authentication
+  if (isLoading) {
+    return <div><Loader /></div>;
+  }
+
+  // If not a public route and no user, show loader while redirect happens
+  if (!user && !isPublicRoute(pathname)) {
+    return <div><Loader /></div>;
   }
 
   return (

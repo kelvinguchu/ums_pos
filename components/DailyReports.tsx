@@ -15,6 +15,26 @@ import {
 } from "@/lib/actions/supabaseActions";
 import { useSidebar } from "@/components/ui/sidebar";
 import localFont from "next/font/local";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
+import NumberTicker from "@/components/ui/number-ticker";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -45,30 +65,33 @@ const DailyReports: React.FC = () => {
     RemainingMetersByType[]
   >([]);
   const [todayTotalEarnings, setTodayTotalEarnings] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [searchUser, setSearchUser] = useState("");
+  const [selectedType, setSelectedType] = useState("");
+  const [filteredSales, setFilteredSales] = useState<SaleBatch[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const sales = await getSaleBatches();
         
-        // Filter sales for today only
         const today = new Date().toISOString().split('T')[0];
         const todaysSales = sales.filter(sale => 
           sale.sale_date.startsWith(today)
         );
         
         setTodaySales(todaysSales);
+        setFilteredSales(todaysSales);
 
-        // Calculate today's total earnings
-        const total = todaysSales.reduce(
+        const todayTotal = todaysSales.reduce(
           (sum, sale) => sum + sale.total_price,
           0
         );
-        setTodayTotalEarnings(total);
+        setTodayTotalEarnings(todayTotal);
 
         const remainingMeters = await getRemainingMetersByType();
         setRemainingMetersByType(remainingMeters);
-
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -76,6 +99,33 @@ const DailyReports: React.FC = () => {
 
     fetchData();
   }, []);
+
+  // Add filter effect
+  useEffect(() => {
+    let filtered = [...todaySales];
+
+    if (searchUser) {
+      filtered = filtered.filter((sale) =>
+        sale.user_name.toLowerCase().includes(searchUser.toLowerCase())
+      );
+    }
+
+    if (selectedType) {
+      filtered = filtered.filter(
+        (sale) => sale.meter_type.toLowerCase() === selectedType.toLowerCase()
+      );
+    }
+
+    setFilteredSales(filtered);
+    setCurrentPage(1);
+
+    // Update total earnings based on filtered sales
+    const filteredTotal = filtered.reduce(
+      (sum, sale) => sum + sale.total_price,
+      0
+    );
+    setTodayTotalEarnings(filteredTotal);
+  }, [todaySales, searchUser, selectedType]);
 
   const { state } = useSidebar();
 
@@ -88,9 +138,30 @@ const DailyReports: React.FC = () => {
       .padStart(2, "0")}/${date.getFullYear()}`;
   };
 
+  const hasActiveFilters = () => {
+    return searchUser || selectedType;
+  };
+
+  const clearSearch = () => {
+    setSearchUser("");
+    setSelectedType("");
+  };
+
+  // Update pagination logic to use filteredSales
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
   return (
     <div
-      className={`grid gap-4 transition-all duration-300 ease-in-out ${geistMono.className} ${
+      className={`grid gap-4 transition-all duration-300 ease-in-out ${
+        geistMono.className
+      } ${
         state === "expanded"
           ? "grid-cols-1 md:grid-cols-2"
           : "grid-cols-1 md:grid-cols-3 w-[93vw]"
@@ -99,29 +170,121 @@ const DailyReports: React.FC = () => {
         <CardHeader>
           <CardTitle>Today&apos;s Sales</CardTitle>
         </CardHeader>
-        <CardContent className='overflow-x-auto'>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Seller&apos;s Name</TableHead>
-                <TableHead>Meter Type</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Total Price</TableHead>
-                <TableHead>Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {todaySales.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell>{sale.user_name}</TableCell>
-                  <TableCell>{sale.meter_type}</TableCell>
-                  <TableCell>{sale.batch_amount}</TableCell>
-                  <TableCell>KES {sale.total_price.toLocaleString()}</TableCell>
-                  <TableCell>{new Date(sale.sale_date).toLocaleTimeString()}</TableCell>
+        <CardContent>
+          {/* Add Filter Section */}
+          <div className='mb-6'>
+            <div className='flex gap-4 mb-2'>
+              <Input
+                type='text'
+                placeholder='Search by user...'
+                value={searchUser}
+                onChange={(e) => setSearchUser(e.target.value)}
+                className='max-w-xs'
+              />
+
+              <Select 
+                value={selectedType} 
+                onChange={(e) => setSelectedType(e.target.value)}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="split">Split</SelectItem>
+                  <SelectItem value="integrated">Integrated</SelectItem>
+                  <SelectItem value="gas">Gas</SelectItem>
+                  <SelectItem value="water">Water</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {hasActiveFilters() && (
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={clearSearch}
+                className='text-muted-foreground hover:text-foreground'>
+                Clear filters
+                <X className='ml-2 h-4 w-4' />
+              </Button>
+            )}
+          </div>
+
+          <div className='overflow-x-auto'>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Seller&apos;s Name</TableHead>
+                  <TableHead>Meter Type</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Total Price</TableHead>
+                  <TableHead>Time</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {currentItems.map((sale) => (
+                  <TableRow key={sale.id}>
+                    <TableCell>{sale.user_name}</TableCell>
+                    <TableCell>{sale.meter_type}</TableCell>
+                    <TableCell>{sale.batch_amount}</TableCell>
+                    <TableCell>
+                      KES {sale.total_price.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(sale.sale_date).toLocaleTimeString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {filteredSales.length > itemsPerPage && (
+              <div className='mt-4 flex justify-center'>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() =>
+                          handlePageChange(Math.max(1, currentPage - 1))
+                        }
+                        className={
+                          currentPage === 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+
+                    {[...Array(totalPages)].map((_, index) => (
+                      <PaginationItem key={index + 1}>
+                        <PaginationLink
+                          onClick={() => handlePageChange(index + 1)}
+                          isActive={currentPage === index + 1}>
+                          {index + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() =>
+                          handlePageChange(
+                            Math.min(totalPages, currentPage + 1)
+                          )
+                        }
+                        className={
+                          currentPage === totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -174,7 +337,10 @@ const DailyReports: React.FC = () => {
         </CardHeader>
         <CardContent>
           <p className='text-4xl font-bold'>
-            KES {todayTotalEarnings.toLocaleString()}
+            KES <NumberTicker 
+              value={todayTotalEarnings} 
+              className="text-4xl font-bold"
+            />
           </p>
         </CardContent>
       </Card>
@@ -183,4 +349,3 @@ const DailyReports: React.FC = () => {
 };
 
 export default DailyReports;
-

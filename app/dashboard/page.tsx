@@ -42,7 +42,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={`${geistMono.className}`}>
+    <div className={`${geistMono.className} mt-8`}>
       <Dashboard user={user} />
     </div>
   );

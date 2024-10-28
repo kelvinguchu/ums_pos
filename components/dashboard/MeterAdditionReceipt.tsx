@@ -25,36 +25,46 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: 'left',
+    color: '#000080', // Navy blue brand color
   },
   dateTime: {
     fontSize: 12,
     marginBottom: 20,
+    color: '#000080', // Navy blue for dates
   },
   table: {
     width: '100%',
     borderStyle: 'solid',
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: '#000080', // Navy blue for borders
     marginBottom: 20,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#000',
+    borderBottomColor: '#000080', // Navy blue for row borders
   },
   tableHeader: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#000080', // Navy blue background for header
+  },
+  tableHeaderCell: {
+    padding: 8,
+    flex: 1,
+    fontSize: 12,
+    color: 'white', // White text for header
   },
   tableCell: {
     padding: 8,
     flex: 1,
     fontSize: 12,
+    color: '#000080', // Navy blue for cell text
   },
   total: {
     marginTop: 20,
     fontSize: 14,
     fontWeight: 'bold',
+    color: '#E46020', // Orange brand color for total
   },
   footer: {
     position: 'absolute',
@@ -63,7 +73,7 @@ const styles = StyleSheet.create({
     right: 30,
     textAlign: 'center',
     fontSize: 10,
-    color: '#666',
+    color: '#E46020', // Orange for footer
   },
 });
 
@@ -96,8 +106,8 @@ const MeterAdditionReceipt = ({ meterCounts, adderName }: MeterAdditionReceiptPr
 
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
-            <Text style={styles.tableCell}>Meter Type</Text>
-            <Text style={styles.tableCell}>Quantity</Text>
+            <Text style={styles.tableHeaderCell}>Meter Type</Text>
+            <Text style={styles.tableHeaderCell}>Quantity</Text>
           </View>
           {meterCounts.map((meter, index) => (
             <View key={index} style={styles.tableRow}>
@@ -113,7 +123,7 @@ const MeterAdditionReceipt = ({ meterCounts, adderName }: MeterAdditionReceiptPr
         <Text style={styles.dateTime}>Added By: {adderName}</Text>
 
         <Text style={styles.footer}>
-          UMS Prepaid • Generated on {currentDateTime}
+          UMS Prepaid Kenya • Generated on {currentDateTime}
         </Text>
       </Page>
     </Document>

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { getSaleBatches } from '@/lib/actions/supabaseActions'
+import NumberTicker from "@/components/ui/number-ticker"
 
 
 interface SaleBatch {
@@ -137,7 +138,10 @@ export function SalesBarchart() {
                 {config.label}
               </span>
               <span className="text-lg font-bold leading-none sm:text-3xl">
-                {total[key as keyof typeof chartConfig].toLocaleString()}
+                <NumberTicker 
+                  value={total[key as keyof typeof chartConfig]} 
+                  className="text-lg font-bold leading-none sm:text-3xl"
+                />
               </span>
             </button>
           ))}

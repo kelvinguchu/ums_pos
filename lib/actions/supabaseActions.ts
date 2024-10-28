@@ -35,13 +35,41 @@ export async function signUp(email: string, password: string, role: string) {
 }
 
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) throw error;
-  return { user: data.user, error: null };
+    if (authError) throw authError;
+
+    // Check if user is active
+    if (authData.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("is_active")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      if (!profile?.is_active) {
+        // Sign out the user immediately if they're deactivated
+        await supabase.auth.signOut();
+        throw new Error("ACCOUNT_DEACTIVATED");
+      }
+
+      // Return the user data if everything is okay
+      return { user: authData.user, session: authData.session, error: null };
+    }
+
+    throw new Error("No user data returned");
+  } catch (error: any) {
+    if (error.message === "ACCOUNT_DEACTIVATED") {
+      throw error;
+    }
+    throw new Error(error.message);
+  }
 }
 
 export async function signOut() {
@@ -53,16 +81,22 @@ export async function getCurrentUser() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  
   if (user) {
-    // Fetch the user's profile including the role
+    // Fetch the user's profile including the role and active status
     const { data: profile, error } = await supabase
       .from("user_profiles")
-      .select("role")
+      .select("role, is_active")
       .eq("id", user.id)
       .single();
 
     if (error) {
       console.error("Error fetching user profile:", error);
+      return null;
+    }
+
+    // If user is not active, return null
+    if (!profile?.is_active) {
       return null;
     }
 
@@ -223,7 +257,7 @@ export async function addMeters(
 export async function getUserProfile(userId: string) {
   const { data, error } = await supabase
     .from("user_profiles")
-    .select("name, role")
+    .select("name, role, is_active")
     .eq("id", userId)
     .single();
 
@@ -477,3 +511,51 @@ export async function getRemainingMetersByType() {
     return [];
   }
 }
+
+export async function updateUserProfile(userId: string, updates: {
+  name?: string;
+  role?: string;
+  is_active?: boolean;
+}) {
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .update(updates)
+    .eq("id", userId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating user profile:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function deleteUserProfile(userId: string) {
+  // First delete from user_profiles
+  const { error: profileError } = await supabase
+    .from("user_profiles")
+    .delete()
+    .eq("id", userId);
+
+  if (profileError) {
+    console.error("Error deleting user profile:", profileError);
+    throw profileError;
+  }
+
+  // Then delete the user from auth.users (requires Supabase admin API)
+  const response = await fetch("/api/delete-user", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message);
+  }
+
+  return true;
+}
+

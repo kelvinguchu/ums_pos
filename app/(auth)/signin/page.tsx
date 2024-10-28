@@ -6,7 +6,7 @@ import { signIn } from "@/lib/actions/supabaseActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import Image from "next/image";
 import localFont from "next/font/local";
@@ -22,19 +22,31 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const toggleVisibility = () => setIsVisible((prevState) => !prevState);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    
     const email = `${emailPrefix}@gmail.com`;
     try {
-      const { user, error } = await signIn(email, password);
+      const { user, session, error } = await signIn(email, password);
       if (error) throw error;
-      router.push("/dashboard");
+      if (session) {
+        router.push("/dashboard");
+      }
     } catch (error: any) {
-      setError(error.message);
+      if (error.message === "ACCOUNT_DEACTIVATED") {
+        router.push("/deactivated");
+      } else {
+        setError(error.message);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,6 +75,7 @@ export default function SignIn() {
                     value={emailPrefix}
                     onChange={(e) => setEmailPrefix(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                   <span className='inline-flex items-center rounded-e-lg border border-input bg-white px-3 text-sm'>
                     @gmail.com
@@ -82,14 +95,16 @@ export default function SignIn() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                   <button
-                    className='absolute inset-y-px end-px flex h-full w-9 items-center  justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
+                    className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
                     type='button'
                     onClick={toggleVisibility}
                     aria-label={isVisible ? "Hide password" : "Show password"}
                     aria-pressed={isVisible}
-                    aria-controls='password'>
+                    aria-controls='password'
+                    disabled={isLoading}>
                     {isVisible ? (
                       <EyeOff size={16} strokeWidth={2} aria-hidden='true' />
                     ) : (
@@ -100,8 +115,19 @@ export default function SignIn() {
               </div>
             </div>
             {error && <p className='text-red-500 text-sm mt-2'>{error}</p>}
-            <Button type='submit' className='w-full mt-4 bg-[#000080]'>
-              Sign In
+            <Button 
+              type='submit' 
+              className='w-full mt-4 bg-[#000080] hover:bg-[#000061]'
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
         </CardContent>
