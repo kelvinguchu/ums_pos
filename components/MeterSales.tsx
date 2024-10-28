@@ -34,7 +34,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Download } from "lucide-react";
-import { generatePDF } from "@/lib/utils/pdfGenerator";
 import { generateCSV } from "@/lib/utils/csvGenerator";
 import { pdf } from '@react-pdf/renderer';
 import TableReportPDF from '@/components/dashboard/TableReportPDF';
