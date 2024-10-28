@@ -27,6 +27,17 @@ import { getLocalTimeZone, today, parseDate } from "@internationalized/date";
 import { DatePicker } from "@/components/ui/date-picker";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Download } from "lucide-react";
+import { generatePDF } from "@/lib/utils/pdfGenerator";
+import { generateCSV } from "@/lib/utils/csvGenerator";
+import { pdf } from '@react-pdf/renderer';
+import TableReportPDF from '@/components/dashboard/TableReportPDF';
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -137,47 +148,122 @@ export default function MeterSales() {
     setSelectedDate(null);
   };
 
+  const handleExportPDF = async () => {
+    const dataToExport = hasActiveFilters() ? currentBatches : filteredBatches;
+    
+    const headers = ['Seller', 'Meter Type', 'Amount', 'Sale Amount', 'Sale Date', 'Destination', 'Recipient'];
+    const data = dataToExport.map(batch => [
+      batch.user_name,
+      batch.meter_type,
+      batch.batch_amount.toString(),
+      // Remove .00 from sale amount by using Math.round and adding KES prefix
+      `KES ${Math.round(batch.total_price).toLocaleString()}`,
+      // Simplify date format to just show the date without time
+      new Date(batch.sale_date).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }),
+      batch.destination,
+      batch.recipient
+    ]);
+    
+    const blob = await pdf(
+      <TableReportPDF
+        title="Meter Sales Report"
+        headers={headers}
+        data={data}
+      />
+    ).toBlob();
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `meter-sales-report-${new Date().toISOString().split('T')[0]}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    // Use all filtered batches instead of just currentBatches
+    const dataToExport = hasActiveFilters() ? currentBatches : filteredBatches;
+    
+    const headers = ['Seller', 'Meter Type', 'Amount', 'Sale Amount', 'Sale Date', 'Destination', 'Recipient'];
+    const data = dataToExport.map(batch => [
+      batch.user_name,
+      batch.meter_type,
+      batch.batch_amount.toString(),
+      batch.total_price.toString(),
+      formatDate(batch.sale_date),
+      batch.destination,
+      batch.recipient
+    ]);
+    
+    generateCSV('meter_sales_report', headers, data);
+  };
+
   return (
     <div className={`${geistMono.className} mx-auto`}>
       <h1 className='text-3xl font-bold mb-6 text-center'>Sales</h1>
       
       {/* Search and Filter Section */}
       <div className="mb-6">
-        <div className="flex gap-4 mb-2">
-          <Input
-            type="text"
-            placeholder="Search by user..."
-            value={searchUser}
-            onChange={(e) => setSearchUser(e.target.value)}
-            className="max-w-xs"
-          />
-          
-          <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
-              <SelectItem value="split">Split</SelectItem>
-              <SelectItem value="integrated">Integrated</SelectItem>
-              <SelectItem value="gas">Gas</SelectItem>
-              <SelectItem value="water">Water</SelectItem>
-            </SelectContent>
-          </Select>
-
+        <div className="flex gap-4 mb-2 justify-between">
           <div className="flex gap-4">
-            <DatePicker
-              value={selectedDate}
-              onChange={setSelectedDate}
-              label="Search by date"
+            <Input
+              type="text"
+              placeholder="Search by user..."
+              value={searchUser}
+              onChange={(e) => setSearchUser(e.target.value)}
+              className="max-w-xs"
             />
-            <span className="text-sm text-muted-foreground self-center">or</span>
-            <DateRangePicker
-              value={dateRange}
-              onChange={setDateRange}
-              label="Search by date range"
-            />
+            
+            <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="split">Split</SelectItem>
+                <SelectItem value="integrated">Integrated</SelectItem>
+                <SelectItem value="gas">Gas</SelectItem>
+                <SelectItem value="water">Water</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="flex gap-4">
+              <DatePicker
+                value={selectedDate}
+                onChange={setSelectedDate}
+                label="Search by date"
+              />
+              <span className="text-sm text-muted-foreground self-center">or</span>
+              <DateRangePicker
+                value={dateRange}
+                onChange={setDateRange}
+                label="Search by date range"
+              />
+            </div>
           </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export Table as
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={handleExportPDF}>
+                PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCSV}>
+                CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
         {hasActiveFilters() && (

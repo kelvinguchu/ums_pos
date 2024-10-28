@@ -35,6 +35,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import NumberTicker from "@/components/ui/number-ticker";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Download } from "lucide-react";
+import { pdf } from '@react-pdf/renderer';
+import TableReportPDF from '@/components/dashboard/TableReportPDF';
+import { generateCSV } from "@/lib/utils/csvGenerator";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -59,7 +69,18 @@ interface RemainingMetersByType {
   remaining_meters: number;
 }
 
-const DailyReports: React.FC = () => {
+interface DateRange {
+  startDate: Date;
+  endDate: Date;
+  label: string;
+}
+
+interface DailyReportsProps {
+  selectedDateRange: DateRange | null;
+  setSelectedDateRange: (range: DateRange | null) => void;
+}
+
+const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelectedDateRange }) => {
   const [todaySales, setTodaySales] = useState<SaleBatch[]>([]);
   const [remainingMetersByType, setRemainingMetersByType] = useState<
     RemainingMetersByType[]
@@ -70,25 +91,43 @@ const DailyReports: React.FC = () => {
   const [searchUser, setSearchUser] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [filteredSales, setFilteredSales] = useState<SaleBatch[]>([]);
+  const [dateRangeSales, setDateRangeSales] = useState<SaleBatch[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const sales = await getSaleBatches();
         
-        const today = new Date().toISOString().split('T')[0];
-        const todaysSales = sales.filter(sale => 
-          sale.sale_date.startsWith(today)
-        );
-        
-        setTodaySales(todaysSales);
-        setFilteredSales(todaysSales);
+        if (selectedDateRange) {
+          const { startDate, endDate } = selectedDateRange;
+          const rangedSales = sales.filter(sale => {
+            const saleDate = new Date(sale.sale_date);
+            return saleDate >= startDate && saleDate <= endDate;
+          });
+          setDateRangeSales(rangedSales);
+          setFilteredSales(rangedSales);
 
-        const todayTotal = todaysSales.reduce(
-          (sum, sale) => sum + sale.total_price,
-          0
-        );
-        setTodayTotalEarnings(todayTotal);
+          const rangeTotal = rangedSales.reduce(
+            (sum, sale) => sum + sale.total_price,
+            0
+          );
+          setTodayTotalEarnings(rangeTotal);
+        } else {
+          const today = new Date().toISOString().split('T')[0];
+          const todaysSales = sales.filter(sale => 
+            sale.sale_date.startsWith(today)
+          );
+          
+          setTodaySales(todaysSales);
+          setFilteredSales(todaysSales);
+          setDateRangeSales([]);
+
+          const todayTotal = todaysSales.reduce(
+            (sum, sale) => sum + sale.total_price,
+            0
+          );
+          setTodayTotalEarnings(todayTotal);
+        }
 
         const remainingMeters = await getRemainingMetersByType();
         setRemainingMetersByType(remainingMeters);
@@ -98,7 +137,7 @@ const DailyReports: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [selectedDateRange]);
 
   // Add filter effect
   useEffect(() => {
@@ -157,6 +196,53 @@ const DailyReports: React.FC = () => {
     setCurrentPage(pageNumber);
   };
 
+  const handleExportPDF = async () => {
+    // Use all filtered sales instead of just currentItems
+    const dataToExport = hasActiveFilters() ? currentItems : filteredSales;
+    
+    const headers = ['Seller\'s Name', 'Meter Type', 'Amount', 'Total Price', 'Time'];
+    const data = dataToExport.map(sale => [
+      sale.user_name,
+      sale.meter_type,
+      sale.batch_amount.toString(),
+      `KES ${sale.total_price.toLocaleString()}`,
+      new Date(sale.sale_date).toLocaleTimeString()
+    ]);
+    
+    const blob = await pdf(
+      <TableReportPDF
+        title="Daily Sales Report"
+        headers={headers}
+        data={data}
+      />
+    ).toBlob();
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `daily-sales-report-${new Date().toISOString().split('T')[0]}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    // Use all filtered sales instead of just currentItems
+    const dataToExport = hasActiveFilters() ? currentItems : filteredSales;
+    
+    const headers = ['Seller\'s Name', 'Meter Type', 'Amount', 'Total Price', 'Time'];
+    const data = dataToExport.map(sale => [
+      sale.user_name,
+      sale.meter_type,
+      sale.batch_amount.toString(),
+      sale.total_price.toString(),
+      new Date(sale.sale_date).toLocaleTimeString()
+    ]);
+    
+    generateCSV('daily_sales_report', headers, data);
+  };
+
   return (
     <div
       className={`grid gap-4 transition-all duration-300 ease-in-out ${
@@ -168,35 +254,61 @@ const DailyReports: React.FC = () => {
       } w-[75vw] `}>
       <Card className='col-span-full shadow-md hover:shadow-xl'>
         <CardHeader>
-          <CardTitle>Today&apos;s Sales</CardTitle>
+          <CardTitle>
+            {selectedDateRange ? selectedDateRange.label : "Today's Sales"}
+            {selectedDateRange && (
+              <span className="text-sm text-muted-foreground ml-2">
+                ({selectedDateRange.startDate.toLocaleDateString()} - {selectedDateRange.endDate.toLocaleDateString()})
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {/* Add Filter Section */}
           <div className='mb-6'>
-            <div className='flex gap-4 mb-2'>
-              <Input
-                type='text'
-                placeholder='Search by user...'
-                value={searchUser}
-                onChange={(e) => setSearchUser(e.target.value)}
-                className='max-w-xs'
-              />
+            <div className='flex gap-4 mb-2 justify-between'>
+              <div className='flex gap-4'>
+                <Input
+                  type='text'
+                  placeholder='Search by user...'
+                  value={searchUser}
+                  onChange={(e) => setSearchUser(e.target.value)}
+                  className='max-w-xs'
+                />
 
-              <Select 
-                value={selectedType} 
-                onChange={(e) => setSelectedType(e.target.value)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
-                  <SelectItem value="split">Split</SelectItem>
-                  <SelectItem value="integrated">Integrated</SelectItem>
-                  <SelectItem value="gas">Gas</SelectItem>
-                  <SelectItem value="water">Water</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select 
+                  value={selectedType} 
+                  onChange={(e) => setSelectedType(e.target.value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="split">Split</SelectItem>
+                    <SelectItem value="integrated">Integrated</SelectItem>
+                    <SelectItem value="gas">Gas</SelectItem>
+                    <SelectItem value="water">Water</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Table as
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={handleExportPDF}>
+                    PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {hasActiveFilters() && (
