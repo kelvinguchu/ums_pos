@@ -7,12 +7,18 @@ import { useRouter } from "next/navigation";
 import Loader from "@/components/Loader";
 import { SalesBarchart } from "@/components/dashboard/SalesBarchart"
 import localFont from "next/font/local";
+import { Metadata } from "next";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
 });
+
+export const metadata: Metadata = {
+  title: "Dashboard | UMS POS",
+  description: "UMS POS Dashboard",
+};
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any | null>(null);

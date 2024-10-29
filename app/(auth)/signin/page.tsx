@@ -10,12 +10,18 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import Image from "next/image";
 import localFont from "next/font/local";
+import { Metadata } from "next";
 
 const geistMono = localFont({
   src: "../../../public/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
 });
+
+export const metadata: Metadata = {
+  title: "Sign In | UMS POS",
+  description: "Sign in to your account",
+};
 
 export default function SignIn() {
   const [emailPrefix, setEmailPrefix] = useState("");
