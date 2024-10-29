@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,9 +14,20 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "UMS POS",
   description: "UMS POS",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favi.png",
+    apple: "/favi.png",
   },
+  themeColor: "#000080",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000080",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -26,6 +37,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/favi.png" />
+      </head>
       <body
         className={`${poppins.className} antialiased`}
       >

@@ -55,14 +55,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const userSales: UserSaleData = (payload[0].payload.userSales as MeterTypeData)[payload[0].dataKey] || {}
     return (
-      <div className="custom-tooltip bg-white p-4 border rounded shadow">
-        <p className="label font-bold">{`Date: ${label}`}</p>
-        <p className="total font-semibold">{`Total: ${payload[0].value} meters`}</p>
-        <p className="meter-type">{`Meter Type: ${payload[0].dataKey}`}</p>
+      <div className="custom-tooltip bg-white p-3 lg:p-4 border rounded shadow max-w-[250px] lg:max-w-none">
+        <p className="label text-sm lg:text-base font-bold">{`Date: ${new Date(label).toLocaleDateString()}`}</p>
+        <p className="total text-sm lg:text-base font-semibold">{`Total: ${payload[0].value} meters`}</p>
+        <p className="meter-type text-sm lg:text-base">{`Type: ${payload[0].dataKey}`}</p>
         <div className="user-breakdown mt-2">
-          <p className="font-semibold">Seller(s)</p>
+          <p className="text-sm lg:text-base font-semibold">Seller(s)</p>
           {Object.entries(userSales).map(([user, amount]) => (
-            <p key={user}>{`${user}: ${amount} meters`}</p>
+            <p key={user} className="text-sm lg:text-base">{`${user}: ${amount} meters`}</p>
           ))}
         </div>
       </div>
@@ -118,49 +118,73 @@ export function SalesBarchart() {
   )
 
   return (
-    <Card className=" h-[500px]">
-      <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row">
-        <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
+    <Card className="h-auto lg:h-[500px] mt-16 lg:mt-0 w-[93vw] lg:w-full">
+      <CardHeader className="flex flex-col items-stretch space-y-4 border-b p-4 lg:p-0 lg:space-y-0 lg:flex-row">
+        <div className="flex flex-1 flex-col justify-center gap-1 lg:px-6 lg:py-6">
           <CardTitle>Meter Sales Chart</CardTitle>
           <CardDescription>
             Showing total meter sales by type
           </CardDescription>
         </div>
-        <div className="flex flex-wrap">
+        <div className="grid grid-cols-2 lg:flex lg:flex-wrap">
           {Object.entries(chartConfig).map(([key, config]) => (
             <button
               key={key}
               data-active={activeChart === key}
-              className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-l sm:border-t-0 sm:px-8 sm:py-6"
+              className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-4 py-3 text-left 
+                even:border-l data-[active=true]:bg-muted/50 
+                lg:px-8 lg:py-6 
+                lg:border-t-0 lg:border-l"
               onClick={() => setActiveChart(key as keyof typeof chartConfig)}
             >
               <span className="text-xs text-muted-foreground">
                 {config.label}
               </span>
-              <span className="text-lg font-bold leading-none sm:text-3xl">
+              <span className="text-base font-bold leading-none lg:text-3xl">
                 <NumberTicker 
                   value={total[key as keyof typeof chartConfig]} 
-                  className="text-lg font-bold leading-none sm:text-3xl"
+                  className="text-base font-bold leading-none lg:text-3xl"
                 />
               </span>
             </button>
           ))}
         </div>
       </CardHeader>
-      <CardContent className="px-2 sm:p-6">
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={chartData}>
+      <CardContent className="p-2 h-[350px] lg:h-[400px] lg:p-6">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="date"
-              tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                // On mobile, show only day number
+                if (window.innerWidth < 768) {
+                  return date.getDate().toString();
+                }
+                // On desktop, show month and day
+                return date.toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric' 
+                });
+              }}
+              tick={{ fontSize: window.innerWidth < 768 ? 12 : 14 }}
             />
-            <YAxis />
+            <YAxis 
+              tick={{ fontSize: window.innerWidth < 768 ? 12 : 14 }}
+              width={window.innerWidth < 768 ? 30 : 40}
+            />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Legend 
+              wrapperStyle={{
+                fontSize: window.innerWidth < 768 ? '12px' : '14px',
+                marginTop: '10px'
+              }}
+            />
             <Bar
               dataKey={activeChart}
               fill={chartConfig[activeChart].color}
+              maxBarSize={window.innerWidth < 768 ? 30 : 50}
             />
           </BarChart>
         </ResponsiveContainer>

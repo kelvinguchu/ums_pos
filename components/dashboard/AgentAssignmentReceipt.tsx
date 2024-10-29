@@ -33,19 +33,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#000080',
   },
-  dateTime: {
-    fontSize: 12,
-    marginBottom: 20,
-    color: '#000080', // Navy blue for dates
-  },
   section: {
     marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#000080',
+  agentInfo: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 4,
   },
   table: {
     width: '100%',
@@ -81,11 +76,24 @@ const styles = StyleSheet.create({
   lastCell: {
     borderRightWidth: 0,
   },
-  total: {
-    marginTop: 20,
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#E46020', // Orange brand color for total
+  summaryText: {
+    fontSize: 12,
+    marginBottom: 5,
+    color: '#000080',
+  },
+  signatureSection: {
+    marginTop: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  signatureBlock: {
+    width: '45%',
+  },
+  signatureLine: {
+    borderTopWidth: 1,
+    borderTopColor: '#000080',
+    marginTop: 40,
+    marginBottom: 5,
   },
   footer: {
     position: 'absolute',
@@ -94,67 +102,32 @@ const styles = StyleSheet.create({
     right: 30,
     textAlign: 'center',
     fontSize: 10,
-    color: '#E46020', // Orange for footer
-  },
-  destinationInfo: {
-    marginBottom: 10,
-    fontSize: 12,
     color: '#000080',
   },
-  signatureRow: {
-    flexDirection: 'row',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  signatureField: {
-    flex: 1,
-    marginRight: 20,
-  },
-  signatureLabel: {
-    fontSize: 10,
-    marginBottom: 5,
-    color: '#000080',
-  },
-  signatureLine: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#000080',
-    marginTop: 15,
-  },
-  summaryText: {
-    fontSize: 12,
-    marginBottom: 5,
-    color: '#000080',
-  },
-  recipientInfo: {
-    marginTop: 20,
-    fontSize: 12,
-    color: '#000080',
-  }
 });
 
-interface MeterSalesReceiptProps {
+interface AgentAssignmentReceiptProps {
   meters: Array<{
     serialNumber: string;
     type: string;
   }>;
-  destination: string;
-  recipient: string;
-  unitPrices: { [key: string]: string };
-  userName: string;
+  agentName: string;
+  agentLocation: string;
+  assignedBy: string;
 }
 
-const MeterSalesReceipt = ({ meters, destination, recipient, unitPrices, userName }: MeterSalesReceiptProps) => {
+const AgentAssignmentReceipt = ({ 
+  meters, 
+  agentName, 
+  agentLocation, 
+  assignedBy 
+}: AgentAssignmentReceiptProps) => {
+  const currentDateTime = format(new Date(), "dd/MM/yyyy HH:mm:ss");
   const metersByType = meters.reduce((acc: { [key: string]: typeof meters }, meter) => {
     if (!acc[meter.type]) acc[meter.type] = [];
     acc[meter.type].push(meter);
     return acc;
   }, {});
-
-  const totalAmount = Object.entries(metersByType).reduce((total, [type, typeMeters]) => {
-    return total + (typeMeters.length * parseFloat(unitPrices[type] || '0'));
-  }, 0);
-
-  const currentDateTime = format(new Date(), "dd/MM/yyyy HH:mm:ss");
 
   return (
     <Document>
@@ -174,53 +147,54 @@ const MeterSalesReceipt = ({ meters, destination, recipient, unitPrices, userNam
           </View>
         </View>
 
-        <Text style={styles.title}>Store Transaction Report</Text>
+        <Text style={styles.title}>Agent Meter Assignment Receipt</Text>
+
+        <View style={styles.agentInfo}>
+          <Text style={styles.summaryText}>Agent Name: {agentName}</Text>
+          <Text style={styles.summaryText}>Location: {agentLocation}</Text>
+          <Text style={styles.summaryText}>Assignment Date: {currentDateTime}</Text>
+        </View>
 
         <View style={styles.section}>
           <View style={styles.table}>
             <View style={[styles.tableRow, styles.tableHeader]}>
               <Text style={styles.tableHeaderCell}>Meter Type</Text>
-              <Text style={styles.tableHeaderCell}>Serial Number</Text>
-              <Text style={[styles.tableHeaderCell, styles.lastCell]}>Unit Price</Text>
+              <Text style={[styles.tableHeaderCell, styles.lastCell]}>Serial Number</Text>
             </View>
             {meters.map((meter, index) => (
               <View key={index} style={styles.tableRow}>
                 <Text style={styles.tableCell}>{meter.type}</Text>
-                <Text style={styles.tableCell}>{meter.serialNumber}</Text>
-                <Text style={[styles.tableCell, styles.lastCell]}>KES. {unitPrices[meter.type]}</Text>
+                <Text style={[styles.tableCell, styles.lastCell]}>{meter.serialNumber}</Text>
               </View>
             ))}
           </View>
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.summaryText}>Summary:</Text>
           {Object.entries(metersByType).map(([type, typeMeters]) => (
             <Text key={type} style={styles.summaryText}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}: {typeMeters.length} meters
+              {type}: {typeMeters.length} meters
             </Text>
           ))}
-          <Text style={styles.summaryText}>Total Meters: {meters.length}</Text>
-          <Text style={[styles.summaryText, { fontWeight: 'bold' }]}>
-            Total Amount: KES. {totalAmount.toFixed(2)}
+          <Text style={[styles.summaryText, { fontWeight: 'bold', marginTop: 10 }]}>
+            Total Meters Assigned: {meters.length}
           </Text>
         </View>
 
-        <View style={styles.signatureRow}>
-          <View style={styles.signatureField}>
-            <Text style={styles.signatureLabel}>Prepared by: {userName}</Text>
-            <Text style={styles.signatureLabel}>Date: _________________</Text>
-            <Text style={styles.signatureLabel}>Signature: _________________</Text>
+        <View style={styles.signatureSection}>
+          <View style={styles.signatureBlock}>
+            <Text style={styles.summaryText}>Assigned By:</Text>
+            <Text style={styles.summaryText}>{assignedBy}</Text>
+            <View style={styles.signatureLine} />
+            <Text style={styles.summaryText}>Signature & Date</Text>
           </View>
-          <View style={styles.signatureField}>
-            <Text style={styles.signatureLabel}>Authorized by: _________________</Text>
-            <Text style={styles.signatureLabel}>Date: _________________</Text>
-            <Text style={styles.signatureLabel}>Signature: _________________</Text>
+          <View style={styles.signatureBlock}>
+            <Text style={styles.summaryText}>Received By:</Text>
+            <Text style={styles.summaryText}>{agentName}</Text>
+            <View style={styles.signatureLine} />
+            <Text style={styles.summaryText}>Signature & Date</Text>
           </View>
-        </View>
-
-        <View style={styles.recipientInfo}>
-          <Text>Recipient: {recipient}</Text>
-          <Text>Destination: {destination}</Text>
         </View>
 
         <Text style={styles.footer}>
@@ -231,4 +205,4 @@ const MeterSalesReceipt = ({ meters, destination, recipient, unitPrices, userNam
   );
 };
 
-export default MeterSalesReceipt;
+export default AgentAssignmentReceipt; 

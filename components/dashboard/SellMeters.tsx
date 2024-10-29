@@ -245,8 +245,8 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
         const typeUnitPrice = parseFloat(unitPrices[type]);
         const totalPrice = typeUnitPrice * batchAmount;
 
-        // Add sale batch
-        await addSaleBatch({
+        // Add sale batch and get the batch id
+        const batchData = await addSaleBatch({
           user_id: currentUser.id,
           user_name: userName,
           meter_type: type,
@@ -257,7 +257,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
           recipient,
         });
 
-        // Remove meters and add to sold_meters
+        // Remove meters and add to sold_meters with batch_id
         for (const meter of typeMeters) {
           await removeMeter(meter.id);
           await addSoldMeter({
@@ -268,6 +268,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
             recipient,
             serial_number: meter.serialNumber,
             unit_price: typeUnitPrice,
+            batch_id: batchData.id, // Add the batch_id here
           });
         }
       }

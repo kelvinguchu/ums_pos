@@ -7,10 +7,10 @@ import Layout from "@/components/dashboard/Sidebar";
 import Navbar from "@/components/Navbar";
 import Loader from "@/components/Loader";
 
-// Define admin-only routes
+// admin-only routes
 const ADMIN_ROUTES = ['/daily-reports'];
 
-// Define public routes that don't require authentication
+// public routes that don't require authentication
 const PUBLIC_ROUTES = ['/', '/signin', '/signup', '/deactivated'];
 
 export default function AuthWrapper({
@@ -43,13 +43,8 @@ export default function AuthWrapper({
         if (currentUser) {
           const profile = await getUserProfile(currentUser.id);
           
-          if (!profile) {
-            await signOut();
-            setShouldRedirect("/signin");
-            return;
-          }
-
-          if (!profile.is_active) {
+          // Enhanced deactivation check
+          if (!profile || !profile.is_active) {
             await signOut();
             setShouldRedirect("/deactivated");
             return;
@@ -63,10 +58,15 @@ export default function AuthWrapper({
             return;
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error checking user access:", error);
-        await signOut();
-        setShouldRedirect("/signin");
+        if (error.message === "ACCOUNT_DEACTIVATED") {
+          await signOut();
+          setShouldRedirect("/deactivated");
+        } else {
+          await signOut();
+          setShouldRedirect("/signin");
+        }
       } finally {
         setIsLoading(false);
       }

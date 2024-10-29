@@ -6,6 +6,32 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+async function checkUserActive(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("is_active")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data) {
+    return false;
+  }
+
+  return data.is_active;
+}
+
+// Create a higher-order function to wrap database actions
+async function withActiveUserCheck<T>(
+  userId: string,
+  action: () => Promise<T>
+): Promise<T> {
+  const isActive = await checkUserActive(userId);
+  if (!isActive) {
+    throw new Error("ACCOUNT_DEACTIVATED");
+  }
+  return action();
+}
+
 export async function checkMeterExists(serialNumber: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("meters")
@@ -36,10 +62,11 @@ export async function signUp(email: string, password: string, role: string) {
 
 export async function signIn(email: string, password: string) {
   try {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (authError) throw authError;
 
@@ -81,28 +108,21 @@ export async function getCurrentUser() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  
-  if (user) {
-    // Fetch the user's profile including the role and active status
-    const { data: profile, error } = await supabase
-      .from("user_profiles")
-      .select("role, is_active")
-      .eq("id", user.id)
-      .single();
 
-    if (error) {
-      console.error("Error fetching user profile:", error);
-      return null;
-    }
+  if (!user) return null;
 
-    // If user is not active, return null
-    if (!profile?.is_active) {
-      return null;
-    }
+  const { data: profile, error } = await supabase
+    .from("user_profiles")
+    .select("role, is_active")
+    .eq("id", user.id)
+    .single();
 
-    return { ...user, role: profile?.role };
+  if (error || !profile?.is_active) {
+    await signOut();
+    return null;
   }
-  return null;
+
+  return { ...user, role: profile.role };
 }
 
 export async function createInvitation(
@@ -248,10 +268,11 @@ export async function addMeters(
     adder_name: string;
   }>
 ) {
-  const { data, error } = await supabase.from("meters").insert(meters);
-
-  if (error) throw error;
-  return data;
+  return withActiveUserCheck(meters[0].added_by, async () => {
+    const { data, error } = await supabase.from("meters").insert(meters);
+    if (error) throw error;
+    return data;
+  });
 }
 
 export async function getUserProfile(userId: string) {
@@ -301,18 +322,16 @@ export async function addSoldMeter(soldMeter: {
   recipient: string;
   serial_number: string;
   unit_price: number;
+  batch_id: string;
 }) {
-  const { data, error } = await supabase.from("sold_meters").insert(soldMeter);
-
-  if (error) {
-    console.error("Error adding sold meter:", error);
-    throw error;
-  }
-
-  return data;
+  return withActiveUserCheck(soldMeter.sold_by, async () => {
+    const { data, error } = await supabase
+      .from("sold_meters")
+      .insert(soldMeter);
+    if (error) throw error;
+    return data;
+  });
 }
-
-// Add more Supabase-related actions as needed
 
 export async function createUser(
   email: string,
@@ -378,13 +397,19 @@ export async function addSaleBatch(batchData: {
   destination: string;
   recipient: string;
 }) {
-  const { data, error } = await supabase.from("sale_batches").insert(batchData);
+  console.log("Adding sale batch with data:", batchData);
+  const { data, error } = await supabase
+    .from('sale_batches')
+    .insert(batchData)
+    .select()
+    .single();
 
   if (error) {
     console.error("Error adding sale batch:", error);
     throw error;
   }
 
+  console.log("Sale batch added successfully:", data);
   return data;
 }
 
@@ -404,11 +429,11 @@ export async function getSaleBatches() {
 
 export async function getMeterCount() {
   const { count, error } = await supabase
-    .from('meters')
-    .select('*', { count: 'exact', head: true });
+    .from("meters")
+    .select("*", { count: "exact", head: true });
 
   if (error) {
-    console.error('Error fetching meter count:', error);
+    console.error("Error fetching meter count:", error);
     return 0;
   }
 
@@ -417,49 +442,49 @@ export async function getMeterCount() {
 
 export async function getTopSellingUsers() {
   const { data, error } = await supabase
-    .from('sale_batches')
-    .select('user_name, total_price')
-    .order('total_price', { ascending: false })
+    .from("sale_batches")
+    .select("user_name, total_price")
+    .order("total_price", { ascending: false })
     .limit(5);
 
   if (error) {
-    console.error('Error fetching top selling users:', error);
+    console.error("Error fetching top selling users:", error);
     return [];
   }
 
-  return data.map(item => ({
+  return data.map((item) => ({
     user_name: item.user_name,
-    total_sales: item.total_price
+    total_sales: item.total_price,
   }));
 }
 
 export async function getMostSellingProduct() {
   const { data, error } = await supabase
-    .from('sale_batches')
-    .select('meter_type, batch_amount')
-    .order('batch_amount', { ascending: false })
+    .from("sale_batches")
+    .select("meter_type, batch_amount")
+    .order("batch_amount", { ascending: false })
     .limit(1);
 
   if (error) {
-    console.error('Error fetching most selling product:', error);
-    return '';
+    console.error("Error fetching most selling product:", error);
+    return "";
   }
 
-  return data[0]?.meter_type || '';
+  return data[0]?.meter_type || "";
 }
 
 export async function getEarningsByMeterType() {
   const { data, error } = await supabase
-    .from('sale_batches')
-    .select('meter_type, total_price');
+    .from("sale_batches")
+    .select("meter_type, total_price");
 
   if (error) {
-    console.error('Error fetching earnings by meter type:', error);
+    console.error("Error fetching earnings by meter type:", error);
     return [];
   }
 
   const earningsByType: { [key: string]: number } = {};
-  data.forEach(item => {
+  data.forEach((item) => {
     if (earningsByType[item.meter_type]) {
       earningsByType[item.meter_type] += item.total_price;
     } else {
@@ -469,21 +494,18 @@ export async function getEarningsByMeterType() {
 
   return Object.entries(earningsByType).map(([meter_type, total_earnings]) => ({
     meter_type,
-    total_earnings
+    total_earnings,
   }));
 }
 
 export async function getRemainingMetersByType() {
   try {
-    const { data, error } = await supabase
-      .from('meters')
-      .select('type');
+    const { data, error } = await supabase.from("meters").select("type");
 
     if (error) {
-      console.error('Error fetching remaining meters by type:', error);
+      console.error("Error fetching remaining meters by type:", error);
       return [];
     }
-
 
     if (!data || data.length === 0) {
       return [];
@@ -498,25 +520,30 @@ export async function getRemainingMetersByType() {
       }
     });
 
-    console.log('Meter counts:', meterCounts);
+    console.log("Meter counts:", meterCounts);
 
-    const remainingMeters = Object.entries(meterCounts).map(([type, count]) => ({
-      type,
-      remaining_meters: count
-    }));
+    const remainingMeters = Object.entries(meterCounts).map(
+      ([type, count]) => ({
+        type,
+        remaining_meters: count,
+      })
+    );
 
     return remainingMeters;
   } catch (error) {
-    console.error('Unexpected error in getRemainingMetersByType:', error);
+    console.error("Unexpected error in getRemainingMetersByType:", error);
     return [];
   }
 }
 
-export async function updateUserProfile(userId: string, updates: {
-  name?: string;
-  role?: string;
-  is_active?: boolean;
-}) {
+export async function updateUserProfile(
+  userId: string,
+  updates: {
+    name?: string;
+    role?: string;
+    is_active?: boolean;
+  }
+) {
   const { data, error } = await supabase
     .from("user_profiles")
     .update(updates)
@@ -533,7 +560,6 @@ export async function updateUserProfile(userId: string, updates: {
 }
 
 export async function deleteUserProfile(userId: string) {
-  // First delete from user_profiles
   const { error: profileError } = await supabase
     .from("user_profiles")
     .delete()
@@ -544,7 +570,6 @@ export async function deleteUserProfile(userId: string) {
     throw profileError;
   }
 
-  // Then delete the user from auth.users (requires Supabase admin API)
   const response = await fetch("/api/delete-user", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -559,3 +584,378 @@ export async function deleteUserProfile(userId: string) {
   return true;
 }
 
+export async function getMetersByBatchId(batchId: number) {
+  const { data, error } = await supabase
+    .from("sold_meters")
+    .select("serial_number")
+    .eq("batch_id", batchId);
+
+  if (error) {
+    console.error("Error fetching meters by batch ID:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function getAgentsList() {
+  const { data: agents, error } = await supabase
+    .from("agents")
+    .select(
+      `
+      *,
+      agent_inventory(count)
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching agents:", error);
+    return [];
+  }
+
+  return agents.map((agent) => ({
+    id: agent.id,
+    name: agent.name,
+    phone_number: agent.phone_number,
+    location: agent.location,
+    is_active: agent.is_active,
+    total_meters: agent.agent_inventory?.[0]?.count || 0,
+  }));
+}
+
+export async function updateAgentStatus(agentId: string, isActive: boolean) {
+  const { error } = await supabase
+    .from("agents")
+    .update({ is_active: isActive })
+    .eq("id", agentId);
+
+  if (error) throw error;
+}
+
+export async function updateAgentDetails(
+  agentId: string,
+  updates: {
+    name?: string;
+    phone_number?: string;
+    location?: string;
+  }
+) {
+  const { error } = await supabase
+    .from("agents")
+    .update(updates)
+    .eq("id", agentId);
+
+  if (error) throw error;
+}
+
+export async function createAgent(agentData: {
+  name: string;
+  phone_number: string;
+  location: string;
+}) {
+  const { data, error } = await supabase
+    .from("agents")
+    .insert({
+      ...agentData,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("Phone number already registered");
+    }
+    throw error;
+  }
+
+  return data;
+}
+
+// Add this new function
+export async function assignMetersToAgent({
+  agentId,
+  meters,
+  assignedBy,
+}: {
+  agentId: string;
+  meters: Array<{
+    meter_id: string;
+    serial_number: string;
+    type: string;
+  }>;
+  assignedBy: string;
+}) {
+  console.log("Starting assignMetersToAgent in supabaseActions...");
+  console.log("Input data:", { agentId, meters, assignedBy });
+
+  try {
+    // First, verify meters exist and are available
+    const { data: meterData, error: meterError } = await supabase
+      .from("meters")
+      .select("*")
+      .in(
+        "id",
+        meters.map((m) => m.meter_id)
+      );
+
+    if (meterError) {
+      console.error("Meter verification error:", meterError);
+      throw meterError;
+    }
+
+    // Verify agent_inventory table structure
+    const { data: tableInfo, error: tableError } = await supabase
+      .from("agent_inventory")
+      .select("*")
+      .limit(1);
+
+    console.log("Table Info:", tableInfo, "Table Error:", tableError);
+
+    // Insert into agent_inventory first
+    const inventoryData = meters.map((meter) => ({
+      agent_id: agentId,
+      meter_id: meter.meter_id,
+      serial_number: meter.serial_number,
+      type: meter.type,
+      assigned_at: new Date().toISOString(),
+    }));
+
+    console.log("Inserting into agent_inventory:", inventoryData);
+
+    const { data: insertedInventory, error: inventoryError } = await supabase
+      .from("agent_inventory")
+      .insert(inventoryData)
+      .select();
+
+    if (inventoryError) {
+      console.error("Inventory insertion error:", inventoryError);
+      throw inventoryError;
+    }
+
+    console.log(
+      "Successfully inserted into agent_inventory:",
+      insertedInventory
+    );
+
+    // Verify the insertion with a select
+    const { data: verifyData, error: verifyError } = await supabase
+      .from("agent_inventory")
+      .select("*")
+      .eq("agent_id", agentId)
+      .in(
+        "meter_id",
+        meters.map((m) => m.meter_id)
+      );
+
+    console.log(
+      "Verification select result:",
+      verifyData,
+      "Verify Error:",
+      verifyError
+    );
+
+    // Create transaction records
+    const { error: transactionError } = await supabase
+      .from("agent_transactions")
+      .insert(
+        meters.map((meter) => ({
+          agent_id: agentId,
+          transaction_type: "assignment",
+          meter_type: meter.type,
+          quantity: 1,
+          transaction_date: new Date().toISOString(),
+        }))
+      );
+
+    if (transactionError) {
+      console.error("Transaction record error:", transactionError);
+      throw transactionError;
+    }
+
+    // Finally, delete from meters table
+    const { error: deleteError } = await supabase
+      .from("meters")
+      .delete()
+      .in(
+        "id",
+        meters.map((m) => m.meter_id)
+      );
+
+    if (deleteError) {
+      console.error("Delete error:", deleteError);
+      throw deleteError;
+    }
+
+    console.log("Assignment completed successfully");
+    return insertedInventory;
+  } catch (error) {
+    console.error("Error in assignMetersToAgent:", error);
+    throw error;
+  }
+}
+
+export async function getAgentInventory(agentId: string) {
+  const { data, error } = await supabase
+    .from("agent_inventory")
+    .select("*")
+    .eq("agent_id", agentId)
+    .order("assigned_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching agent inventory:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function removeFromAgentInventory(meterId: string) {
+  console.log("Removing meter from agent inventory:", meterId);
+  const { error } = await supabase
+    .from('agent_inventory')
+    .delete()
+    .eq('id', meterId);
+
+  if (error) {
+    console.error("Error removing meter from agent inventory:", error);
+    throw error;
+  }
+  console.log("Meter removed from agent inventory successfully");
+}
+
+export async function deleteAgent(
+  agentId: string, 
+  currentUser: any, 
+  scannedMeters: string[] = [], 
+  unscannedMeters: string[] = []
+) {
+  // Get all meters assigned to this agent
+  const { data: agentMeters, error: inventoryError } = await supabase
+    .from('agent_inventory')
+    .select('*')
+    .eq('agent_id', agentId);
+
+  if (inventoryError) throw inventoryError;
+
+  if (agentMeters && agentMeters.length > 0) {
+    // Handle scanned meters - move them back to meters table
+    const metersToRestore = agentMeters
+      .filter(meter => scannedMeters.includes(meter.serial_number))
+      .map(meter => ({
+        serial_number: meter.serial_number,
+        type: meter.type,
+        added_by: currentUser.id,
+        added_at: new Date().toISOString(),
+        adder_name: currentUser.name || currentUser.email,
+      }));
+
+    if (metersToRestore.length > 0) {
+      const { error: restoreError } = await supabase
+        .from('meters')
+        .insert(metersToRestore);
+
+      if (restoreError) throw restoreError;
+    }
+
+    // Delete all meters from agent_inventory
+    const { error: deleteInventoryError } = await supabase
+      .from('agent_inventory')
+      .delete()
+      .eq('agent_id', agentId);
+
+    if (deleteInventoryError) throw deleteInventoryError;
+  }
+
+  // Finally delete the agent
+  const { error: deleteAgentError } = await supabase
+    .from('agents')
+    .delete()
+    .eq('id', agentId);
+
+  if (deleteAgentError) throw deleteAgentError;
+
+  return {
+    restoredCount: scannedMeters.length,
+    deletedCount: unscannedMeters.length
+  };
+}
+
+export async function superSearchMeter(searchTerm: string) {
+  if (!searchTerm || searchTerm.length < 2) return [];
+
+  const { data: results, error } = await supabase
+    .from('meters')
+    .select('serial_number, type')
+    .ilike('serial_number', `%${searchTerm}%`)
+    .limit(5);
+
+  const { data: agentMeters } = await supabase
+    .from('agent_inventory')
+    .select(`
+      serial_number,
+      type,
+      agents (
+        id,
+        name,
+        location
+      )
+    `)
+    .ilike('serial_number', `%${searchTerm}%`)
+    .limit(5);
+
+  const { data: soldMeters } = await supabase
+    .from('sold_meters')
+    .select('serial_number')
+    .ilike('serial_number', `%${searchTerm}%`)
+    .limit(5);
+
+  if (error) throw error;
+
+  const formattedResults = [
+    ...(results?.map(meter => ({
+      serial_number: meter.serial_number,
+      type: meter.type,
+      status: 'in_stock'
+    })) || []),
+    ...(agentMeters?.map(meter => ({
+      serial_number: meter.serial_number,
+      type: meter.type,
+      status: 'with_agent',
+      agent: meter.agents
+    })) || []),
+    ...(soldMeters?.map(meter => ({
+      serial_number: meter.serial_number,
+      status: 'sold'
+    })) || [])
+  ];
+
+  return formattedResults;
+}
+
+// Add this RPC to your Supabase SQL editor:
+/*
+CREATE OR REPLACE VIEW meters_view AS
+  SELECT 
+    serial_number,
+    type,
+    'in_stock' as status,
+    NULL as agent_id
+  FROM meters
+  UNION ALL
+  SELECT 
+    ai.serial_number,
+    ai.type,
+    'with_agent' as status,
+    ai.agent_id
+  FROM agent_inventory ai
+  UNION ALL
+  SELECT 
+    sm.serial_number,
+    NULL as type,
+    'sold' as status,
+    NULL as agent_id
+  FROM sold_meters sm;
+*/

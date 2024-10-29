@@ -367,20 +367,24 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
   };
 
   return (
-    <div className={`${geistMono.className} bg-white shadow-md rounded-lg p-6 max-w-[100%]  mx-auto`}>
+    <div className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
       <div className="flex flex-col max-h-[100vh]">
         <div className="flex-1">
-          <div className='flex justify-between items-center mb-6'>
-            <h2 className='text-2xl font-bold text-gray-800'>Add Meters</h2>
-            <div className="space-x-2">
+          <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2 sm:gap-0'>
+            <h2 className='text-xl sm:text-2xl font-bold text-gray-800'>Add Meters</h2>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button 
                 onClick={() => setIsAutoMode(!isAutoMode)} 
                 variant={isAutoMode ? 'default' : 'outline'}
-                className={isAutoMode ? 'bg-green-600 hover:bg-green-700' : ''}
+                className={`${isAutoMode ? 'bg-green-600 hover:bg-green-700' : ''} w-full sm:w-auto`}
               >
                 {isAutoMode ? 'Auto Mode Active' : 'Activate Auto Mode'}
               </Button>
-              <Button onClick={handleClearForm} variant='outline'>
+              <Button 
+                onClick={handleClearForm} 
+                variant='outline'
+                className="w-full sm:w-auto"
+              >
                 Clear Form
               </Button>
             </div>
@@ -389,7 +393,7 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
           {isAutoMode ? (
             <div className='space-y-4'>
               <div className='flex flex-col space-y-2'>
-                <div className='flex space-x-4'>
+                <div className='flex flex-col sm:flex-row gap-2 sm:gap-4'>
                   <div className="flex-1">
                     <Input
                       type='text'
@@ -418,17 +422,16 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
                       </div>
                     )}
                   </div>
-                  <Select value={autoMeterType} onChange={(e) => setAutoMeterType(e.target.value)}>
-                    <SelectTrigger className='min-w-1/2 shadow-md'>
-                      <SelectValue>{autoMeterType}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {meterTypes.map((meterType) => (
-                        <SelectItem key={meterType} value={meterType}>
-                          {meterType}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select 
+                    value={autoMeterType} 
+                    onChange={(e) => setAutoMeterType(e.target.value)}
+                    className="w-full sm:w-auto"
+                  >
+                    {meterTypes.map((meterType) => (
+                      <SelectItem key={meterType} value={meterType}>
+                        {meterType}
+                      </SelectItem>
+                    ))}
                   </Select>
                 </div>
               </div>
@@ -437,10 +440,9 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
               </p>
             </div>
           ) : (
-            // Existing manual input form
             <div className='space-y-4'>
               <div className='flex flex-col space-y-2'>
-                <div className='flex space-x-4'>
+                <div className='flex flex-col sm:flex-row gap-2 sm:gap-4'>
                   <div className="flex-1">
                     <Input
                       type='text'
@@ -468,23 +470,22 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
                       </div>
                     )}
                   </div>
-                  <Select value={type} onChange={(e) => setType(e.target.value)}>
-                    <SelectTrigger className='min-w-1/2 shadow-md'>
-                      <SelectValue>{type}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {meterTypes.map((meterType) => (
-                        <SelectItem key={meterType} value={meterType}>
-                          {meterType.charAt(0).toUpperCase() + meterType.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select 
+                    value={type} 
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full sm:w-auto"
+                  >
+                    {meterTypes.map((meterType) => (
+                      <SelectItem key={meterType} value={meterType}>
+                        {meterType.charAt(0).toUpperCase() + meterType.slice(1)}
+                      </SelectItem>
+                    ))}
                   </Select>
                 </div>
               </div>
               <Button
                 onClick={handleAddMeter}
-                className='w-1/2 mx-auto bg-[#000080] hover:bg-[#000066] text-white'>
+                className='w-full sm:w-1/2 mx-auto bg-[#000080] hover:bg-[#000066] text-white'>
                 Add Meter
               </Button>
             </div>

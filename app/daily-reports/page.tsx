@@ -16,6 +16,13 @@ import {
 import { ChevronDown } from 'lucide-react';
 import TimeRangeReportPDF from '@/components/dashboard/TimeRangeReportPDF';
 import { calculateReportMetrics, filterSalesByDateRange } from '@/lib/services/reportService';
+import localFont from "next/font/local";
+
+const geistMono = localFont({
+  src: "../../public/fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
 
 interface SaleBatch {
   id: string;
@@ -263,8 +270,21 @@ export default function DailyReportsPage() {
   };
 
   return (
-    <div className="relative mt-8">
-      <div className="absolute right-4 top-4 z-10 flex gap-2">
+    <div 
+      className={`
+        ${geistMono.className} 
+        mt-20 sm:mt-8 
+        transition-all 
+        duration-300 
+        ease-in-out 
+        mx-auto 
+        w-full sm:w-auto
+        overflow-hidden
+        px-2 sm:px-4
+        relative
+      `}
+    >
+      <div className="mb-6 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
         <Button 
           variant="outline"
           className="flex gap-2 items-center"
@@ -307,6 +327,7 @@ export default function DailyReportsPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      
       <DailyReports selectedDateRange={selectedDateRange} setSelectedDateRange={setSelectedDateRange} />
     </div>
   );

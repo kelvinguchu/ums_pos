@@ -246,12 +246,10 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
   return (
     <div
       className={`grid gap-4 transition-all duration-300 ease-in-out ${
-        geistMono.className
-      } ${
         state === "expanded"
           ? "grid-cols-1 md:grid-cols-2"
-          : "grid-cols-1 md:grid-cols-3 w-[93vw]"
-      } w-[75vw] `}>
+          : "grid-cols-1 md:grid-cols-3"
+      } w-full md:w-[75vw] ${state === "expanded" ? "" : "md:w-[93vw]"}`}>
       <Card className='col-span-full shadow-md hover:shadow-xl'>
         <CardHeader>
           <CardTitle>
@@ -264,10 +262,9 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Add Filter Section */}
           <div className='mb-6'>
-            <div className='flex gap-4 mb-2 justify-between'>
-              <div className='flex gap-4'>
+            <div className='flex flex-col sm:flex-row gap-4 mb-2 justify-between'>
+              <div className='flex flex-col sm:flex-row gap-4'>
                 <Input
                   type='text'
                   placeholder='Search by user...'
@@ -323,80 +320,82 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
             )}
           </div>
 
-          <div className='overflow-x-auto'>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Seller&apos;s Name</TableHead>
-                  <TableHead>Meter Type</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Total Price</TableHead>
-                  <TableHead>Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentItems.map((sale) => (
-                  <TableRow key={sale.id}>
-                    <TableCell>{sale.user_name}</TableCell>
-                    <TableCell>{sale.meter_type}</TableCell>
-                    <TableCell>{sale.batch_amount}</TableCell>
-                    <TableCell>
-                      KES {sale.total_price.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(sale.sale_date).toLocaleTimeString()}
-                    </TableCell>
+          <div className="overflow-auto max-w-[100vw] sm:max-w-full">
+            <div className="min-w-[640px] sm:min-w-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Seller&apos;s Name</TableHead>
+                    <TableHead>Meter Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Total Price</TableHead>
+                    <TableHead>Time</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {filteredSales.length > itemsPerPage && (
-              <div className='mt-4 flex justify-center'>
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() =>
-                          handlePageChange(Math.max(1, currentPage - 1))
-                        }
-                        className={
-                          currentPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-
-                    {[...Array(totalPages)].map((_, index) => (
-                      <PaginationItem key={index + 1}>
-                        <PaginationLink
-                          onClick={() => handlePageChange(index + 1)}
-                          isActive={currentPage === index + 1}>
-                          {index + 1}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() =>
-                          handlePageChange(
-                            Math.min(totalPages, currentPage + 1)
-                          )
-                        }
-                        className={
-                          currentPage === totalPages
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            )}
+                </TableHeader>
+                <TableBody>
+                  {currentItems.map((sale) => (
+                    <TableRow key={sale.id}>
+                      <TableCell>{sale.user_name}</TableCell>
+                      <TableCell>{sale.meter_type}</TableCell>
+                      <TableCell>{sale.batch_amount}</TableCell>
+                      <TableCell>
+                        KES {sale.total_price.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(sale.sale_date).toLocaleTimeString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
+
+          {filteredSales.length > itemsPerPage && (
+            <div className='mt-4 flex justify-center'>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() =>
+                        handlePageChange(Math.max(1, currentPage - 1))
+                      }
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+
+                  {[...Array(totalPages)].map((_, index) => (
+                    <PaginationItem key={index + 1}>
+                      <PaginationLink
+                        onClick={() => handlePageChange(index + 1)}
+                        isActive={currentPage === index + 1}>
+                        {index + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        handlePageChange(
+                          Math.min(totalPages, currentPage + 1)
+                        )
+                      }
+                      className={
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -410,31 +409,35 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
           <CardTitle>Meters Remaining</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Meter Type</TableHead>
-                <TableHead>Remaining</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {remainingMetersByType.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{item.type}</TableCell>
-                  <TableCell>{item.remaining_meters}</TableCell>
-                </TableRow>
-              ))}
-              <TableRow>
-                <TableCell className='font-bold'>Total</TableCell>
-                <TableCell className='font-bold'>
-                  {remainingMetersByType.reduce(
-                    (sum, item) => sum + item.remaining_meters,
-                    0
-                  )}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          <div className="overflow-auto">
+            <div className="min-w-[300px] sm:min-w-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Meter Type</TableHead>
+                    <TableHead>Remaining</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {remainingMetersByType.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.type}</TableCell>
+                      <TableCell>{item.remaining_meters}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow>
+                    <TableCell className='font-bold'>Total</TableCell>
+                    <TableCell className='font-bold'>
+                      {remainingMetersByType.reduce(
+                        (sum, item) => sum + item.remaining_meters,
+                        0
+                      )}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -442,16 +445,16 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
         className={`shadow-md hover:shadow-xl ${
           state === "expanded"
             ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-1"
+            : "col-span-1"
         }`}>
         <CardHeader>
-          <CardTitle>Today&apos;s Total Earnings</CardTitle>
+          <CardTitle>Today's Total Earnings</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className='text-4xl font-bold'>
+          <p className='text-2xl sm:text-4xl font-bold'>
             KES <NumberTicker 
               value={todayTotalEarnings} 
-              className="text-4xl font-bold"
+              className="text-2xl sm:text-4xl font-bold"
             />
           </p>
         </CardContent>

@@ -37,6 +37,7 @@ import { Download } from "lucide-react";
 import { generateCSV } from "@/lib/utils/csvGenerator";
 import { pdf } from '@react-pdf/renderer';
 import TableReportPDF from '@/components/dashboard/TableReportPDF';
+import { MeterSalesRow } from "./dashboard/MeterSalesRow";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -44,6 +45,7 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+// Update the SaleBatch interface to include unit_price
 interface SaleBatch {
   id: number;
   user_name: string;
@@ -53,6 +55,7 @@ interface SaleBatch {
   destination: string;
   recipient: string;
   total_price: number;
+  unit_price: number; // Add this field
 }
 
 export default function MeterSales() {
@@ -65,6 +68,7 @@ export default function MeterSales() {
   const [dateRange, setDateRange] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<any>(null);
   const itemsPerPage = 10;
+  const [selectedBatch, setSelectedBatch] = useState<number | null>(null);
 
   // Fetch data
   useEffect(() => {
@@ -298,20 +302,30 @@ export default function MeterSales() {
             </TableHeader>
             <TableBody>
               {currentBatches.map((batch) => (
-                <TableRow key={batch.id}>
-                  <TableCell>{batch.user_name}</TableCell>
-                  <TableCell>{batch.meter_type}</TableCell>
-                  <TableCell>{batch.batch_amount}</TableCell>
-                  <TableCell>
-                    {batch.total_price.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "KES",
-                    })}
-                  </TableCell>
-                  <TableCell>{formatDate(batch.sale_date)}</TableCell>
-                  <TableCell>{batch.destination}</TableCell>
-                  <TableCell>{batch.recipient}</TableCell>
-                </TableRow>
+                <React.Fragment key={batch.id}>
+                  <TableRow 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedBatch(batch.id)}
+                  >
+                    <TableCell>{batch.user_name}</TableCell>
+                    <TableCell>{batch.meter_type}</TableCell>
+                    <TableCell>{batch.batch_amount}</TableCell>
+                    <TableCell>
+                      {batch.total_price.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "KES",
+                      })}
+                    </TableCell>
+                    <TableCell>{formatDate(batch.sale_date)}</TableCell>
+                    <TableCell>{batch.destination}</TableCell>
+                    <TableCell>{batch.recipient}</TableCell>
+                  </TableRow>
+                  <MeterSalesRow
+                    batch={batch}
+                    isOpen={selectedBatch === batch.id}
+                    onOpenChange={(open) => setSelectedBatch(open ? batch.id : null)}
+                  />
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>
