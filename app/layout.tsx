@@ -19,7 +19,6 @@ export const metadata: Metadata = {
     icon: "/favi.png",
     apple: "/favi.png",
   },
-  themeColor: "#000080",
 };
 
 export const viewport: Viewport = {
