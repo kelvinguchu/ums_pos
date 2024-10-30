@@ -28,11 +28,11 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-export default function CreateUser({
+const CreateUser = ({
   onClose,
 }: {
   onClose: () => void;
-}) {
+}) => {
   const [name, setName] = useState("");
   const [emailPrefix, setEmailPrefix] = useState("");
   const [password, setPassword] = useState("");
@@ -155,3 +155,5 @@ export default function CreateUser({
     </div>
   );
 }
+
+export default CreateUser;

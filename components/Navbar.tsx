@@ -67,12 +67,12 @@ const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/login");
+    router.push("/signin");
   };
 
   useEffect(() => {
     const searchMeters = async () => {
-      if (debouncedSearch.length < 2) {
+      if (debouncedSearch.length < 0) {
         setSearchResults([]);
         return;
       }
@@ -116,7 +116,7 @@ const Navbar: React.FC = () => {
               alt='UMS POS'
               width={70}
               height={70}
-              className='w-[70px] h-[50px] lg:w-[70px] lg:h-[50px]'
+              className='w-[70px] h-[50px] lg:w-[70px] lg:h-[40px]'
             />
           </Link>
         </div>
@@ -154,8 +154,8 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {searchTerm.length >= 2 && (
-            <div className='absolute mt-1 w-full lg:w-[40vw] left-0 right-0 bg-white rounded-md border shadow-lg z-50'>
+          {searchTerm.length > 0 && (
+            <div className='absolute mt-1 w-[95%] lg:w-[45vw] mx-auto left-0 right-0 bg-white rounded-md border shadow-lg z-50'>
               <div className='max-h-[60vh] lg:max-h-[400px] overflow-y-auto p-2'>
                 {isLoading ? (
                   <div className='flex items-center justify-center py-4'>

@@ -19,15 +19,19 @@ export const metadata: Metadata = {
     icon: "/favi.png",
     apple: "/favi.png",
   },
-  themeColor: "#000080",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000080",
-  width: "device-width",
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#000080' },
+    { media: '(prefers-color-scheme: dark)', color: '#000080' }
+  ],
+  width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  viewportFit: "cover",
+  maximumScale: 5,
+  minimumScale: 1,
+  viewportFit: 'cover',
+  colorScheme: 'light'
 };
 
 export default function RootLayout({

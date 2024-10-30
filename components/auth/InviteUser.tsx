@@ -19,13 +19,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
-export default function InviteUser({
+const InviteUser = ({
   currentUser,
   onClose,
 }: {
   currentUser: any;
   onClose: () => void;
-}) {
+}) =>  {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("user");
   const { toast } = useToast();
@@ -87,4 +87,6 @@ export default function InviteUser({
       </form>
     </div>
   );
-}
+};
+
+export default InviteUser;

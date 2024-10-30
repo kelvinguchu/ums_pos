@@ -7,7 +7,7 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-export default function AgentsPage() {
+const AgentsPage = () => {
   return (
     <div
       className={`${geistMono.className} container mx-auto px-2 sm:px-4 mt-20 sm:mt-8`}>
@@ -15,4 +15,6 @@ export default function AgentsPage() {
       <Agents />
     </div>
   );
-}
+};
+
+export default AgentsPage;

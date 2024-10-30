@@ -397,7 +397,6 @@ export async function addSaleBatch(batchData: {
   destination: string;
   recipient: string;
 }) {
-  console.log("Adding sale batch with data:", batchData);
   const { data, error } = await supabase
     .from('sale_batches')
     .insert(batchData)
@@ -405,11 +404,9 @@ export async function addSaleBatch(batchData: {
     .single();
 
   if (error) {
-    console.error("Error adding sale batch:", error);
     throw error;
   }
 
-  console.log("Sale batch added successfully:", data);
   return data;
 }
 
@@ -520,7 +517,6 @@ export async function getRemainingMetersByType() {
       }
     });
 
-    console.log("Meter counts:", meterCounts);
 
     const remainingMeters = Object.entries(meterCounts).map(
       ([type, count]) => ({
@@ -688,11 +684,8 @@ export async function assignMetersToAgent({
   }>;
   assignedBy: string;
 }) {
-  console.log("Starting assignMetersToAgent in supabaseActions...");
-  console.log("Input data:", { agentId, meters, assignedBy });
-
   try {
-    // First, verify meters exist and are available
+    // Verify meters exist and are available
     const { data: meterData, error: meterError } = await supabase
       .from("meters")
       .select("*")
@@ -701,10 +694,7 @@ export async function assignMetersToAgent({
         meters.map((m) => m.meter_id)
       );
 
-    if (meterError) {
-      console.error("Meter verification error:", meterError);
-      throw meterError;
-    }
+    if (meterError) throw meterError;
 
     // Verify agent_inventory table structure
     const { data: tableInfo, error: tableError } = await supabase
@@ -712,9 +702,7 @@ export async function assignMetersToAgent({
       .select("*")
       .limit(1);
 
-    console.log("Table Info:", tableInfo, "Table Error:", tableError);
-
-    // Insert into agent_inventory first
+    // Prepare inventory data for insertion
     const inventoryData = meters.map((meter) => ({
       agent_id: agentId,
       meter_id: meter.meter_id,
@@ -723,24 +711,15 @@ export async function assignMetersToAgent({
       assigned_at: new Date().toISOString(),
     }));
 
-    console.log("Inserting into agent_inventory:", inventoryData);
-
+    // Insert meters into agent_inventory
     const { data: insertedInventory, error: inventoryError } = await supabase
       .from("agent_inventory")
       .insert(inventoryData)
       .select();
 
-    if (inventoryError) {
-      console.error("Inventory insertion error:", inventoryError);
-      throw inventoryError;
-    }
+    if (inventoryError) throw inventoryError;
 
-    console.log(
-      "Successfully inserted into agent_inventory:",
-      insertedInventory
-    );
-
-    // Verify the insertion with a select
+    // Verify successful insertion
     const { data: verifyData, error: verifyError } = await supabase
       .from("agent_inventory")
       .select("*")
@@ -749,13 +728,6 @@ export async function assignMetersToAgent({
         "meter_id",
         meters.map((m) => m.meter_id)
       );
-
-    console.log(
-      "Verification select result:",
-      verifyData,
-      "Verify Error:",
-      verifyError
-    );
 
     // Create transaction records
     const { error: transactionError } = await supabase
@@ -770,12 +742,9 @@ export async function assignMetersToAgent({
         }))
       );
 
-    if (transactionError) {
-      console.error("Transaction record error:", transactionError);
-      throw transactionError;
-    }
+    if (transactionError) throw transactionError;
 
-    // Finally, delete from meters table
+    // Remove assigned meters from meters table
     const { error: deleteError } = await supabase
       .from("meters")
       .delete()
@@ -784,15 +753,10 @@ export async function assignMetersToAgent({
         meters.map((m) => m.meter_id)
       );
 
-    if (deleteError) {
-      console.error("Delete error:", deleteError);
-      throw deleteError;
-    }
+    if (deleteError) throw deleteError;
 
-    console.log("Assignment completed successfully");
     return insertedInventory;
   } catch (error) {
-    console.error("Error in assignMetersToAgent:", error);
     throw error;
   }
 }
@@ -813,17 +777,13 @@ export async function getAgentInventory(agentId: string) {
 }
 
 export async function removeFromAgentInventory(meterId: string) {
-  console.log("Removing meter from agent inventory:", meterId);
+  // Remove meter from agent's inventory
   const { error } = await supabase
     .from('agent_inventory')
     .delete()
     .eq('id', meterId);
 
-  if (error) {
-    console.error("Error removing meter from agent inventory:", error);
-    throw error;
-  }
-  console.log("Meter removed from agent inventory successfully");
+  if (error) throw error;
 }
 
 export async function deleteAgent(
@@ -884,7 +844,7 @@ export async function deleteAgent(
 }
 
 export async function superSearchMeter(searchTerm: string) {
-  if (!searchTerm || searchTerm.length < 2) return [];
+  if (!searchTerm || searchTerm.length < 0) return [];
 
   const { data: results, error } = await supabase
     .from('meters')

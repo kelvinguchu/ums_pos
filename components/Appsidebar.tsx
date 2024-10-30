@@ -123,7 +123,7 @@ export function AppSidebar({ user }: { user: any }) {
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/login");
+    router.push("/signin");
   };
 
   return (
@@ -158,13 +158,13 @@ export function AppSidebar({ user }: { user: any }) {
             <SidebarMenu>
               {isAdmin && (
                 <>
-                  <SidebarMenuItem>
+                  {/* <SidebarMenuItem>
                     <Dialog open={isOpen} onOpenChange={setIsOpen}>
                       <DialogTrigger asChild>
-                        {/* <SidebarMenuButton>
+                        <SidebarMenuButton>
                           <PlusCircle className='mr-2 h-4 w-4 text-indigo-600' />
                           <span>Invite User</span>
-                        </SidebarMenuButton> */}
+                        </SidebarMenuButton>
                       </DialogTrigger>
                       <DialogContent>
                         <InviteUser
@@ -173,7 +173,7 @@ export function AppSidebar({ user }: { user: any }) {
                         />
                       </DialogContent>
                     </Dialog>
-                  </SidebarMenuItem>
+                  </SidebarMenuItem> */}
                   <SidebarMenuItem>
                     <Dialog
                       open={isCreateUserOpen}

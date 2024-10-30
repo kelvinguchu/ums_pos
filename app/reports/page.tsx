@@ -2,7 +2,6 @@
 import React from "react";
 import Reports from "@/components/Reports";
 import localFont from "next/font/local";
-import { useSidebar } from "@/components/ui/sidebar";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -10,9 +9,7 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-export default function ReportsPage() {
-  const { state } = useSidebar();
-
+const ReportsPage = () => {
   return (
     <div
       className={`
@@ -30,4 +27,6 @@ export default function ReportsPage() {
       <Reports />
     </div>
   );
-}
+};
+
+export default ReportsPage;

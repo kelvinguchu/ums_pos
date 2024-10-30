@@ -123,7 +123,6 @@ export default function RecordAgentSale({
 
   const handleSubmit = async () => {
     if (!currentUser?.id) {
-      console.log("No current user ID found:", currentUser);
       toast({
         title: "Error",
         description: "Please log in to continue",
@@ -132,36 +131,22 @@ export default function RecordAgentSale({
       return;
     }
 
-    console.log("Starting sale process with currentUser:", currentUser);
-    console.log("Selected meters:", selectedMeters);
-    console.log("Unit prices:", unitPrices);
-
     setIsSubmitting(true);
     try {
+      // Group meters by type for batch processing
       const metersByType = selectedMeters.reduce((acc: { [key: string]: typeof selectedMeters }, meter) => {
         if (!acc[meter.type]) acc[meter.type] = [];
         acc[meter.type].push(meter);
         return acc;
       }, {});
 
-      console.log("Grouped meters by type:", metersByType);
-
-      // Create a sale batch for each type
+      // Process each meter type as a separate batch
       for (const [type, typeMeters] of Object.entries(metersByType)) {
         const batchAmount = typeMeters.length;
         const typeUnitPrice = parseFloat(unitPrices[type]);
         const totalPrice = typeUnitPrice * batchAmount;
 
-        console.log("Creating sale batch with data:", {
-          type,
-          batchAmount,
-          typeUnitPrice,
-          totalPrice,
-          user_id: currentUser.id,
-          user_name: currentUser.name || currentUser.email,
-        });
-
-        // Add sale batch and get the batch id
+        // Create sale batch and get batch ID
         const batchData = await addSaleBatch({
           user_id: currentUser.id,
           user_name: currentUser.name || currentUser.email,
@@ -173,24 +158,12 @@ export default function RecordAgentSale({
           recipient: agent.name,
         });
 
-        console.log("Sale batch created:", batchData);
-
-        // Add to sold_meters and remove from agent_inventory
+        // Process individual meters in the batch
         for (const meter of typeMeters) {
-          console.log("Processing meter:", meter);
-
-          console.log("Removing from agent inventory:", meter.id);
-          // First remove from agent_inventory
+          // Remove from agent inventory first
           await removeFromAgentInventory(meter.id);
           
-          console.log("Adding to sold meters:", {
-            meter_id: meter.id,
-            sold_by: currentUser.id,
-            serial_number: meter.serial_number,
-            batch_id: batchData.id,
-          });
-
-          // Then add to sold_meters
+          // Add to sold meters
           await addSoldMeter({
             meter_id: meter.id,
             sold_by: currentUser.id,
@@ -203,19 +176,15 @@ export default function RecordAgentSale({
           });
         }
 
-        // Update the local inventory state
-        setInventory(prevInventory => {
-          const newInventory = prevInventory.filter(invMeter => 
+        // Update local inventory state
+        setInventory(prevInventory => 
+          prevInventory.filter(invMeter => 
             !typeMeters.some(soldMeter => soldMeter.id === invMeter.id)
-          );
-          console.log("Updated inventory:", newInventory);
-          return newInventory;
-        });
+          )
+        );
       }
 
-      console.log("Sale completed successfully");
-
-      // Store the submitted data for receipt
+      // Store receipt data for download
       const receiptData = {
         meters: selectedMeters.map(meter => ({
           serialNumber: meter.serial_number,
@@ -227,7 +196,6 @@ export default function RecordAgentSale({
         userName: currentUser.name || currentUser.email,
       };
 
-      console.log("Storing receipt data:", receiptData);
       localStorage.setItem("lastSubmittedSaleMeters", JSON.stringify(receiptData));
 
       setSelectedMeters([]);
@@ -241,12 +209,6 @@ export default function RecordAgentSale({
 
       onClose();
     } catch (error: any) {
-      console.error("Error recording sale:", error);
-      console.error("Error details:", {
-        message: error.message || "Unknown error",
-        code: error.code || "Unknown code",
-        details: error.details || "No details available"
-      });
       toast({
         title: "Error",
         description: "Failed to record sale",
@@ -431,7 +393,7 @@ export default function RecordAgentSale({
           {isSubmitted && selectedMeters.length === 0 && (
             <Button
               onClick={handleDownloadReceipt}
-              className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white text-sm md:text-base'>
+              className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white mt-4 text-sm md:text-base'>
               Download Sales Receipt
             </Button>
           )}

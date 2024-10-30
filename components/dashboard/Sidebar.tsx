@@ -2,13 +2,13 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/Appsidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-export default function Layout({
+const Layout = ({
   children,
   user,
 }: {
   children: React.ReactNode;
   user: any;
-}) {
+}) => {
   const initialSidebarState =
     typeof window !== "undefined"
       ? localStorage.getItem("sidebarState") === "true"
@@ -31,4 +31,6 @@ export default function Layout({
       </div>
     </SidebarProvider>
   );
-}
+};
+
+export default Layout;
