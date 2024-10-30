@@ -3,13 +3,13 @@ import "./globals.css";
 import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import AuthWrapper from "@/components/auth/AuthWrapper";
+import Reload from "@/components/Reload";
 
 const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-poppins",
   weight: ["400", "500", "600", "700"],
 });
-
 
 export const metadata: Metadata = {
   title: "UMS POS",
@@ -51,6 +51,7 @@ export default function RootLayout({
         <AuthWrapper>
           {children}
           <Toaster />
+          <Reload />
         </AuthWrapper>
       </body>
     </html>
