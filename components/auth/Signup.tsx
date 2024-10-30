@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { checkInvitation, signUp } from "@/lib/actions/supabaseActions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,14 +29,16 @@ const SignUp = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [role, setRole] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token");
 
   const toggleVisibility = () => setIsVisible((prevState) => !prevState);
 
   useEffect(() => {
+    // Get token from URL in a client-safe way
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
     if (token) {
       checkInvitation(token)
         .then((invitation) => {
@@ -49,10 +51,15 @@ const SignUp = () => {
         })
         .catch((err) => {
           setError("Error checking invitation");
-          console.error(err);
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
+    } else {
+      setError("No invitation token found");
+      setIsLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,10 +74,17 @@ const SignUp = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className={`${geistMono.className} flex items-center justify-center min-h-screen bg-background`}>
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   if (error) {
     return (
-      <div
-        className={`${geistMono.className} flex flex-col items-center justify-center min-h-screen bg-background`}>
+      <div className={`${geistMono.className} flex flex-col items-center justify-center min-h-screen bg-background`}>
         <Card className='w-[350px]'>
           <CardContent className='pt-6'>
             <p className='text-red-500 text-center'>{error}</p>
