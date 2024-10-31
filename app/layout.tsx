@@ -4,6 +4,7 @@ import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import AuthWrapper from "@/components/auth/AuthWrapper";
 import Reload from "@/components/Reload";
+import { AIChatAssistant } from "@/components/AIChatAssistant";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -52,6 +53,7 @@ export default function RootLayout({
           {children}
           <Toaster />
           <Reload />
+          <AIChatAssistant />
         </AuthWrapper>
       </body>
     </html>

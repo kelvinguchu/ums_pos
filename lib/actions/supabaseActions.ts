@@ -894,28 +894,3 @@ export async function superSearchMeter(searchTerm: string) {
 
   return formattedResults;
 }
-
-// Add this RPC to your Supabase SQL editor:
-/*
-CREATE OR REPLACE VIEW meters_view AS
-  SELECT 
-    serial_number,
-    type,
-    'in_stock' as status,
-    NULL as agent_id
-  FROM meters
-  UNION ALL
-  SELECT 
-    ai.serial_number,
-    ai.type,
-    'with_agent' as status,
-    ai.agent_id
-  FROM agent_inventory ai
-  UNION ALL
-  SELECT 
-    sm.serial_number,
-    NULL as type,
-    'sold' as status,
-    NULL as agent_id
-  FROM sold_meters sm;
-*/
