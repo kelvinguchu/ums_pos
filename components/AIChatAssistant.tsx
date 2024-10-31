@@ -265,7 +265,7 @@ export function AIChatAssistant() {
           className='flex-1 px-6 py-4 overflow-y-auto'
           ref={scrollAreaRef}>
           <div className='space-y-4'>
-            <AnimatePresence mode='wait'>
+            <AnimatePresence initial={false} mode="sync">
               {messages.map((message, i) => (
                 <motion.div
                   key={i}

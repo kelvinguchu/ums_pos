@@ -10,7 +10,7 @@ import {
   getMetersByBatchId,
 } from "@/lib/actions/supabaseActions";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const SYSTEM_PROMPT = `You are UMS Assistant, an AI helper for the UMS POS (Point of Sale) system for prepaid meters.
