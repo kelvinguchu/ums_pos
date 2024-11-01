@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Download, PackageOpen } from "lucide-react";
 import NumberTicker from "@/components/ui/number-ticker";
 import { 
   DropdownMenu,
@@ -41,7 +41,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import TableReportPDF from '@/components/dashboard/TableReportPDF';
 import { generateCSV } from "@/lib/utils/csvGenerator";
@@ -243,6 +242,16 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
     generateCSV('daily_sales_report', headers, data);
   };
 
+  const NoDataMessage = () => (
+    <div className="text-center py-8">
+      <p className="text-muted-foreground text-lg">
+        {selectedDateRange 
+          ? `No sales data available for ${selectedDateRange.label}`
+          : "No sales data available for today"}
+      </p>
+    </div>
+  );
+
   return (
     <div
       className={`grid gap-4 transition-all duration-300 ease-in-out ${
@@ -333,19 +342,27 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentItems.map((sale) => (
-                    <TableRow key={sale.id}>
-                      <TableCell>{sale.user_name}</TableCell>
-                      <TableCell>{sale.meter_type}</TableCell>
-                      <TableCell>{sale.batch_amount}</TableCell>
-                      <TableCell>
-                        KES {sale.total_price.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(sale.sale_date).toLocaleTimeString()}
+                  {currentItems.length > 0 ? (
+                    currentItems.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell>{sale.user_name}</TableCell>
+                        <TableCell>{sale.meter_type}</TableCell>
+                        <TableCell>{sale.batch_amount}</TableCell>
+                        <TableCell>
+                          KES {sale.total_price.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(sale.sale_date).toLocaleTimeString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5}>
+                        <NoDataMessage />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -451,12 +468,19 @@ const DailyReports: React.FC<DailyReportsProps> = ({ selectedDateRange, setSelec
           <CardTitle>Today's Total Earnings</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className='text-2xl sm:text-4xl font-bold'>
-            KES <NumberTicker 
-              value={todayTotalEarnings} 
-              className="text-2xl sm:text-4xl font-bold"
-            />
-          </p>
+          {todayTotalEarnings > 0 ? (
+            <p className='text-2xl sm:text-4xl font-bold'>
+              KES <NumberTicker 
+                value={todayTotalEarnings} 
+                className="text-2xl sm:text-4xl font-bold"
+              />
+            </p>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-2">
+              <PackageOpen className="h-12 w-12 text-muted-foreground mb-2" />
+              <p className="text-muted-foreground text-sm">Empty Coffers</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

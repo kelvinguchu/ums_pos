@@ -34,7 +34,7 @@ Response Guidelines:
 1. Keep responses concise (1-3 sentences)
 2. Include specific numbers and data when available
 3. If you don't have access to certain data, say so clearly
-4. For vague queries, ask for clarification
+4. For vague queries, first refer to the current context, if still unclear, ask for clarification
 5. Focus on providing information, not taking actions`;
 
 // Add type definitions for meter search results
@@ -46,6 +46,19 @@ interface MeterResult {
     id: string;
     name: string;
     location: string;
+  };
+  sale_details?: {
+    sold_at: string;
+    sold_by: string;
+    seller_name?: string;
+    seller_role?: string;
+    destination: string;
+    recipient: string;
+    unit_price: number;
+    batch_id: string;
+    meter_type: string;
+    batch_amount: number;
+    total_price: number;
   };
 }
 
@@ -80,16 +93,32 @@ const formatDate = (dateString: string) => {
     .replace(",", " at");
 };
 
-// Add calculateChange function at the top level
-const calculateChange = (current: number, previous: number) =>
-  previous === 0 ? 100 : ((current - previous) / previous) * 100;
+// Update the calculateChange function to handle zero values better
+const calculateChange = (current: number, previous: number) => {
+  if (current === previous) return 0;
+  if (previous === 0 && current === 0) return 0;
+  if (previous === 0) return 100;
+  return ((current - previous) / previous) * 100;
+};
+
+// Add helper function to format comparison text
+const formatComparisonText = (currentValue: number, previousValue: number, metric: string) => {
+  if (currentValue === previousValue) {
+    return `Both days had ${currentValue} ${metric}`;
+  }
+  const change = calculateChange(currentValue, previousValue);
+  if (change === 0 && currentValue === 0 && previousValue === 0) {
+    return `No ${metric} recorded on either day`;
+  }
+  return `${change > 0 ? 'Up' : 'Down'} by ${Math.abs(change).toFixed(1)}%`;
+};
 
 // Add helper functions for trend analysis
 const calculateTrend = (currentValue: number, previousValue: number) => {
   const change = calculateChange(currentValue, previousValue);
   if (change > 10) return "strongly increasing ↑↑";
   if (change > 0) return "slightly increasing ↗";
-  if (change < -10) return "strongly decreasing ↓↓";
+  if (change < -10) return "strongly decreasing ↓";
   if (change < 0) return "slightly decreasing ↘";
   return "stable →";
 };
@@ -114,6 +143,59 @@ interface TypePerformance {
   };
 }
 
+// Add helper function for date comparison
+const getDateForComparison = (dateStr: string): Date | null => {
+  const today = new Date();
+  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  
+  // Handle relative dates
+  if (dateStr.toLowerCase() === 'yesterday') {
+    const date = new Date(today);
+    date.setDate(date.getDate() - 1);
+    return date;
+  }
+  
+  // Handle day names (e.g., "monday", "tuesday")
+  const dayIndex = daysOfWeek.indexOf(dateStr.toLowerCase());
+  if (dayIndex !== -1) {
+    const date = new Date(today);
+    const currentDay = date.getDay();
+    const daysToSubtract = (currentDay + 7 - dayIndex) % 7;
+    date.setDate(date.getDate() - daysToSubtract);
+    return date;
+  }
+  
+  // Handle "last week", "previous week"
+  if (dateStr.toLowerCase().includes('last week') || dateStr.toLowerCase().includes('previous week')) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - 7);
+    return date;
+  }
+  
+  return null;
+};
+
+// Add function to get sales for a specific date
+const getSalesForDate = (salesData: SaleBatch[], date: Date) => {
+  const dateStr = date.toISOString().split('T')[0];
+  return salesData.filter(sale => 
+    new Date(sale.sale_date).toISOString().split('T')[0] === dateStr
+  );
+};
+
+// Add to the existing interfaces
+interface LastContext {
+  meter?: MeterResult;
+  topic: string;
+  timestamp: number;
+}
+
+// Add at the top level with other constants
+let lastContext: LastContext = {
+  topic: "",
+  timestamp: 0
+};
+
 export async function getChatResponse(
   userMessage: string,
   context: {
@@ -124,8 +206,98 @@ export async function getChatResponse(
 ) {
   try {
     let additionalContext = "";
-    let lastTopic = "";
-    let lastSaleBatch: SaleBatch | null = null;
+    let lastTopic = lastContext.topic;
+
+    // Check if asking about who sold something
+    if (userMessage.toLowerCase().includes("who sold") || 
+        userMessage.toLowerCase().includes("seller") || 
+        userMessage.toLowerCase().includes("sold by")) {
+      if (lastContext.meter?.status === "sold" && lastContext.meter.sale_details) {
+        const saleDetails = lastContext.meter.sale_details;
+        const sellerInfo = saleDetails.seller_name 
+          ? `${saleDetails.seller_name} (${saleDetails.seller_role})`
+          : saleDetails.sold_by;
+        
+        additionalContext = `
+          Seller Information:
+          The meter ${lastContext.meter.serial_number} was sold by ${sellerInfo}.
+          Sale Details:
+          • Date: ${new Date(saleDetails.sold_at).toLocaleString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: 'numeric',
+              hour12: true
+            })}
+          • Destination: ${saleDetails.destination}
+          • Recipient: ${saleDetails.recipient}
+          • Price: KES ${saleDetails.unit_price?.toLocaleString()}
+        `;
+        lastTopic = "seller";
+      } else {
+        additionalContext = "I don't have any recent sale information to reference.";
+      }
+    }
+
+    // Update the meter search section
+    const serialNumberMatch = userMessage.match(/\b[A-Z0-9]+\b/i);
+    if (serialNumberMatch || userMessage.toLowerCase().includes("meter")) {
+      const searchTerm = serialNumberMatch ? serialNumberMatch[0] : "";
+      if (searchTerm) {
+        const meterResults = (await superSearchMeter(searchTerm)) as MeterResult[];
+        if (meterResults.length > 0) {
+          // Store the first result in lastContext for future reference
+          lastContext = {
+            meter: meterResults[0],
+            topic: "meter",
+            timestamp: Date.now()
+          };
+          
+          additionalContext = `
+            Meter Information:
+            ${meterResults
+              .map((meter) => {
+                if (meter.status === "in_stock" && meter.type) {
+                  return `- Meter ${meter.serial_number} (${meter.type}) is currently in stock`;
+                } else if (meter.status === "with_agent" && meter.type && meter.agent) {
+                  return `- Meter ${meter.serial_number} (${meter.type}) is with agent ${meter.agent.name} in ${meter.agent.location}`;
+                } else if (meter.status === "sold" && meter.sale_details) {
+                  const saleDate = meter.sale_details.sold_at ? new Date(meter.sale_details.sold_at).toLocaleString('en-GB', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric',
+                    hour12: true
+                  }) : 'Unknown date';
+
+                  const formatPrice = (price?: number) => {
+                    return price ? `KES ${price.toLocaleString()}` : 'N/A';
+                  };
+
+                  const sellerInfo = meter.sale_details.seller_name 
+                    ? `${meter.sale_details.seller_name} (${meter.sale_details.seller_role})`
+                    : meter.sale_details.sold_by || 'Unknown';
+
+                  return `- Meter ${meter.serial_number} was sold on ${saleDate} by ${sellerInfo}
+                    • Batch ID: ${meter.sale_details.batch_id || 'N/A'}
+                    • Destination: ${meter.sale_details.destination || 'N/A'}
+                    • Recipient: ${meter.sale_details.recipient || 'N/A'}
+                    • Unit Price: ${formatPrice(meter.sale_details.unit_price)}
+                    • Meter Type: ${meter.sale_details.meter_type || 'N/A'}
+                    • Batch Size: ${meter.sale_details.batch_amount || 'N/A'} meters
+                    • Total Batch Value: ${formatPrice(meter.sale_details.total_price)}`;
+                }
+                return `- Meter ${meter.serial_number} status: ${meter.status}`;
+              })
+              .join("\n")}
+          `;
+        } else {
+          additionalContext += `No meters found matching "${searchTerm}"`;
+        }
+      }
+    }
 
     // Enhanced sales analysis with better pattern matching
     if (
@@ -142,9 +314,9 @@ export async function getChatResponse(
       userMessage.toLowerCase().includes("today") ||
       userMessage.toLowerCase().includes("transaction")
     ) {
-      const salesData = (await getSaleBatches()) as SaleBatch[];
+      const salesData = await getSaleBatches() as SaleBatch[];
       const now = new Date();
-      const today = new Date().toISOString().split("T")[0];
+      const today = now.toISOString().split('T')[0];
 
       // Sort sales by date (most recent first)
       const sortedSales = [...salesData].sort(
@@ -154,24 +326,53 @@ export async function getChatResponse(
 
       // Get most recent sale
       const mostRecentSale = sortedSales[0];
-      lastSaleBatch = mostRecentSale;
+      if (mostRecentSale) {
+        lastContext = {
+          meter: {
+            serial_number: `Batch #${mostRecentSale.id}`,
+            status: "sold",
+            sale_details: {
+              sold_at: mostRecentSale.sale_date,
+              sold_by: mostRecentSale.user_name,
+              destination: mostRecentSale.destination,
+              recipient: mostRecentSale.recipient,
+              unit_price: mostRecentSale.unit_price,
+              batch_id: mostRecentSale.id.toString(),
+              meter_type: mostRecentSale.meter_type,
+              batch_amount: mostRecentSale.batch_amount,
+              total_price: mostRecentSale.total_price
+            }
+          },
+          topic: "sales",
+          timestamp: Date.now()
+        };
+      }
 
       // Calculate yesterday's date
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-      // Filter sales for today and yesterday
-      const todaySales = sortedSales.filter(
-        (sale) => new Date(sale.sale_date).toISOString().split("T")[0] === today
-      );
+      // Get sales for different periods using the common function
+      const currentDaySales = getSalesForDate(salesData, now);
+      const yesterdaySales = getSalesForDate(salesData, yesterday);
 
-      const yesterdaySales = sortedSales.filter(
-        (sale) =>
-          new Date(sale.sale_date).toISOString().split("T")[0] === yesterdayStr
-      );
+      // Extract dates for comparison from the user message
+      const dateWords = userMessage.toLowerCase().split(' ');
+      let comparisonDate: Date | null = null;
 
-      // Group sales by meter type for today and yesterday
+      for (const word of dateWords) {
+        comparisonDate = getDateForComparison(word);
+        if (comparisonDate) break;
+      }
+
+      // Get comparison date sales if available
+      let comparisonSales: SaleBatch[] = [];
+      if (comparisonDate) {
+        comparisonSales = getSalesForDate(salesData, comparisonDate);
+      }
+
+      // Group sales by meter type
       const groupSalesByType = (sales: SaleBatch[]) => {
         return sales.reduce(
           (
@@ -189,7 +390,7 @@ export async function getChatResponse(
         );
       };
 
-      const todayByType = groupSalesByType(todaySales);
+      const todayByType = groupSalesByType(currentDaySales);
       const yesterdayByType = groupSalesByType(yesterdaySales);
 
       lastTopic = "sales";
@@ -210,12 +411,12 @@ export async function getChatResponse(
         }
 
         Today's Sales (${new Date().toLocaleDateString()}):
-        - Total Transactions: ${todaySales.length}
-        - Total Meters: ${todaySales.reduce(
+        - Total Transactions: ${currentDaySales.length}
+        - Total Meters: ${currentDaySales.reduce(
           (acc, sale) => acc + sale.batch_amount,
           0
         )}
-        - Total Revenue: KES ${todaySales
+        - Total Revenue: KES ${currentDaySales
           .reduce((acc, sale) => acc + sale.total_price, 0)
           .toLocaleString()}
         Breakdown by Type:
@@ -247,6 +448,40 @@ export async function getChatResponse(
           )
           .join("\n        ")}
       `;
+
+      // Add comparison context if a comparison date was found
+      if (comparisonDate) {
+        const formatDateStr = (date: Date) => 
+          date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+        const todayMeters = currentDaySales.reduce((acc, sale) => acc + sale.batch_amount, 0);
+        const todayRevenue = currentDaySales.reduce((acc, sale) => acc + sale.total_price, 0);
+        const comparisonMeters = comparisonSales.reduce((acc, sale) => acc + sale.batch_amount, 0);
+        const comparisonRevenue = comparisonSales.reduce((acc, sale) => acc + sale.total_price, 0);
+
+        additionalContext += `
+          \nSales Comparison:
+          
+          Today (${formatDateStr(now)}):
+          - Total Transactions: ${currentDaySales.length}
+          - Total Meters: ${todayMeters}
+          - Total Revenue: KES ${todayRevenue.toLocaleString()}
+
+          ${formatDateStr(comparisonDate)}:
+          - Total Transactions: ${comparisonSales.length}
+          - Total Meters: ${comparisonMeters}
+          - Total Revenue: KES ${comparisonRevenue.toLocaleString()}
+
+          Comparison Analysis:
+          - Transactions: ${formatComparisonText(currentDaySales.length, comparisonSales.length, 'transactions')}
+          - Meters: ${formatComparisonText(todayMeters, comparisonMeters, 'meters')}
+          - Revenue: ${formatComparisonText(todayRevenue, comparisonRevenue, 'revenue')}
+          
+          ${currentDaySales.length === 0 && comparisonSales.length === 0 
+            ? '\nNote: No sales were recorded on either day.' 
+            : ''}
+        `;
+      }
     }
 
     // Add user query handling first since we're on users page
@@ -278,40 +513,6 @@ export async function getChatResponse(
           )
           .join("\n        ")}
       `;
-    }
-
-    // Check for meter serial number queries
-    const serialNumberMatch = userMessage.match(/\b[A-Z0-9]+\b/i);
-    if (serialNumberMatch || userMessage.toLowerCase().includes("meter")) {
-      const searchTerm = serialNumberMatch ? serialNumberMatch[0] : "";
-      if (searchTerm) {
-        const meterResults = (await superSearchMeter(
-          searchTerm
-        )) as MeterResult[];
-        if (meterResults.length > 0) {
-          additionalContext += `
-            Meter Information:
-            ${meterResults
-              .map((meter) => {
-                if (meter.status === "in_stock" && meter.type) {
-                  return `- Meter ${meter.serial_number} (${meter.type}) is currently in stock`;
-                } else if (
-                  meter.status === "with_agent" &&
-                  meter.type &&
-                  meter.agent
-                ) {
-                  return `- Meter ${meter.serial_number} (${meter.type}) is with agent ${meter.agent.name} in ${meter.agent.location}`;
-                } else if (meter.status === "sold") {
-                  return `- Meter ${meter.serial_number} has been sold`;
-                }
-                return `- Meter ${meter.serial_number} status: ${meter.status}`;
-              })
-              .join("\n")}
-          `;
-        } else {
-          additionalContext += `No meters found matching "${searchTerm}"`;
-        }
-      }
     }
 
     // Enhanced agent and inventory queries
@@ -439,15 +640,14 @@ Current Context:
 - Current Page: ${context.currentPage || "dashboard"}
 - Recent Actions: ${context.recentActions?.join(", ") || "None"}
 - Last Topic Discussed: ${lastTopic}
-- Last Sale Batch ID: ${lastSaleBatch?.id}
+${lastContext.meter ? `- Last Meter Queried: ${lastContext.meter.serial_number}` : ""}
 
 ${additionalContext}
 
 User Question: ${userMessage}
 
-If the question uses pronouns like "them" or "they", assume it refers to ${lastTopic}.
-If the question asks about "that sale" or "the sale", refer to the most recent sale discussed.
-Provide a helpful, data-driven response using the specific information provided in the context. Include specific numbers and breakdowns when available:`;
+If the question asks about "who sold" or similar, refer to the last meter's sale details if available.
+Provide a helpful, data-driven response using the specific information provided in the context:`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;

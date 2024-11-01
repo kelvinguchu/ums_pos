@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -48,6 +48,16 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+// Add type for cached results
+interface CachedResult {
+  timestamp: number;
+  data: any;
+}
+
+// Add cache outside component to persist between renders
+const searchCache: { [key: string]: CachedResult } = {};
+const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
+
 const Navbar: React.FC = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -65,11 +75,24 @@ const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  // Add function to check and clean cache
+  const cleanCache = useMemo(() => {
+    return () => {
+      const now = Date.now();
+      Object.keys(searchCache).forEach(key => {
+        if (now - searchCache[key].timestamp > CACHE_DURATION) {
+          delete searchCache[key];
+        }
+      });
+    };
+  }, []);
+
   const handleLogout = async () => {
     await signOut();
     router.push("/signin");
   };
 
+  // Update the search function to use cache
   useEffect(() => {
     const searchMeters = async () => {
       if (debouncedSearch.length < 0) {
@@ -79,7 +102,32 @@ const Navbar: React.FC = () => {
 
       setIsLoading(true);
       try {
+        // Clean old cache entries
+        cleanCache();
+
+        // Check cache first
+        const cachedResult = searchCache[debouncedSearch];
+        if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_DURATION) {
+          setSearchResults(cachedResult.data);
+          setIsLoading(false);
+          return;
+        }
+
+        // If not in cache, fetch from API
         const results = await superSearchMeter(debouncedSearch);
+        
+        // Cache the results if meter is sold or with agent
+        const shouldCache = results.some(
+          result => result.status === "sold" || result.status === "with_agent"
+        );
+        
+        if (shouldCache) {
+          searchCache[debouncedSearch] = {
+            timestamp: Date.now(),
+            data: results
+          };
+        }
+
         setSearchResults(results);
       } catch (error) {
         console.error("Search error:", error);
@@ -90,7 +138,15 @@ const Navbar: React.FC = () => {
     };
 
     searchMeters();
-  }, [debouncedSearch]);
+  }, [debouncedSearch, cleanCache]);
+
+  // Add cache cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Clean cache when component unmounts
+      cleanCache();
+    };
+  }, [cleanCache]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -180,6 +236,28 @@ const Navbar: React.FC = () => {
                               Type: {result.type}
                             </div>
                           )}
+                          {result.status === "sold" && result.sale_details && (
+                            <div className='text-sm text-gray-500 space-y-0.5'>
+                              <div>
+                                Sold by: {result.sale_details.seller_name ? 
+                                  `${result.sale_details.seller_name} (${result.sale_details.seller_role})` : 
+                                  result.sale_details.sold_by}
+                              </div>
+                              <div>
+                                Date: {new Date(result.sale_details.sold_at).toLocaleString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric',
+                                  hour: 'numeric',
+                                  minute: 'numeric',
+                                  hour12: true
+                                })}
+                              </div>
+                              <div>
+                                To: {result.sale_details.recipient} in {result.sale_details.destination}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className='flex flex-wrap items-center gap-2'>
                           {result.status === "with_agent" && (
@@ -210,7 +288,7 @@ const Navbar: React.FC = () => {
                           {result.status === "sold" && (
                             <Badge className='bg-blue-500'>
                               <DollarSign className='mr-1 h-3 w-3' />
-                              Sold
+                              Sold - KES {result.sale_details?.unit_price?.toLocaleString()}
                             </Badge>
                           )}
                         </div>
@@ -223,7 +301,7 @@ const Navbar: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className='flex items-center gap-2'>
           {isMobile && <SidebarTrigger />}
           {!isMobile && (
             <div className='flex-shrink-0'>

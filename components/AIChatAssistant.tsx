@@ -8,6 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -192,7 +193,7 @@ export function AIChatAssistant() {
   useEffect(() => {
     const initializeChat = async () => {
       if (messages.length === 0 && context.role) {
-        const welcomeMessage = "Hello! I'm your UMS Assistant. I can help you with meter management, sales, inventory, and system navigation. What would you like to know?";
+        const welcomeMessage = "Hello! I'm your UMS Assistant. How can I help?";
         await typeMessage(welcomeMessage);
       }
     };
@@ -221,7 +222,7 @@ export function AIChatAssistant() {
     });
 
     // Re-initialize welcome message
-    const welcomeMessage = "Hello! I'm your UMS Assistant. I can help you with meter management, sales, inventory, and system navigation. What would you like to know?";
+    const welcomeMessage = "Hello! I'm your UMS Assistant. How can I help?";
     typeMessage(welcomeMessage);
   };
 
@@ -236,7 +237,8 @@ export function AIChatAssistant() {
         </Button>
       </SheetTrigger>
       <SheetContent
-        className={`${geistMono.className} min-w-[90vw] lg:min-w-[50vw] h-[100vh] flex flex-col p-0 gap-0 bg-gradient-to-b from-white to-gray-50`}>
+        className={`${geistMono.className} min-w-[90vw] lg:min-w-[50vw] h-[100vh] flex flex-col p-0 gap-0 bg-gradient-to-b from-white to-gray-50`}
+      >
         <SheetHeader className='px-6 py-4 border-b'>
           <div className='flex items-center justify-between'>
             <SheetTitle className='flex items-center gap-2 text-lg'>
@@ -259,6 +261,9 @@ export function AIChatAssistant() {
               <Trash2 className='h-4 w-4 text-gray-500 group-hover:text-red-500 transition-colors' />
             </Button>
           </div>
+          <SheetDescription>
+            AI Assistant chat interface for UMS POS system
+          </SheetDescription>
         </SheetHeader>
 
         <ScrollArea

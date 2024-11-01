@@ -86,6 +86,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
     return cached ? JSON.parse(cached) : null;
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSellingMeters, setIsSellingMeters] = useState(false);
 
   const findExistingMeter = (serialNum: string) => {
     return meters.findIndex(
@@ -228,6 +229,8 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
       return;
     }
 
+    setIsSellingMeters(true);
+
     try {
       // Group meters by type
       const metersByType = meters.reduce(
@@ -309,6 +312,8 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
         style: { backgroundColor: "#FF4136", color: "white" },
         action: <ToastAction altText='Try again'>Try again</ToastAction>,
       });
+    } finally {
+      setIsSellingMeters(false);
     }
   };
 
@@ -487,9 +492,16 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
                   {saleDetails && (
                     <Button
                       onClick={handleSellMeters}
+                      disabled={isSellingMeters}
                       className='w-full bg-[#E46020] hover:bg-[#e46120] text-white'>
-                      Confirm Sale of {meters.length} Meter
-                      {meters.length !== 1 ? "s" : ""}
+                      {isSellingMeters ? (
+                        <>
+                          <span className="mr-2">Selling Meters...</span>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        </>
+                      ) : (
+                        `Confirm Sale of ${meters.length} Meter${meters.length !== 1 ? "s" : ""}`
+                      )}
                     </Button>
                   )}
                 </div>

@@ -39,7 +39,7 @@ import CreateUser from "@/components/auth/CreateUser";
 import localFont from "next/font/local";
 import AssignMetersToAgent from "@/components/dashboard/AssignMetersToAgent";
 import CreateAgentDialog from "@/components/dashboard/CreateAgentDialog";
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { signOut } from '@/lib/actions/supabaseActions';
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -65,6 +65,7 @@ const items = [
 
 export function AppSidebar({ user }: { user: any }) {
   const router = useRouter();
+  const pathname = usePathname();
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [userName, setUserName] = useState("");
@@ -139,7 +140,10 @@ export function AppSidebar({ user }: { user: any }) {
                 .filter((item) => !item.adminOnly || isAdmin)
                 .map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton 
+                      asChild
+                      isActive={pathname === item.url}
+                    >
                       <Link href={item.url}>
                         <item.icon className='mr-2 h-4 w-4' />
                         <span>{item.title}</span>
