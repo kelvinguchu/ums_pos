@@ -40,12 +40,36 @@ interface ChatContext {
   recentActions: string[];
 }
 
+const CHAT_CACHE_KEY = 'chatMessages';
+const CHAT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+interface CachedMessages {
+  messages: Message[];
+  timestamp: number;
+}
+
 export function AIChatAssistant() {
   const [messages, setMessages] = useState<Message[]>(() => {
-    // Load messages from localStorage on initial render
+    // Load and validate cached messages on initial render
     if (typeof window !== 'undefined') {
-      const savedMessages = localStorage.getItem('chatMessages');
-      return savedMessages ? JSON.parse(savedMessages) : [];
+      const cached = localStorage.getItem(CHAT_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsedCache: CachedMessages = JSON.parse(cached);
+          const now = Date.now();
+          
+          // Check if cache is still valid (less than 24 hours old)
+          if (now - parsedCache.timestamp < CHAT_CACHE_DURATION) {
+            return parsedCache.messages;
+          } else {
+            // Clear expired cache
+            localStorage.removeItem(CHAT_CACHE_KEY);
+          }
+        } catch (error) {
+          console.error('Error parsing cached messages:', error);
+          localStorage.removeItem(CHAT_CACHE_KEY);
+        }
+      }
     }
     return [];
   });
@@ -67,9 +91,41 @@ export function AIChatAssistant() {
   // Save messages to localStorage whenever they change
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem('chatMessages', JSON.stringify(messages));
+      const cacheData: CachedMessages = {
+        messages,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(cacheData));
     }
   }, [messages]);
+
+  // Add cleanup function to clear expired messages
+  useEffect(() => {
+    const clearExpiredCache = () => {
+      const cached = localStorage.getItem(CHAT_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsedCache: CachedMessages = JSON.parse(cached);
+          const now = Date.now();
+          if (now - parsedCache.timestamp >= CHAT_CACHE_DURATION) {
+            localStorage.removeItem(CHAT_CACHE_KEY);
+            setMessages([]); // Clear messages in state
+          }
+        } catch (error) {
+          console.error('Error checking cache expiry:', error);
+          localStorage.removeItem(CHAT_CACHE_KEY);
+        }
+      }
+    };
+
+    // Check for expired cache on mount
+    clearExpiredCache();
+
+    // Optional: Set up periodic checks
+    const interval = setInterval(clearExpiredCache, 60 * 60 * 1000); // Check every hour
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Auto-focus input when sheet opens
   const handleSheetOpen = (open: boolean) => {
@@ -211,7 +267,7 @@ export function AIChatAssistant() {
   // Add clear chat handler
   const handleClearChat = () => {
     setMessages([]);
-    localStorage.removeItem('chatMessages');
+    localStorage.removeItem(CHAT_CACHE_KEY);
     
     // Show success toast
     toast({
@@ -369,9 +425,9 @@ export function AIChatAssistant() {
   );
 }
 
-// Add a clear chat function
+// Update the clear chat history function
 export function clearChatHistory() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('chatMessages');
+    localStorage.removeItem(CHAT_CACHE_KEY);
   }
 } 

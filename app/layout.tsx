@@ -4,7 +4,6 @@ import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import AuthWrapper from "@/components/auth/AuthWrapper";
 import Reload from "@/components/Reload";
-import { AIChatAssistant } from "@/components/AIChatAssistant";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -46,14 +45,11 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/favi.png" />
       </head>
-      <body
-        className={`${poppins.className} antialiased`}
-      >
+      <body className={`${poppins.className} antialiased`}>
         <AuthWrapper>
           {children}
           <Toaster />
           <Reload />
-          <AIChatAssistant />
         </AuthWrapper>
       </body>
     </html>

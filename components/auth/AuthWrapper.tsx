@@ -10,8 +10,7 @@ import {
 import dynamic from 'next/dynamic';
 import Loader from '@/components/Loader';
 
-// Dynamically import heavy components to prevent circular dependencies
-// and improve initial load time
+// Dynamically import heavy components
 const Layout = dynamic(() => import("@/components/dashboard/Sidebar"), {
   ssr: false,
   loading: () => <Loader />
@@ -20,6 +19,13 @@ const Layout = dynamic(() => import("@/components/dashboard/Sidebar"), {
 const Navbar = dynamic(() => import("@/components/Navbar"), {
   ssr: false,
   loading: () => <Loader />
+});
+
+// Fix the dynamic import for AIChatAssistant
+const AIChatAssistant = dynamic(() => 
+  import("@/components/AIChatAssistant").then(mod => mod.AIChatAssistant), {
+  ssr: false,
+  loading: () => null
 });
 
 // Routes configuration
@@ -119,6 +125,7 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
             <main className='flex-grow p-4'>{children}</main>
           </div>
         </Layout>
+        <AIChatAssistant />
       </div>
     </Suspense>
   ) : (
