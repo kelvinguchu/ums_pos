@@ -40,7 +40,7 @@ const SignIn = () => {
     setIsLoading(true);
     setError(null);
 
-    const email = `${emailPrefix}@gmail.com`;
+    const email = `${emailPrefix}@umskenya.com`;
     try {
       const { user, session, error } = await signIn(email, password);
       if (error) throw error;
@@ -86,7 +86,7 @@ const SignIn = () => {
                     disabled={isLoading}
                   />
                   <span className='inline-flex items-center rounded-e-lg border border-input bg-white px-3 text-sm'>
-                    @gmail.com
+                    @umskenya.com
                   </span>
                 </div>
               </div>
