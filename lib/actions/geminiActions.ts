@@ -410,7 +410,7 @@ export async function getChatResponse(
             : "No sales recorded yet"
         }
 
-        Today's Sales (${new Date().toLocaleDateString()}):
+        Here is the breakdown of today's sales:
         - Total Transactions: ${currentDaySales.length}
         - Total Meters: ${currentDaySales.reduce(
           (acc, sale) => acc + sale.batch_amount,
