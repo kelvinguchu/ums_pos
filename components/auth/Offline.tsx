@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -18,7 +20,14 @@ const Offline = () => {
 
   return (
     <div className={`${geistMono.className} flex min-h-screen flex-col items-center justify-center bg-background p-4`}>
-      <Image src='/logo.png' alt='logo' width={100} height={100} className='mb-6' />
+      <Image 
+        src='/logo.png' 
+        alt='logo' 
+        width={100} 
+        height={100} 
+        className='mb-6'
+        priority 
+      />
       <Card className='w-[90%] max-w-[500px] shadow-lg'>
         <CardHeader>
           <CardTitle className='text-center text-2xl font-bold text-[#000080]'>

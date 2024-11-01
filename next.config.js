@@ -5,8 +5,23 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   fallbacks: {
     document: '/offline',
-    image: '/favi.png',
-  }
+    image: '/favi.png'
+  },
+  runtimeCaching: [
+    {
+      urlPattern: /^https?.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'offlineCache',
+        expiration: {
+          maxEntries: 200,
+          maxAgeSeconds: 24 * 60 * 60 // 24 hours
+        }
+      }
+    }
+  ],
+  buildExcludes: [/middleware-manifest.json$/],
+  maximumFileSizeToCacheInBytes: 5000000 // 5MB
 })
 
 /** @type {import('next').NextConfig} */
@@ -21,6 +36,10 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react']
+  }
 }
 
 module.exports = withPWA(nextConfig)

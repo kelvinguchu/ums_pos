@@ -1,8 +1,15 @@
-'use client';
-import React, { useEffect, useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+"use client";
+import React, { useEffect, useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSaleBatches } from '@/lib/actions/supabaseActions';
+import { getSaleBatches } from "@/lib/actions/supabaseActions";
 import localFont from "next/font/local";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -27,7 +34,7 @@ import { getLocalTimeZone, today, parseDate } from "@internationalized/date";
 import { DatePicker } from "@/components/ui/date-picker";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,8 +42,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Download } from "lucide-react";
 import { generateCSV } from "@/lib/utils/csvGenerator";
-import { pdf } from '@react-pdf/renderer';
-import TableReportPDF from '@/components/dashboard/TableReportPDF';
+import { pdf } from "@react-pdf/renderer";
+import TableReportPDF from "@/components/dashboard/TableReportPDF";
 import { MeterSalesRow } from "./dashboard/MeterSalesRow";
 
 const geistMono = localFont({
@@ -89,21 +96,21 @@ export default function MeterSales() {
     let filtered = [...saleBatches];
 
     if (searchUser) {
-      filtered = filtered.filter(batch => 
+      filtered = filtered.filter((batch) =>
         batch.user_name.toLowerCase().includes(searchUser.toLowerCase())
       );
     }
 
     if (selectedType) {
-      filtered = filtered.filter(batch => 
-        batch.meter_type.toLowerCase() === selectedType.toLowerCase()
+      filtered = filtered.filter(
+        (batch) => batch.meter_type.toLowerCase() === selectedType.toLowerCase()
       );
     }
 
     if (dateRange) {
       const startDate = new Date(dateRange.start.toString());
       const endDate = new Date(dateRange.end.toString());
-      filtered = filtered.filter(batch => {
+      filtered = filtered.filter((batch) => {
         const saleDate = new Date(batch.sale_date);
         return saleDate >= startDate && saleDate <= endDate;
       });
@@ -111,7 +118,7 @@ export default function MeterSales() {
 
     if (selectedDate) {
       const date = new Date(selectedDate.toString());
-      filtered = filtered.filter(batch => {
+      filtered = filtered.filter((batch) => {
         const saleDate = new Date(batch.sale_date);
         return saleDate.toDateString() === date.toDateString();
       });
@@ -130,14 +137,16 @@ export default function MeterSales() {
   // Function to format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).replace(',', ' at');
+    return date
+      .toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+      .replace(",", " at");
   };
 
   const hasActiveFilters = () => {
@@ -153,36 +162,46 @@ export default function MeterSales() {
 
   const handleExportPDF = async () => {
     const dataToExport = hasActiveFilters() ? currentBatches : filteredBatches;
-    
-    const headers = ['Seller', 'Meter Type', 'Amount', 'Sale Amount', 'Sale Date', 'Destination', 'Recipient'];
-    const data = dataToExport.map(batch => [
+
+    const headers = [
+      "Seller",
+      "Meter Type",
+      "Amount",
+      "Sale Amount",
+      "Sale Date",
+      "Destination",
+      "Recipient",
+    ];
+    const data = dataToExport.map((batch) => [
       batch.user_name,
       batch.meter_type,
       batch.batch_amount.toString(),
       // Remove .00 from sale amount by using Math.round and adding KES prefix
       `KES ${Math.round(batch.total_price).toLocaleString()}`,
       // Simplify date format to just show the date without time
-      new Date(batch.sale_date).toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+      new Date(batch.sale_date).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
       }),
       batch.destination,
-      batch.recipient
+      batch.recipient,
     ]);
-    
+
     const blob = await pdf(
       <TableReportPDF
-        title="Meter Sales Report"
+        title='Meter Sales Report'
         headers={headers}
         data={data}
       />
     ).toBlob();
-    
+
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `meter-sales-report-${new Date().toISOString().split('T')[0]}.pdf`;
+    link.download = `meter-sales-report-${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -192,98 +211,108 @@ export default function MeterSales() {
   const handleExportCSV = () => {
     // Use all filtered batches instead of just currentBatches
     const dataToExport = hasActiveFilters() ? currentBatches : filteredBatches;
-    
-    const headers = ['Seller', 'Meter Type', 'Amount', 'Sale Amount', 'Sale Date', 'Destination', 'Recipient'];
-    const data = dataToExport.map(batch => [
+
+    const headers = [
+      "Seller",
+      "Meter Type",
+      "Amount",
+      "Sale Amount",
+      "Sale Date",
+      "Destination",
+      "Recipient",
+    ];
+    const data = dataToExport.map((batch) => [
       batch.user_name,
       batch.meter_type,
       batch.batch_amount.toString(),
       batch.total_price.toString(),
       formatDate(batch.sale_date),
       batch.destination,
-      batch.recipient
+      batch.recipient,
     ]);
-    
-    generateCSV('meter_sales_report', headers, data);
+
+    generateCSV("meter_sales_report", headers, data);
   };
 
   return (
     <div className={`${geistMono.className} mx-auto`}>
       <h1 className='text-3xl font-bold mb-6 text-center'>Sales</h1>
-      
+
       {/* Search and Filter Section */}
-      <div className="mb-6">
-        <div className="flex gap-4 mb-2 justify-between">
-          <div className="flex gap-4">
+      <div className='mb-6'>
+        <div className='flex gap-4 mb-2 justify-between'>
+          <div className='flex gap-4'>
             <Input
-              type="text"
-              placeholder="Search by user..."
+              type='text'
+              placeholder='Search by user...'
               value={searchUser}
               onChange={(e) => setSearchUser(e.target.value)}
-              className="max-w-xs"
+              className='max-w-xs'
             />
-            
-            <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-              <SelectTrigger className="w-[180px]">
+
+            <Select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}>
+              <SelectTrigger className='w-[180px]'>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
-                <SelectItem value="split">Split</SelectItem>
-                <SelectItem value="integrated">Integrated</SelectItem>
-                <SelectItem value="gas">Gas</SelectItem>
-                <SelectItem value="water">Water</SelectItem>
+                <SelectItem value=''>All Types</SelectItem>
+                <SelectItem value='split'>Split</SelectItem>
+                <SelectItem value='integrated'>Integrated</SelectItem>
+                <SelectItem value='gas'>Gas</SelectItem>
+                <SelectItem value='water'>Water</SelectItem>
               </SelectContent>
             </Select>
 
-            <div className="flex gap-4">
+            <div className='flex gap-4'>
               <DatePicker
                 value={selectedDate}
                 onChange={setSelectedDate}
-                label="Search by date"
+                label='Search by date'
               />
-              <span className="text-sm text-muted-foreground self-center">or</span>
+              <span className='text-sm text-muted-foreground self-center'>
+                or
+              </span>
               <DateRangePicker
                 value={dateRange}
                 onChange={setDateRange}
-                label="Search by date range"
+                label='Search by date range'
               />
             </div>
           </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" />
+              <Button variant='outline'>
+                <Download className='mr-2 h-4 w-4' />
                 Export Table as
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={handleExportPDF}>
-                PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportCSV}>
-                CSV
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF}>PDF</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCSV}>CSV</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
+
         {hasActiveFilters() && (
           <Button
-            variant="outline"
-            size="sm"
+            variant='outline'
+            size='sm'
             onClick={clearSearch}
-            className="text-muted-foreground hover:text-foreground"
-          >
+            className='text-muted-foreground hover:text-foreground'>
             Clear search
-            <X className="ml-2 h-4 w-4" />
+            <X className='ml-2 h-4 w-4' />
           </Button>
         )}
       </div>
 
       {/* Table Card */}
-      <Card className={`${state === "expanded" ? "w-[75vw] " : "w-[93vw]"} mx-auto`}>
+      <Card
+        className={`${
+          state === "expanded" ? "w-[75vw] " : "w-[93vw]"
+        } mx-auto`}>
         <CardHeader>
           <CardTitle>Meter Sales</CardTitle>
         </CardHeader>
@@ -303,10 +332,9 @@ export default function MeterSales() {
             <TableBody>
               {currentBatches.map((batch) => (
                 <React.Fragment key={batch.id}>
-                  <TableRow 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setSelectedBatch(batch.id)}
-                  >
+                  <TableRow
+                    className='cursor-pointer hover:bg-muted/50'
+                    onClick={() => setSelectedBatch(batch.id)}>
                     <TableCell>{batch.user_name}</TableCell>
                     <TableCell>{batch.meter_type}</TableCell>
                     <TableCell>{batch.batch_amount}</TableCell>
@@ -323,7 +351,9 @@ export default function MeterSales() {
                   <MeterSalesRow
                     batch={batch}
                     isOpen={selectedBatch === batch.id}
-                    onOpenChange={(open) => setSelectedBatch(open ? batch.id : null)}
+                    onOpenChange={(open) =>
+                      setSelectedBatch(open ? batch.id : null)
+                    }
                   />
                 </React.Fragment>
               ))}
@@ -333,21 +363,22 @@ export default function MeterSales() {
       </Card>
 
       {/* Pagination */}
-      <div className="mt-4 flex justify-center">
+      <div className='mt-4 flex justify-center'>
         <Pagination>
           <PaginationContent>
             <PaginationItem>
-              <PaginationPrevious 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              <PaginationPrevious
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 isActive={currentPage !== 1}
               />
             </PaginationItem>
-            
+
             {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(page => 
-                page === 1 || 
-                page === totalPages || 
-                (page >= currentPage - 1 && page <= currentPage + 1)
+              .filter(
+                (page) =>
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1)
               )
               .map((page, i, arr) => (
                 <React.Fragment key={page}>
@@ -359,17 +390,18 @@ export default function MeterSales() {
                   <PaginationItem>
                     <PaginationLink
                       onClick={() => setCurrentPage(page)}
-                      isActive={page === currentPage}
-                    >
+                      isActive={page === currentPage}>
                       {page}
                     </PaginationLink>
                   </PaginationItem>
                 </React.Fragment>
               ))}
-            
+
             <PaginationItem>
-              <PaginationNext 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              <PaginationNext
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 isActive={currentPage !== totalPages}
               />
             </PaginationItem>
