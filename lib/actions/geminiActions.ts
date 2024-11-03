@@ -32,7 +32,7 @@ Important Notes:
 
 Response Guidelines:
 1. Keep responses concise (1-3 sentences)
-2. Include specific numbers and data when available
+2. Include specific numbers and data when available, do not include any dates.
 3. If you don't have access to certain data, say so clearly
 4. For vague queries, first refer to the current context, if still unclear, ask for clarification
 5. Focus on providing information, not taking actions`;
@@ -145,12 +145,16 @@ interface TypePerformance {
 
 // Add helper function for date comparison
 const getDateForComparison = (dateStr: string): Date | null => {
-  const today = new Date();
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
   const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   
-  // Handle relative dates
+  if (dateStr.toLowerCase() === 'today') {
+    return now;
+  }
+  
   if (dateStr.toLowerCase() === 'yesterday') {
-    const date = new Date(today);
+    const date = new Date(now);
     date.setDate(date.getDate() - 1);
     return date;
   }
@@ -158,7 +162,7 @@ const getDateForComparison = (dateStr: string): Date | null => {
   // Handle day names (e.g., "monday", "tuesday")
   const dayIndex = daysOfWeek.indexOf(dateStr.toLowerCase());
   if (dayIndex !== -1) {
-    const date = new Date(today);
+    const date = new Date(now);
     const currentDay = date.getDay();
     const daysToSubtract = (currentDay + 7 - dayIndex) % 7;
     date.setDate(date.getDate() - daysToSubtract);
@@ -167,7 +171,7 @@ const getDateForComparison = (dateStr: string): Date | null => {
   
   // Handle "last week", "previous week"
   if (dateStr.toLowerCase().includes('last week') || dateStr.toLowerCase().includes('previous week')) {
-    const date = new Date(today);
+    const date = new Date(now);
     date.setDate(date.getDate() - 7);
     return date;
   }
@@ -177,10 +181,18 @@ const getDateForComparison = (dateStr: string): Date | null => {
 
 // Add function to get sales for a specific date
 const getSalesForDate = (salesData: SaleBatch[], date: Date) => {
-  const dateStr = date.toISOString().split('T')[0];
-  return salesData.filter(sale => 
-    new Date(sale.sale_date).toISOString().split('T')[0] === dateStr
-  );
+  // Start of the given date in local timezone
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  // End of the given date in local timezone
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  return salesData.filter(sale => {
+    const saleDate = new Date(sale.sale_date);
+    return saleDate >= startOfDay && saleDate <= endOfDay;
+  });
 };
 
 // Add to the existing interfaces
@@ -316,7 +328,7 @@ export async function getChatResponse(
     ) {
       const salesData = await getSaleBatches() as SaleBatch[];
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      now.setHours(0, 0, 0, 0); // Start of today
 
       // Sort sales by date (most recent first)
       const sortedSales = [...salesData].sort(
@@ -351,7 +363,6 @@ export async function getChatResponse(
       // Calculate yesterday's date
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
 
       // Get sales for different periods using the common function
       const currentDaySales = getSalesForDate(salesData, now);

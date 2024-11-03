@@ -26,6 +26,15 @@ import { X } from "lucide-react";
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import MeterAdditionReceipt from './MeterAdditionReceipt';
 import { Loader2 } from "lucide-react"; // Add this import
+import { generateCSV } from "@/lib/utils/csvGenerator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Upload } from "lucide-react"; // Add this import for the upload icon
+import * as XLSX from 'xlsx';
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -34,6 +43,87 @@ const geistMono = localFont({
 });
 
 const meterTypes = ["Split", "Integrated", "Gas", "Water"];
+
+const processCSV = (csvText: string): Array<{serialNumber: string; type: string}> => {
+  const rows = csvText.split('\n');
+  const meters: Array<{serialNumber: string; type: string}> = [];
+  
+  // Skip header row and process each line
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i].trim();
+    if (!row) continue;
+    
+    const [serialNumber, type] = row.split(',').map(item => item.trim());
+    
+    // Validate meter type
+    const normalizedType = type.toLowerCase();
+    const validType = meterTypes.find(t => t.toLowerCase() === normalizedType);
+    
+    if (serialNumber && validType) {
+      meters.push({
+        serialNumber: serialNumber.toUpperCase(),
+        type: validType
+      });
+    }
+  }
+  
+  return meters;
+};
+
+const processExcel = (buffer: ArrayBuffer): Array<{serialNumber: string; type: string}> => {
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as string[][];
+  
+  const meters: Array<{serialNumber: string; type: string}> = [];
+  
+  // Skip header row and process each line
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row || row.length < 2) continue;
+    
+    const [serialNumber, type] = row;
+    if (!serialNumber || !type) continue;
+
+    // Validate meter type
+    const normalizedType = type.toString().trim().toLowerCase();
+    const validType = meterTypes.find(t => t.toLowerCase() === normalizedType);
+    
+    if (serialNumber && validType) {
+      meters.push({
+        serialNumber: serialNumber.toString().trim().toUpperCase(),
+        type: validType
+      });
+    }
+  }
+  
+  return meters;
+};
+
+// Add this function to check multiple serial numbers at once
+const checkMultipleSerialNumbers = async (serialNumbers: string[]): Promise<string[]> => {
+  try {
+    const existingSerials: string[] = [];
+    
+    // Check in batches of 10 to avoid overwhelming the database
+    for (let i = 0; i < serialNumbers.length; i += 10) {
+      const batch = serialNumbers.slice(i, i + 10);
+      const promises = batch.map(serial => checkMeterExists(serial));
+      const results = await Promise.all(promises);
+      
+      batch.forEach((serial, index) => {
+        if (results[index]) {
+          existingSerials.push(serial);
+        }
+      });
+    }
+    
+    return existingSerials;
+  } catch (error) {
+    console.error("Error checking serial numbers:", error);
+    throw error;
+  }
+};
 
 export default function AddMeterForm({ currentUser }: { currentUser: any }) {
   const [meters, setMeters] = useState<Array<{serialNumber: string; type: string; addedBy: string; addedAt: string}>>(() => {
@@ -366,6 +456,102 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
     }
   };
 
+  // Add this handler for CSV upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      let newMeters: Array<{serialNumber: string; type: string}>;
+
+      if (file.name.endsWith('.csv')) {
+        const text = await file.text();
+        newMeters = processCSV(text);
+      } else if (file.name.endsWith('.xlsx')) {
+        const buffer = await file.arrayBuffer();
+        newMeters = processExcel(buffer);
+      } else {
+        throw new Error('Unsupported file type');
+      }
+      
+      if (newMeters.length === 0) {
+        toast({
+          title: "Error",
+          description: "No valid meters found in file. Please check the format.",
+          variant: "destructive",
+          style: { backgroundColor: '#FF4136', color: 'white' },
+        });
+        return;
+      }
+
+      // Check for duplicates in current table
+      const duplicatesInTable = newMeters.filter(newMeter => 
+        findExistingMeter(newMeter.serialNumber) !== -1
+      );
+
+      // Check for duplicates in database
+      const serialsToCheck = newMeters
+        .filter(meter => findExistingMeter(meter.serialNumber) === -1)
+        .map(meter => meter.serialNumber);
+      
+      const existingInDatabase = await checkMultipleSerialNumbers(serialsToCheck);
+
+      // Combine all duplicates for reporting
+      const totalDuplicates = [
+        ...duplicatesInTable.map(m => m.serialNumber),
+        ...existingInDatabase
+      ];
+
+      if (totalDuplicates.length > 0) {
+        toast({
+          title: "Info",
+          description: `${totalDuplicates.length} meters already exist in the system and were skipped.`,
+          style: { backgroundColor: '#0074D9', color: 'white' },
+        });
+      }
+
+      // Filter out all duplicates and add new meters
+      const uniqueNewMeters = newMeters
+        .filter(meter => 
+          !totalDuplicates.includes(meter.serialNumber)
+        )
+        .map(meter => ({
+          serialNumber: meter.serialNumber,
+          type: meter.type,
+          addedBy: currentUser.id,
+          addedAt: new Date().toISOString()
+        }));
+
+      if (uniqueNewMeters.length > 0) {
+        setMeters(prevMeters => [...uniqueNewMeters, ...prevMeters]);
+
+        toast({
+          title: "Success",
+          description: `Added ${uniqueNewMeters.length} new meters to the table`,
+          style: { backgroundColor: '#2ECC40', color: 'white' },
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: "All meters in the file already exist in the system.",
+          style: { backgroundColor: '#FF851B', color: 'white' },
+        });
+        return;
+      }
+    } catch (error) {
+      console.error("Error processing file:", error);
+      toast({
+        title: "Error",
+        description: `Failed to process ${file.name.endsWith('.csv') ? 'CSV' : 'Excel'} file. Please check the format.`,
+        variant: "destructive",
+        style: { backgroundColor: '#FF4136', color: 'white' },
+      });
+    }
+    
+    // Reset the input
+    event.target.value = '';
+  };
+
   return (
     <div className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
       <div className="flex flex-col max-h-[100vh]">
@@ -380,6 +566,45 @@ export default function AddMeterForm({ currentUser }: { currentUser: any }) {
               >
                 {isAutoMode ? 'Auto Mode Active' : 'Activate Auto Mode'}
               </Button>
+              
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".csv,.xlsx"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="fileUpload"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      const input = document.getElementById('fileUpload') as HTMLInputElement;
+                      if (input) {
+                        input.accept = ".csv";
+                        input.click();
+                      }
+                    }}>
+                      CSV File
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const input = document.getElementById('fileUpload') as HTMLInputElement;
+                      if (input) {
+                        input.accept = ".xlsx";
+                        input.click();
+                      }
+                    }}>
+                      Excel File
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
               <Button 
                 onClick={handleClearForm} 
                 variant='outline'

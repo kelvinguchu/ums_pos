@@ -14,7 +14,7 @@ const ReportsPage = () => {
     <div
       className={`
         ${geistMono.className} 
-        mt-20 
+        mt-20 lg:mt-8 
         transition-all 
         duration-300 
         ease-in-out 

@@ -42,6 +42,7 @@ import CreateAgentDialog from "@/components/dashboard/CreateAgentDialog";
 import { useRouter, usePathname } from 'next/navigation';
 import { signOut } from '@/lib/actions/supabaseActions';
 import { useIsMobile } from "@/hooks/use-mobile";
+import { NotificationBell } from '@/components/NotificationBell';
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -289,6 +290,20 @@ export function AppSidebar({ user }: { user: any }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isMobile && (
+          <SidebarGroup>
+            <SidebarGroupLabel className='text-lg font-bold'>
+              Notifications
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <NotificationBell />
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {isMobile && (
           <SidebarGroup>
             <SidebarGroupContent>

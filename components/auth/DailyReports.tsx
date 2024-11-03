@@ -23,6 +23,9 @@ import {
   filterSalesByDateRange,
 } from "@/lib/services/reportService";
 import localFont from "next/font/local";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -68,6 +71,8 @@ const DailyReportsPage = () => {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | null>(
     null
   );
+  const [customDateRange, setCustomDateRange] = useState<any>(null);
+  const [specificDate, setSpecificDate] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -312,20 +317,98 @@ const DailyReportsPage = () => {
     });
   };
 
+  const handleCustomRangeReport = async () => {
+    if (!customDateRange?.start || !customDateRange?.end) {
+      toast({
+        title: "Error",
+        description: "Please select both start and end dates",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingOther(true);
+      const sales = await getSaleBatches();
+      const filteredSales = filterSalesByDateRange(
+        sales,
+        new Date(customDateRange.start),
+        new Date(customDateRange.end)
+      );
+      const metrics = calculateReportMetrics(
+        filteredSales,
+        new Date(customDateRange.start),
+        new Date(customDateRange.end)
+      );
+
+      const blob = await pdf(
+        <TimeRangeReportPDF
+          sales={filteredSales}
+          dateRange={{
+            startDate: new Date(customDateRange.start),
+            endDate: new Date(customDateRange.end),
+            label: "UMS Report",
+          }}
+          metrics={metrics}
+        />
+      ).toBlob();
+
+      handleReportDownload(blob, "ums-report");
+    } catch (error) {
+      handleReportError(error);
+    } finally {
+      setIsGeneratingOther(false);
+    }
+  };
+
+  const handleSpecificDateReport = async () => {
+    if (!specificDate) {
+      toast({
+        title: "Error",
+        description: "Please select a date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingOther(true);
+      const selectedDate = new Date(specificDate);
+      const sales = await getSaleBatches();
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const filteredSales = sales.filter((sale) => 
+        sale.sale_date.startsWith(dateStr)
+      );
+
+      const metrics = calculateReportMetrics(
+        filteredSales,
+        selectedDate,
+        selectedDate
+      );
+
+      const blob = await pdf(
+        <TimeRangeReportPDF
+          sales={filteredSales}
+          dateRange={{
+            startDate: selectedDate,
+            endDate: selectedDate,
+            label: "UMS Report",
+          }}
+          metrics={metrics}
+        />
+      ).toBlob();
+
+      handleReportDownload(blob, "ums-report");
+    } catch (error) {
+      handleReportError(error);
+    } finally {
+      setIsGeneratingOther(false);
+    }
+  };
+
   return (
-    <div
-      className={`
-        ${geistMono.className} 
-        mt-20 sm:mt-8 
-        transition-all 
-        duration-300 
-        ease-in-out 
-        mx-auto 
-        w-full sm:w-auto
-        overflow-hidden
-        px-2 sm:px-4
-        relative
-      `}>
+    <div className={`${geistMono.className} mt-20 lg:mt-8 transition-all duration-300 ease-in-out mx-auto w-full sm:w-auto overflow-hidden px-2 sm:px-4 relative`}>
+      <h1 className='text-3xl font-bold text-center mb-2'>Daily Reports</h1>
       <div className='mb-6 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end'>
         <Button
           variant='outline'
@@ -335,6 +418,56 @@ const DailyReportsPage = () => {
           <Download className='h-4 w-4' />
           {isGeneratingDaily ? "Preparing..." : "Download Today's Report"}
         </Button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant='outline' className='flex gap-2 items-center'>
+              Custom Range
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-4">
+            <div className="space-y-4">
+              <h4 className="font-medium leading-none">Select Date Range</h4>
+              <DateRangePicker
+                value={customDateRange}
+                onChange={setCustomDateRange}
+              />
+              <Button 
+                className="w-full text-white"
+                style={{ backgroundColor: '#000080' }}
+                onClick={handleCustomRangeReport}
+                disabled={isGeneratingOther}
+              >
+                {isGeneratingOther ? "Generating..." : "Generate Report"}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant='outline' className='flex gap-2 items-center'>
+              Specific Date
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-4">
+            <div className="space-y-4">
+              <h4 className="font-medium leading-none">Select Date</h4>
+              <DatePicker
+                value={specificDate}
+                onChange={setSpecificDate}
+              />
+              <Button 
+                className="w-full text-white"
+                style={{ backgroundColor: '#000080' }}
+                onClick={handleSpecificDateReport}
+                disabled={isGeneratingOther}
+              >
+                {isGeneratingOther ? "Generating..." : "Generate Report"}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -347,23 +480,19 @@ const DailyReportsPage = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end' className='w-56'>
-            <DropdownMenuItem
-              onClick={() => handleTimeRangeReport("yesterday")}>
+            <DropdownMenuItem onClick={() => handleTimeRangeReport("yesterday")}>
               Yesterday's Report
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleTimeRangeReport("last5days")}>
+            <DropdownMenuItem onClick={() => handleTimeRangeReport("last5days")}>
               Last 5 Days Report
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleTimeRangeReport("lastWeek")}>
               Last 7 Days Report
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleTimeRangeReport("last10days")}>
+            <DropdownMenuItem onClick={() => handleTimeRangeReport("last10days")}>
               Last 10 Days Report
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleTimeRangeReport("last2weeks")}>
+            <DropdownMenuItem onClick={() => handleTimeRangeReport("last2weeks")}>
               Last 2 Weeks Report
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleTimeRangeReport("monthly")}>

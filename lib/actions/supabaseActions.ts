@@ -425,6 +425,22 @@ export async function addSaleBatch(batchData: {
     throw error;
   }
 
+  // Create a notification for the batch sale
+  await createNotification({
+    type: 'METER_SALE',
+    message: `${batchData.user_name} sold ${batchData.batch_amount} ${batchData.meter_type} meter${batchData.batch_amount > 1 ? 's' : ''} to ${batchData.recipient} in ${batchData.destination}`,
+    metadata: {
+      batchId: data.id,
+      meterType: batchData.meter_type,
+      batchAmount: batchData.batch_amount,
+      destination: batchData.destination,
+      recipient: batchData.recipient,
+      totalPrice: batchData.total_price,
+      unitPrice: batchData.unit_price
+    },
+    createdBy: batchData.user_id
+  });
+
   return data;
 }
 
@@ -948,4 +964,143 @@ export async function superSearchMeter(searchTerm: string) {
   ];
 
   return formattedResults;
+}
+
+// Add these new notification-related functions near the end of the file
+
+// Create a new notification
+export async function createNotification({
+  type,
+  message,
+  metadata,
+  createdBy
+}: {
+  type: string;
+  message: string;
+  metadata?: any;
+  createdBy: string;
+}) {
+  const { data, error } = await supabase
+    .from('notifications')
+    .insert({
+      type,
+      message,
+      metadata,
+      created_by: createdBy,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+// Fetch notifications for a user
+export async function getNotifications(userId: string, limit = 20) {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching notifications:', error);
+    throw error;
+  }
+
+  // Process notifications to determine read status for this specific user
+  return data.map(notification => ({
+    ...notification,
+    is_read: notification.read_by?.includes(userId) || false
+  }));
+}
+
+// Mark a notification as read
+export async function markNotificationAsRead(notificationId: string, userId: string) {
+  // First get the current notification
+  const { data: notification } = await supabase
+    .from('notifications')
+    .select('read_by')
+    .eq('id', notificationId)
+    .single();
+
+  // Create new read_by array with the userId
+  const readBy = Array.isArray(notification?.read_by) ? notification.read_by : [];
+  if (!readBy.includes(userId)) {
+    readBy.push(userId);
+  }
+
+  // Update the notification
+  const { error } = await supabase
+    .from('notifications')
+    .update({
+      read_by: readBy,
+      // Only mark as globally read if all users have read it
+      // You might want to add logic here to check against total users
+      is_read: false 
+    })
+    .eq('id', notificationId);
+
+  if (error) {
+    console.error('Error marking notification as read:', error);
+    throw error;
+  }
+}
+
+// Mark all notifications as read
+export async function markAllNotificationsAsRead(userId: string) {
+  // First get all notifications that this user hasn't read yet
+  const { data: notifications } = await supabase
+    .from('notifications')
+    .select('id, read_by')
+    .filter('read_by', 'not.cs', `{${userId}}`); // Use containment operator to check array
+
+  if (!notifications || notifications.length === 0) return;
+
+  // Update each notification
+  const updates = notifications.map(notification => {
+    const readBy = Array.isArray(notification.read_by) ? notification.read_by : [];
+    if (!readBy.includes(userId)) {
+      readBy.push(userId);
+    }
+
+    return supabase
+      .from('notifications')
+      .update({
+        read_by: readBy,
+        // Keep is_read as false since other users might not have read it
+        is_read: false
+      })
+      .eq('id', notification.id);
+  });
+
+  try {
+    await Promise.all(updates);
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    throw error;
+  }
+}
+
+// Subscribe to new notifications
+export function subscribeToNotifications(callback: (notification: any) => void) {
+  return supabase
+    .channel('notifications')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications'
+      },
+      (payload) => {
+        callback(payload.new);
+      }
+    )
+    .subscribe();
 }

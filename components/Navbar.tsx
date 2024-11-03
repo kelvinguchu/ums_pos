@@ -41,6 +41,7 @@ import AgentInventory from "@/components/dashboard/AgentInventory";
 import localFont from "next/font/local";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { NotificationBell } from '@/components/NotificationBell';
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -301,7 +302,8 @@ const Navbar: React.FC = () => {
           )}
         </div>
 
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-4'>
+          {!isMobile && <NotificationBell />}
           {isMobile && <SidebarTrigger />}
           {!isMobile && (
             <div className='flex-shrink-0'>

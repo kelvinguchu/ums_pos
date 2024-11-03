@@ -235,7 +235,7 @@ export default function MeterSales() {
   };
 
   return (
-    <div className={`${geistMono.className} mx-auto`}>
+    <div className={`${geistMono.className} mx-auto mt-10`}>
       <h1 className='text-3xl font-bold mb-6 text-center'>Sales</h1>
 
       {/* Search and Filter Section */}

@@ -100,182 +100,189 @@ const Reports: React.FC = () => {
   };
 
   return (
-    <div
-      className={`grid gap-4 transition-all duration-300 ease-in-out ${
-        state === "expanded"
-          ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-          : "grid-cols-1 md:grid-cols-3 lg:grid-cols-4"
-      } w-full md:w-[75vw] ${state === "expanded" ? "" : "md:w-[93vw]"} px-2 sm:px-4`}>
-      <Card className='col-span-full shadow-md hover:shadow-xl'>
-        <CardHeader>
-          <CardTitle>Recent Sales</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-auto max-w-[100vw]">
-            <div className="min-w-[640px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Seller&apos;s Name</TableHead>
-                    <TableHead>Meter Type</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Total Price</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentSales.map((sale) => (
-                    <TableRow key={sale.id}>
-                      <TableCell>{sale.user_name}</TableCell>
-                      <TableCell>{sale.meter_type}</TableCell>
-                      <TableCell>{sale.batch_amount}</TableCell>
-                      <TableCell>KES {sale.total_price.toLocaleString()}</TableCell>
-                      <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card
-        className={`shadow-md hover:shadow-xl ${
+    <div>
+      <h1 className='text-3xl font-bold text-center mb-2'>Overall Reports</h1>
+      <div
+        className={`grid gap-4 transition-all duration-300 ease-in-out ${
           state === "expanded"
-            ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-2"
-        }`}>
-        <CardHeader>
-          <CardTitle>Meters Remaining</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-auto">
-            <div className="min-w-[300px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Meter Type</TableHead>
-                    <TableHead>Remaining</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {remainingMetersByType.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.type}</TableCell>
-                      <TableCell>{item.remaining_meters}</TableCell>
+            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+            : "grid-cols-1 md:grid-cols-3 lg:grid-cols-4"
+        } w-full md:w-[75vw] ${
+          state === "expanded" ? "" : "md:w-[93vw]"
+        } px-2 sm:px-4`}>
+        <Card className='col-span-full shadow-md hover:shadow-xl'>
+          <CardHeader>
+            <CardTitle>Recent Sales</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='overflow-auto max-w-[100vw]'>
+              <div className='min-w-[640px]'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Seller&apos;s Name</TableHead>
+                      <TableHead>Meter Type</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Total Price</TableHead>
+                      <TableHead>Date</TableHead>
                     </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell className='font-bold'>Total</TableCell>
-                    <TableCell className='font-bold'>
-                      {remainingMetersByType.reduce(
-                        (sum, item) => sum + item.remaining_meters,
-                        0
-                      )}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {recentSales.map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell>{sale.user_name}</TableCell>
+                        <TableCell>{sale.meter_type}</TableCell>
+                        <TableCell>{sale.batch_amount}</TableCell>
+                        <TableCell>
+                          KES {sale.total_price.toLocaleString()}
+                        </TableCell>
+                        <TableCell>{formatDate(sale.sale_date)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card
-        className={`shadow-md hover:shadow-xl ${
-          state === "expanded"
-            ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-2"
-        }`}>
-        <CardHeader>
-          <CardTitle>Top Sellers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-auto">
-            <div className="min-w-[300px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Total Sales</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topSellers.map((seller, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{seller.user_name}</TableCell>
-                      <TableCell>
-                        KES {seller.total_sales.toLocaleString()}
+        <Card
+          className={`shadow-md hover:shadow-xl ${
+            state === "expanded"
+              ? "col-span-full md:col-span-1"
+              : "col-span-1 md:col-span-2"
+          }`}>
+          <CardHeader>
+            <CardTitle>Meters Remaining</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='overflow-auto'>
+              <div className='min-w-[300px]'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Meter Type</TableHead>
+                      <TableHead>Remaining</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {remainingMetersByType.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.type}</TableCell>
+                        <TableCell>{item.remaining_meters}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell className='font-bold'>Total</TableCell>
+                      <TableCell className='font-bold'>
+                        {remainingMetersByType.reduce(
+                          (sum, item) => sum + item.remaining_meters,
+                          0
+                        )}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card className='shadow-md hover:shadow-xl'>
-        <CardHeader>
-          <CardTitle>Best Seller</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className='text-2xl font-bold'>{mostSellingProduct}</p>
-        </CardContent>
-      </Card>
-
-      <Card
-        className={`shadow-md hover:shadow-xl ${
-          state === "expanded"
-            ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-2"
-        }`}>
-        <CardHeader>
-          <CardTitle>Earnings by Meter Type</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-auto">
-            <div className="min-w-[300px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Meter Type</TableHead>
-                    <TableHead>Total Earnings</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {earningsByMeterType.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.meter_type}</TableCell>
-                      <TableCell>
-                        KES {item.total_earnings.toLocaleString()}
-                      </TableCell>
+        <Card
+          className={`shadow-md hover:shadow-xl ${
+            state === "expanded"
+              ? "col-span-full md:col-span-1"
+              : "col-span-1 md:col-span-2"
+          }`}>
+          <CardHeader>
+            <CardTitle>Top Sellers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='overflow-auto'>
+              <div className='min-w-[300px]'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Total Sales</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {topSellers.map((seller, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{seller.user_name}</TableCell>
+                        <TableCell>
+                          KES {seller.total_sales.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card
-        className={`shadow-md hover:shadow-xl ${
-          state === "expanded"
-            ? "col-span-full md:col-span-1"
-            : "col-span-1 md:col-span-2"
-        }`}>
-        <CardHeader>
-          <CardTitle>Total Earnings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className='text-4xl font-bold'>
-            KES {totalEarnings.toLocaleString()}
-          </p>
-        </CardContent>
-      </Card>
+        <Card className='shadow-md hover:shadow-xl'>
+          <CardHeader>
+            <CardTitle>Best Seller</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-2xl font-bold'>{mostSellingProduct}</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={`shadow-md hover:shadow-xl ${
+            state === "expanded"
+              ? "col-span-full md:col-span-1"
+              : "col-span-1 md:col-span-2"
+          }`}>
+          <CardHeader>
+            <CardTitle>Earnings by Meter Type</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='overflow-auto'>
+              <div className='min-w-[300px]'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Meter Type</TableHead>
+                      <TableHead>Total Earnings</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {earningsByMeterType.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.meter_type}</TableCell>
+                        <TableCell>
+                          KES {item.total_earnings.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={`shadow-md hover:shadow-xl ${
+            state === "expanded"
+              ? "col-span-full md:col-span-1"
+              : "col-span-1 md:col-span-2"
+          }`}>
+          <CardHeader>
+            <CardTitle>Total Earnings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-4xl font-bold'>
+              KES {totalEarnings.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
