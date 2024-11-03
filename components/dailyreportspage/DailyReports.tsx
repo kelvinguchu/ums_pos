@@ -3,11 +3,11 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useSalesData } from "@/hooks/useSalesData";
-import { SalesTable } from "@/components/dailyreportspage/SalesTable";
-import { DailyReportsFilters } from "@/components/dailyreportspage/DailyReportsFilters";
-import { DailyReportsSummary } from "@/components/dailyreportspage/DailyReportsSummary";
+import { SalesTable } from "./SalesTable";
+import { DailyReportsFilters } from "./DailyReportsFilters";
+import { DailyReportsSummary } from "./DailyReportsSummary";
 import type { DateRange } from "@/types";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import {
