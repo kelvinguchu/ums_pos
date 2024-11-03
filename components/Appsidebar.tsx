@@ -25,7 +25,7 @@ import {
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import InviteUser from "@/components/auth/InviteUser";
-import AddMeterForm from "@/components/dashboard/AddMeterForm";
+import AddMeterForm from "@/components/addmeter/AddMeterForm";
 import {
   Sheet,
   SheetContent,
@@ -39,10 +39,10 @@ import CreateUser from "@/components/auth/CreateUser";
 import localFont from "next/font/local";
 import AssignMetersToAgent from "@/components/dashboard/AssignMetersToAgent";
 import CreateAgentDialog from "@/components/dashboard/CreateAgentDialog";
-import { useRouter, usePathname } from 'next/navigation';
-import { signOut } from '@/lib/actions/supabaseActions';
+import { useRouter, usePathname } from "next/navigation";
+import { signOut } from "@/lib/actions/supabaseActions";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { NotificationBell } from '@/components/NotificationBell';
+import { NotificationBell } from "@/components/NotificationBell";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -141,10 +141,7 @@ export function AppSidebar({ user }: { user: any }) {
                 .filter((item) => !item.adminOnly || isAdmin)
                 .map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild
-                      isActive={pathname === item.url}
-                    >
+                    <SidebarMenuButton asChild isActive={pathname === item.url}>
                       <Link href={item.url}>
                         <item.icon className='mr-2 h-4 w-4' />
                         <span>{item.title}</span>

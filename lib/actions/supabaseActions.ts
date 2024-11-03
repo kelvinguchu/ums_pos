@@ -33,17 +33,41 @@ async function withActiveUserCheck<T>(
 }
 
 export async function checkMeterExists(serialNumber: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("meters")
-    .select("id")
-    .eq("serial_number", serialNumber);
+  try {
+    // First check in meters table
+    const { data: metersData, error: metersError } = await supabase
+      .from("meters")
+      .select("serial_number")
+      .eq("serial_number", serialNumber.toUpperCase())
+      .maybeSingle();
 
-  if (error) {
+    if (metersError) throw metersError;
+
+    // Then check in sold_meters table
+    const { data: soldData, error: soldError } = await supabase
+      .from("sold_meters")
+      .select("serial_number")
+      .eq("serial_number", serialNumber.toUpperCase())
+      .maybeSingle();
+
+    if (soldError) throw soldError;
+
+    // Finally check in agent_inventory table
+    const { data: agentData, error: agentError } = await supabase
+      .from("agent_inventory")
+      .select("serial_number")
+      .eq("serial_number", serialNumber.toUpperCase())
+      .maybeSingle();
+
+    if (agentError) throw agentError;
+
+    // Return true if meter exists in any of these tables
+    return !!(metersData || soldData || agentData);
+
+  } catch (error) {
     console.error("Error checking meter existence:", error);
     throw error;
   }
-
-  return data.length > 0;
 }
 
 export async function signUp(email: string, password: string, role: string) {
@@ -1103,4 +1127,25 @@ export function subscribeToNotifications(callback: (notification: any) => void) 
       }
     )
     .subscribe();
+}
+
+// Add this function near the other meter-related functions
+export async function checkMultipleSerialNumbers(serialNumbers: string[]): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('meters')
+      .select('serial_number')
+      .in('serial_number', serialNumbers);
+
+    if (error) {
+      console.error('Error checking serial numbers:', error);
+      throw error;
+    }
+
+    // Return array of existing serial numbers
+    return data ? data.map(meter => meter.serial_number) : [];
+  } catch (error) {
+    console.error("Error checking serial numbers:", error);
+    throw error;
+  }
 }

@@ -26,4 +26,9 @@ export interface DateRange {
   startDate: Date;
   endDate: Date;
   label: string;
+}
+
+export interface MeterCount {
+  type: string;
+  count: number;
 } 
