@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import AuthWrapper from "@/components/auth/AuthWrapper";
 import Reload from "@/components/Reload";
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import QueryProvider from "@/components/providers/QueryProvider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -47,13 +48,15 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/favi.png" />
       </head>
       <body className={`${poppins.className} antialiased`}>
-        <NotificationProvider>
-          <AuthWrapper>
-            {children}
-            <Toaster />
-            <Reload />
-          </AuthWrapper>
-        </NotificationProvider>
+        <QueryProvider>
+          <NotificationProvider>
+            <AuthWrapper>
+              {children}
+              <Toaster />
+              <Reload />
+            </AuthWrapper>
+          </NotificationProvider>
+        </QueryProvider>
       </body>
     </html>
   );

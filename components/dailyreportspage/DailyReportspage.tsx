@@ -1,9 +1,9 @@
 "use client";
-import DailyReports from "@/components/DailyReports";
+import DailyReports from "@/components/dailyreportspage/DailyReports";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
-import DailyReportPDF from "@/components/dashboard/DailyReportPDF";
+import DailyReportPDF from "@/components/dailyreportspage/DailyReportPDF";
 import { useState, useEffect } from "react";
 import {
   getSaleBatches,
@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
-import TimeRangeReportPDF from "@/components/dashboard/TimeRangeReportPDF";
+import TimeRangeReportPDF from "@/components/dailyreportspage/TimeRangeReportPDF";
 import {
   calculateReportMetrics,
   filterSalesByDateRange,
@@ -25,7 +25,11 @@ import {
 import localFont from "next/font/local";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -375,8 +379,8 @@ const DailyReportsPage = () => {
       setIsGeneratingOther(true);
       const selectedDate = new Date(specificDate);
       const sales = await getSaleBatches();
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const filteredSales = sales.filter((sale) => 
+      const dateStr = selectedDate.toISOString().split("T")[0];
+      const filteredSales = sales.filter((sale) =>
         sale.sale_date.startsWith(dateStr)
       );
 
@@ -407,7 +411,8 @@ const DailyReportsPage = () => {
   };
 
   return (
-    <div className={`${geistMono.className} mt-20 lg:mt-8 transition-all duration-300 ease-in-out mx-auto w-full sm:w-auto overflow-hidden px-2 sm:px-4 relative`}>
+    <div
+      className={`${geistMono.className} mt-20 lg:mt-8 transition-all duration-300 ease-in-out mx-auto w-full sm:w-auto overflow-hidden px-2 sm:px-4 relative`}>
       <h1 className='text-3xl font-bold text-center mb-2'>Daily Reports</h1>
       <div className='mb-6 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end'>
         <Button
@@ -425,19 +430,18 @@ const DailyReportsPage = () => {
               Custom Range
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-4">
-            <div className="space-y-4">
-              <h4 className="font-medium leading-none">Select Date Range</h4>
+          <PopoverContent className='w-auto p-4'>
+            <div className='space-y-4'>
+              <h4 className='font-medium leading-none'>Select Date Range</h4>
               <DateRangePicker
                 value={customDateRange}
                 onChange={setCustomDateRange}
               />
-              <Button 
-                className="w-full text-white"
-                style={{ backgroundColor: '#000080' }}
+              <Button
+                className='w-full text-white'
+                style={{ backgroundColor: "#000080" }}
                 onClick={handleCustomRangeReport}
-                disabled={isGeneratingOther}
-              >
+                disabled={isGeneratingOther}>
                 {isGeneratingOther ? "Generating..." : "Generate Report"}
               </Button>
             </div>
@@ -450,19 +454,15 @@ const DailyReportsPage = () => {
               Specific Date
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-4">
-            <div className="space-y-4">
-              <h4 className="font-medium leading-none">Select Date</h4>
-              <DatePicker
-                value={specificDate}
-                onChange={setSpecificDate}
-              />
-              <Button 
-                className="w-full text-white"
-                style={{ backgroundColor: '#000080' }}
+          <PopoverContent className='w-auto p-4'>
+            <div className='space-y-4'>
+              <h4 className='font-medium leading-none'>Select Date</h4>
+              <DatePicker value={specificDate} onChange={setSpecificDate} />
+              <Button
+                className='w-full text-white'
+                style={{ backgroundColor: "#000080" }}
                 onClick={handleSpecificDateReport}
-                disabled={isGeneratingOther}
-              >
+                disabled={isGeneratingOther}>
                 {isGeneratingOther ? "Generating..." : "Generate Report"}
               </Button>
             </div>
@@ -480,19 +480,23 @@ const DailyReportsPage = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end' className='w-56'>
-            <DropdownMenuItem onClick={() => handleTimeRangeReport("yesterday")}>
+            <DropdownMenuItem
+              onClick={() => handleTimeRangeReport("yesterday")}>
               Yesterday's Report
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleTimeRangeReport("last5days")}>
+            <DropdownMenuItem
+              onClick={() => handleTimeRangeReport("last5days")}>
               Last 5 Days Report
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleTimeRangeReport("lastWeek")}>
               Last 7 Days Report
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleTimeRangeReport("last10days")}>
+            <DropdownMenuItem
+              onClick={() => handleTimeRangeReport("last10days")}>
               Last 10 Days Report
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleTimeRangeReport("last2weeks")}>
+            <DropdownMenuItem
+              onClick={() => handleTimeRangeReport("last2weeks")}>
               Last 2 Weeks Report
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleTimeRangeReport("monthly")}>

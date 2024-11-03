@@ -1,5 +1,5 @@
-import React from 'react'
-import DailyReports from "@/components/auth/DailyReports";
+import React from "react";
+import DailyReports from "@/components/dailyreportspage/DailyReportspage";
 
 const DailyReportsPage = () => {
   return (
