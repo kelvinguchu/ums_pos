@@ -17,9 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { pdf } from "@react-pdf/renderer";
-import TableReportPDF from "@/components/dashboard/TableReportPDF";
+import TableReportPDF from "@/components/sharedcomponents/TableReportPDF";
 import { generateCSV } from "@/lib/utils/csvGenerator";
-
 
 interface DailyReportsProps {
   selectedDateRange: DateRange | null;

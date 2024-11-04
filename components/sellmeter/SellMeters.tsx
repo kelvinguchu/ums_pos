@@ -23,7 +23,7 @@ import {
 import localFont from "next/font/local";
 import { X } from "lucide-react";
 import { pdf, PDFDownloadLink } from "@react-pdf/renderer";
-import MeterSalesReceipt from "./MeterSalesReceipt";
+import MeterSalesReceipt from "../sharedcomponents/MeterSalesReceipt";
 import {
   Dialog,
   DialogContent,
@@ -434,15 +434,22 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
               {saleDetails ? (
                 <>
                   <div className='flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg mb-4'>
-                    <Badge variant='secondary' className='bg-gradient-to-r from-green-500/50 to-blue-500/50 text-black'>
+                    <Badge
+                      variant='secondary'
+                      className='bg-gradient-to-r from-green-500/50 to-blue-500/50 text-black'>
                       Destination: {saleDetails.destination}
                     </Badge>
-                    <Badge variant='secondary' className='bg-gradient-to-r from-orange-500/50 to-yellow-500/50 text-black'>
+                    <Badge
+                      variant='secondary'
+                      className='bg-gradient-to-r from-orange-500/50 to-yellow-500/50 text-black'>
                       Recipient: {saleDetails.recipient}
                     </Badge>
                     {Object.entries(saleDetails.unitPrices).map(
                       ([type, price]) => (
-                        <Badge key={type} variant='secondary' className='bg-gradient-to-r from-indigo-500/50 to-purple-500/50 text-black'>
+                        <Badge
+                          key={type}
+                          variant='secondary'
+                          className='bg-gradient-to-r from-indigo-500/50 to-purple-500/50 text-black'>
                           {type}: {price}
                         </Badge>
                       )
@@ -496,11 +503,13 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
                       className='w-full bg-[#E46020] hover:bg-[#e46120] text-white'>
                       {isSellingMeters ? (
                         <>
-                          <span className="mr-2">Selling Meters...</span>
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <span className='mr-2'>Selling Meters...</span>
+                          <div className='h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent' />
                         </>
                       ) : (
-                        `Confirm Sale of ${meters.length} Meter${meters.length !== 1 ? "s" : ""}`
+                        `Confirm Sale of ${meters.length} Meter${
+                          meters.length !== 1 ? "s" : ""
+                        }`
                       )}
                     </Button>
                   )}

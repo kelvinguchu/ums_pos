@@ -43,11 +43,11 @@ import {
 import { Download } from "lucide-react";
 import { generateCSV } from "@/lib/utils/csvGenerator";
 import { pdf } from "@react-pdf/renderer";
-import TableReportPDF from "@/components/dashboard/TableReportPDF";
-import { MeterSalesRow } from "./dashboard/MeterSalesRow";
+import TableReportPDF from "@/components/sharedcomponents/TableReportPDF";
+import { MeterSalesRow } from "./MeterSalesRow";
 
 const geistMono = localFont({
-  src: "../public/fonts/GeistMonoVF.woff",
+  src: "../../public/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
 });

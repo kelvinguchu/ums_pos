@@ -1,5 +1,5 @@
 import React from "react";
-import DailyReports from "@/components/dailyreportspage/DailyReportspage";
+import DailyReports from "@/components/dailyreports/DailyReportspage";
 
 const DailyReportsPage = () => {
   return (

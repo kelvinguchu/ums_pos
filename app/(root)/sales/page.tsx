@@ -1,4 +1,4 @@
-import MeterSales from '@/components/MeterSales';
+import MeterSales from "@/components/sales/MeterSales";
 
 const SalesPage = () => {
   return (

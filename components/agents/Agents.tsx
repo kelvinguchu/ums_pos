@@ -56,10 +56,10 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import localFont from "next/font/local";
-import AgentInventory from "@/components/dashboard/AgentInventory";
-import RecordAgentSale from "@/components/dashboard/RecordAgentSale";
-import EditAgentDialog from "@/components/dashboard/EditAgentDialog";
-import AssignMetersToAgent from "@/components/dashboard/AssignMetersToAgent";
+import AgentInventory from "./AgentInventory";
+import RecordAgentSale from "./RecordAgentSale";
+import EditAgentDialog from "./EditAgentDialog";
+import AssignMetersToAgent from "./AssignMetersToAgent";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,7 +71,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import AgentDeletionSheet from "@/components/dashboard/AgentDeletionSheet";
+import AgentDeletionSheet from "@/components/agents/AgentDeletionSheet";
 import { Input } from "@/components/ui/input";
 import {
   Pagination,
@@ -87,7 +87,7 @@ import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 
 const geistMono = localFont({
-  src: "../public/fonts/GeistMonoVF.woff",
+  src: "../../public/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
 });
@@ -247,7 +247,7 @@ export default function Agents() {
         </div>
 
         {/* Desktop View */}
-        <div className="hidden md:block">
+        <div className='hidden md:block'>
           <Table>
             <TableHeader>
               <TableRow className='bg-gray-50'>
@@ -341,7 +341,8 @@ export default function Agents() {
                                   Record Sale
                                 </DropdownMenuItem>
                               </DrawerTrigger>
-                              <DrawerContent className={`${geistMono.className}`}>
+                              <DrawerContent
+                                className={`${geistMono.className}`}>
                                 <DrawerHeader>
                                   <DrawerTitle>
                                     Record Sale - {agent.name}
@@ -485,13 +486,17 @@ export default function Agents() {
         </div>
 
         {/* Mobile View */}
-        <div className="block md:hidden">
+        <div className='block md:hidden'>
           <Table>
             <TableHeader>
               <TableRow className='bg-gray-50'>
                 <TableHead className='font-semibold'>Name</TableHead>
-                <TableHead className='font-semibold text-center'>Details</TableHead>
-                <TableHead className='font-semibold text-right'>Actions</TableHead>
+                <TableHead className='font-semibold text-center'>
+                  Details
+                </TableHead>
+                <TableHead className='font-semibold text-right'>
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -499,10 +504,9 @@ export default function Agents() {
                 <TableRow key={agent.id} className='hover:bg-gray-50'>
                   <TableCell>
                     <div className='font-medium'>{agent.name}</div>
-                    <a 
+                    <a
                       href={`tel:${agent.phone_number}`}
-                      className='flex items-center gap-1 text-sm text-[#000080] mt-1'
-                    >
+                      className='flex items-center gap-1 text-sm text-[#000080] mt-1'>
                       <Phone className='h-3 w-3' />
                       {agent.phone_number}
                     </a>
@@ -510,21 +514,23 @@ export default function Agents() {
                   <TableCell className='text-center'>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <Info className="h-4 w-4 text-[#000080]" />
+                        <Button variant='ghost' size='sm'>
+                          <Info className='h-4 w-4 text-[#000080]' />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <div className="p-2">
-                          <div className="mb-2">
-                            <span className="text-sm font-medium">Location:</span>
+                      <DropdownMenuContent align='end' className='w-56'>
+                        <div className='p-2'>
+                          <div className='mb-2'>
+                            <span className='text-sm font-medium'>
+                              Location:
+                            </span>
                             <div className='flex items-center gap-2 mt-1'>
                               <MapPin className='h-4 w-4 text-[#E46020]' />
                               {agent.location}
                             </div>
                           </div>
                           <div>
-                            <span className="text-sm font-medium">Status:</span>
+                            <span className='text-sm font-medium'>Status:</span>
                             <div className='mt-1'>
                               <Badge
                                 variant='outline'
@@ -552,12 +558,14 @@ export default function Agents() {
                         {/* View Inventory - Available to all users */}
                         <Sheet>
                           <SheetTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()}>
                               <ClipboardList className='mr-2 h-4 w-4 text-[#000080]' />
                               View Inventory
                             </DropdownMenuItem>
                           </SheetTrigger>
-                          <SheetContent className={`${geistMono.className} min-w-[50vw]`}>
+                          <SheetContent
+                            className={`${geistMono.className} min-w-[50vw]`}>
                             <SheetHeader>
                               <SheetTitle className='text-center'>
                                 Agent Inventory - {agent.name}
@@ -595,9 +603,12 @@ export default function Agents() {
                                   Record Sale
                                 </DropdownMenuItem>
                               </DrawerTrigger>
-                              <DrawerContent className={`${geistMono.className}`}>
+                              <DrawerContent
+                                className={`${geistMono.className}`}>
                                 <DrawerHeader>
-                                  <DrawerTitle>Record Sale - {agent.name}</DrawerTitle>
+                                  <DrawerTitle>
+                                    Record Sale - {agent.name}
+                                  </DrawerTitle>
                                 </DrawerHeader>
                                 <RecordAgentSale
                                   agent={agent}
@@ -620,7 +631,8 @@ export default function Agents() {
                                   Assign Meters
                                 </DropdownMenuItem>
                               </SheetTrigger>
-                              <SheetContent className={`${geistMono.className} min-w-[50vw]`}>
+                              <SheetContent
+                                className={`${geistMono.className} min-w-[50vw]`}>
                                 <SheetHeader>
                                   <SheetTitle className='flex items-center justify-center gap-2'>
                                     <Badge
@@ -638,7 +650,8 @@ export default function Agents() {
                             </Sheet>
 
                             {/* Toggle Status */}
-                            <DropdownMenuItem onClick={() => handleToggleStatus(agent)}>
+                            <DropdownMenuItem
+                              onClick={() => handleToggleStatus(agent)}>
                               {agent.is_active ? (
                                 <>
                                   <UserMinus className='mr-2 h-4 w-4 text-red-500' />
@@ -665,22 +678,35 @@ export default function Agents() {
                                   Delete Agent
                                 </DropdownMenuItem>
                               </AlertDialogTrigger>
-                              <AlertDialogContent className={`${geistMono.className} w-[95%] sm:w-full sm:max-w-lg`}>
+                              <AlertDialogContent
+                                className={`${geistMono.className} w-[95%] sm:w-full sm:max-w-lg`}>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Agent: {agentToDelete?.name}</AlertDialogTitle>
+                                  <AlertDialogTitle>
+                                    Delete Agent: {agentToDelete?.name}
+                                  </AlertDialogTitle>
                                   <AlertDialogDescription>
                                     {agentInventory.length > 0 ? (
                                       <>
-                                        <p>This agent has {agentInventory.length} meters in their inventory.</p>
-                                        <p className='mt-2'>Choose how to proceed:</p>
+                                        <p>
+                                          This agent has {agentInventory.length}{" "}
+                                          meters in their inventory.
+                                        </p>
+                                        <p className='mt-2'>
+                                          Choose how to proceed:
+                                        </p>
                                       </>
                                     ) : (
-                                      <p>Are you sure you want to delete this agent? This action cannot be undone.</p>
+                                      <p>
+                                        Are you sure you want to delete this
+                                        agent? This action cannot be undone.
+                                      </p>
                                     )}
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
-                                <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-                                  <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
+                                <AlertDialogFooter className='flex flex-col sm:flex-row gap-2'>
+                                  <AlertDialogCancel className='mt-0'>
+                                    Cancel
+                                  </AlertDialogCancel>
                                   {agentInventory.length > 0 ? (
                                     <>
                                       <Button
@@ -689,7 +715,7 @@ export default function Agents() {
                                           setIsDeleteDialogOpen(false);
                                           handleDeleteAgent();
                                         }}
-                                        className="flex-1 sm:flex-none">
+                                        className='flex-1 sm:flex-none'>
                                         Continue Delete Without Scan
                                       </Button>
                                       <Button
@@ -764,7 +790,9 @@ export default function Agents() {
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
                   className={cn(
                     currentPage === 1 && "pointer-events-none opacity-50"
                   )}
@@ -804,7 +832,10 @@ export default function Agents() {
                 <PaginationNext
                   onClick={() =>
                     setCurrentPage((prev) =>
-                      Math.min(prev + 1, filteredAndPaginatedAgents().totalPages)
+                      Math.min(
+                        prev + 1,
+                        filteredAndPaginatedAgents().totalPages
+                      )
                     )
                   }
                   className={cn(

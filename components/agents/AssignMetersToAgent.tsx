@@ -27,7 +27,7 @@ import {
 } from "@/lib/actions/supabaseActions";
 import { X } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
-import AgentAssignmentReceipt from "./AgentAssignmentReceipt";
+import AgentAssignmentReceipt from "../agents/AgentAssignmentReceipt";
 import localFont from "next/font/local";
 import { ChevronDown, Users, Loader2 } from "lucide-react";
 

@@ -23,7 +23,7 @@ import {
   getUserProfile,
 } from "@/lib/actions/supabaseActions";
 import { pdf } from "@react-pdf/renderer";
-import MeterSalesReceipt from "./MeterSalesReceipt";
+import MeterSalesReceipt from "@/components/sharedcomponents/MeterSalesReceipt";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -55,11 +55,11 @@ interface MeterInventory {
 
 // Add these styles to make tables responsive in the drawer
 const tableStyles = {
-  container: 'overflow-auto max-h-[calc(80vh-8rem)]',
-  table: 'min-w-[300px] md:w-full', // Ensure minimum width on mobile
-  headerCell: 'px-2 md:px-4',
-  cell: 'px-2 md:px-4 py-2 md:py-4',
-  checkbox: 'scale-75 md:scale-100',
+  container: "overflow-auto max-h-[calc(80vh-8rem)]",
+  table: "min-w-[300px] md:w-full", // Ensure minimum width on mobile
+  headerCell: "px-2 md:px-4",
+  cell: "px-2 md:px-4 py-2 md:py-4",
+  checkbox: "scale-75 md:scale-100",
 };
 
 export default function RecordAgentSale({
@@ -134,11 +134,14 @@ export default function RecordAgentSale({
     setIsSubmitting(true);
     try {
       // Group meters by type for batch processing
-      const metersByType = selectedMeters.reduce((acc: { [key: string]: typeof selectedMeters }, meter) => {
-        if (!acc[meter.type]) acc[meter.type] = [];
-        acc[meter.type].push(meter);
-        return acc;
-      }, {});
+      const metersByType = selectedMeters.reduce(
+        (acc: { [key: string]: typeof selectedMeters }, meter) => {
+          if (!acc[meter.type]) acc[meter.type] = [];
+          acc[meter.type].push(meter);
+          return acc;
+        },
+        {}
+      );
 
       // Process each meter type as a separate batch
       for (const [type, typeMeters] of Object.entries(metersByType)) {
@@ -162,7 +165,7 @@ export default function RecordAgentSale({
         for (const meter of typeMeters) {
           // Remove from agent inventory first
           await removeFromAgentInventory(meter.id);
-          
+
           // Add to sold meters
           await addSoldMeter({
             meter_id: meter.id,
@@ -177,18 +180,19 @@ export default function RecordAgentSale({
         }
 
         // Update local inventory state
-        setInventory(prevInventory => 
-          prevInventory.filter(invMeter => 
-            !typeMeters.some(soldMeter => soldMeter.id === invMeter.id)
+        setInventory((prevInventory) =>
+          prevInventory.filter(
+            (invMeter) =>
+              !typeMeters.some((soldMeter) => soldMeter.id === invMeter.id)
           )
         );
       }
 
       // Store receipt data for download
       const receiptData = {
-        meters: selectedMeters.map(meter => ({
+        meters: selectedMeters.map((meter) => ({
           serialNumber: meter.serial_number,
-          type: meter.type
+          type: meter.type,
         })),
         destination: agent.location,
         recipient: agent.name,
@@ -196,14 +200,18 @@ export default function RecordAgentSale({
         userName: currentUser.name || currentUser.email,
       };
 
-      localStorage.setItem("lastSubmittedSaleMeters", JSON.stringify(receiptData));
+      localStorage.setItem(
+        "lastSubmittedSaleMeters",
+        JSON.stringify(receiptData)
+      );
 
       setSelectedMeters([]);
       setIsSubmitted(true);
 
       toast({
         title: "Success",
-        description: "Sale recorded successfully! You can now download the receipt.",
+        description:
+          "Sale recorded successfully! You can now download the receipt.",
         style: { backgroundColor: "#2ECC40", color: "white" },
       });
 
@@ -269,7 +277,8 @@ export default function RecordAgentSale({
   );
 
   return (
-    <div className={`${geistMono.className} p-2 md:p-4 flex flex-col md:flex-row h-[80vh]`}>
+    <div
+      className={`${geistMono.className} p-2 md:p-4 flex flex-col md:flex-row h-[80vh]`}>
       {/* Left section - Inventory */}
       <div className='flex-1 md:pr-4 md:border-r mb-4 md:mb-0'>
         <div className='relative mb-4'>
@@ -287,7 +296,9 @@ export default function RecordAgentSale({
             <TableHeader>
               <TableRow>
                 <TableHead className='w-[40px] md:w-[50px]'></TableHead>
-                <TableHead className={tableStyles.headerCell}>Serial Number</TableHead>
+                <TableHead className={tableStyles.headerCell}>
+                  Serial Number
+                </TableHead>
                 <TableHead className={tableStyles.headerCell}>Type</TableHead>
               </TableRow>
             </TableHeader>
@@ -301,7 +312,9 @@ export default function RecordAgentSale({
               ) : filteredInventory.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className='text-center py-8'>
-                    {searchTerm ? "No meters found matching search" : "No meters available"}
+                    {searchTerm
+                      ? "No meters found matching search"
+                      : "No meters available"}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -314,10 +327,12 @@ export default function RecordAgentSale({
                         className={`border-[#000080] ${tableStyles.checkbox}`}
                       />
                     </TableCell>
-                    <TableCell className={`${tableStyles.cell} text-sm md:text-base`}>
+                    <TableCell
+                      className={`${tableStyles.cell} text-sm md:text-base`}>
                       {meter.serial_number}
                     </TableCell>
-                    <TableCell className={`${tableStyles.cell} text-sm md:text-base`}>
+                    <TableCell
+                      className={`${tableStyles.cell} text-sm md:text-base`}>
                       {meter.type}
                     </TableCell>
                   </TableRow>
@@ -336,18 +351,22 @@ export default function RecordAgentSale({
 
         {/* Unit Prices Section */}
         <div className='grid grid-cols-1 gap-3 mb-4'>
-          {Array.from(new Set(selectedMeters.map((m) => m.type))).map((type) => (
-            <div key={type} className='mb-2'>
-              <label className='text-xs md:text-sm font-medium'>Unit Price for {type}</label>
-              <Input
-                type='number'
-                placeholder={`Enter price for ${type}`}
-                value={unitPrices[type] || ""}
-                onChange={(e) => handleUnitPriceChange(type, e.target.value)}
-                className='mt-1'
-              />
-            </div>
-          ))}
+          {Array.from(new Set(selectedMeters.map((m) => m.type))).map(
+            (type) => (
+              <div key={type} className='mb-2'>
+                <label className='text-xs md:text-sm font-medium'>
+                  Unit Price for {type}
+                </label>
+                <Input
+                  type='number'
+                  placeholder={`Enter price for ${type}`}
+                  value={unitPrices[type] || ""}
+                  onChange={(e) => handleUnitPriceChange(type, e.target.value)}
+                  className='mt-1'
+                />
+              </div>
+            )
+          )}
         </div>
 
         {/* Selected Meters Table */}
@@ -355,17 +374,21 @@ export default function RecordAgentSale({
           <Table className={tableStyles.table}>
             <TableHeader>
               <TableRow>
-                <TableHead className={tableStyles.headerCell}>Serial Number</TableHead>
+                <TableHead className={tableStyles.headerCell}>
+                  Serial Number
+                </TableHead>
                 <TableHead className={tableStyles.headerCell}>Type</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {selectedMeters.map((meter) => (
                 <TableRow key={meter.id}>
-                  <TableCell className={`${tableStyles.cell} text-sm md:text-base`}>
+                  <TableCell
+                    className={`${tableStyles.cell} text-sm md:text-base`}>
                     {meter.serial_number}
                   </TableCell>
-                  <TableCell className={`${tableStyles.cell} text-sm md:text-base`}>
+                  <TableCell
+                    className={`${tableStyles.cell} text-sm md:text-base`}>
                     {meter.type}
                   </TableCell>
                 </TableRow>

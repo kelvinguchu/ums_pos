@@ -1,5 +1,5 @@
 import React from 'react'
-import AuthDashboard from "@/components/auth/AuthDashboard";
+import AuthDashboard from "@/components/dashboard/AuthDashboard";
 
 const AuthDashboardPage = () => {
   return (

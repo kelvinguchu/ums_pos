@@ -11,7 +11,7 @@ import dynamic from 'next/dynamic';
 import Loader from '@/components/Loader';
 
 // Dynamically import heavy components
-const Layout = dynamic(() => import("@/components/dashboard/Sidebar"), {
+const Layout = dynamic(() => import("@/components/Sidebar"), {
   ssr: false,
   loading: () => <Loader />
 });

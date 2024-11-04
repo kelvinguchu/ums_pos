@@ -70,7 +70,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const geistMono = localFont({
-  src: "../public/fonts/GeistMonoVF.woff",
+  src: "../../public/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
 });

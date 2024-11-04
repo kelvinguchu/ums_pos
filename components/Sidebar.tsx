@@ -1,5 +1,5 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/Appsidebar";
+import { AppSidebar } from "./Appsidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Layout = ({

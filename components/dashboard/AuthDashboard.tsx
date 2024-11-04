@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Dashboard from "@/components/dashboard/Dashboard";
+import Dashboard from "./Dashboard";
 import { getCurrentUser } from "@/lib/actions/supabaseActions";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/Loader";

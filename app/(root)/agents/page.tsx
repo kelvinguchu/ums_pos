@@ -1,4 +1,4 @@
-import Agents from "@/components/Agents";
+import Agents from "@/components/agents/Agents";
 import localFont from "next/font/local";
 
 const geistMono = localFont({

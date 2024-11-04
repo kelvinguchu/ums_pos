@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import InviteUser from "@/components/auth/InviteUser";
+import InviteUser from "@/components/users/InviteUser";
 import AddMeterForm from "@/components/addmeter/AddMeterForm";
 import {
   Sheet,
@@ -34,11 +34,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { getUserProfile } from "@/lib/actions/supabaseActions";
-import SellMeters from "@/components/dashboard/SellMeters";
-import CreateUser from "@/components/auth/CreateUser";
+import SellMeters from "@/components/sellmeter/SellMeters";
+import CreateUser from "@/components/users/CreateUser";
 import localFont from "next/font/local";
-import AssignMetersToAgent from "@/components/dashboard/AssignMetersToAgent";
-import CreateAgentDialog from "@/components/dashboard/CreateAgentDialog";
+import AssignMetersToAgent from "@/components/agents/AssignMetersToAgent";
+import CreateAgentDialog from "@/components/agents/CreateAgentDialog";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "@/lib/actions/supabaseActions";
 import { useIsMobile } from "@/hooks/use-mobile";

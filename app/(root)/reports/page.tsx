@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import Reports from "@/components/Reports";
+import Reports from "@/components/reports/Reports";
 import localFont from "next/font/local";
 
 const geistMono = localFont({

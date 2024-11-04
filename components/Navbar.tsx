@@ -37,11 +37,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import AgentInventory from "@/components/dashboard/AgentInventory";
+import AgentInventory from "@/components/agents/AgentInventory";
 import localFont from "next/font/local";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { NotificationBell } from '@/components/NotificationBell';
+import { NotificationBell } from "@/components/NotificationBell";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -80,7 +80,7 @@ const Navbar: React.FC = () => {
   const cleanCache = useMemo(() => {
     return () => {
       const now = Date.now();
-      Object.keys(searchCache).forEach(key => {
+      Object.keys(searchCache).forEach((key) => {
         if (now - searchCache[key].timestamp > CACHE_DURATION) {
           delete searchCache[key];
         }
@@ -108,7 +108,10 @@ const Navbar: React.FC = () => {
 
         // Check cache first
         const cachedResult = searchCache[debouncedSearch];
-        if (cachedResult && Date.now() - cachedResult.timestamp < CACHE_DURATION) {
+        if (
+          cachedResult &&
+          Date.now() - cachedResult.timestamp < CACHE_DURATION
+        ) {
           setSearchResults(cachedResult.data);
           setIsLoading(false);
           return;
@@ -116,16 +119,16 @@ const Navbar: React.FC = () => {
 
         // If not in cache, fetch from API
         const results = await superSearchMeter(debouncedSearch);
-        
+
         // Cache the results if meter is sold or with agent
         const shouldCache = results.some(
-          result => result.status === "sold" || result.status === "with_agent"
+          (result) => result.status === "sold" || result.status === "with_agent"
         );
-        
+
         if (shouldCache) {
           searchCache[debouncedSearch] = {
             timestamp: Date.now(),
-            data: results
+            data: results,
           };
         }
 
@@ -240,22 +243,27 @@ const Navbar: React.FC = () => {
                           {result.status === "sold" && result.sale_details && (
                             <div className='text-sm text-gray-500 space-y-0.5'>
                               <div>
-                                Sold by: {result.sale_details.seller_name ? 
-                                  `${result.sale_details.seller_name} (${result.sale_details.seller_role})` : 
-                                  result.sale_details.sold_by}
+                                Sold by:{" "}
+                                {result.sale_details.seller_name
+                                  ? `${result.sale_details.seller_name} (${result.sale_details.seller_role})`
+                                  : result.sale_details.sold_by}
                               </div>
                               <div>
-                                Date: {new Date(result.sale_details.sold_at).toLocaleString('en-GB', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric',
-                                  hour: 'numeric',
-                                  minute: 'numeric',
-                                  hour12: true
+                                Date:{" "}
+                                {new Date(
+                                  result.sale_details.sold_at
+                                ).toLocaleString("en-GB", {
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                  hour: "numeric",
+                                  minute: "numeric",
+                                  hour12: true,
                                 })}
                               </div>
                               <div>
-                                To: {result.sale_details.recipient} in {result.sale_details.destination}
+                                To: {result.sale_details.recipient} in{" "}
+                                {result.sale_details.destination}
                               </div>
                             </div>
                           )}
@@ -289,7 +297,8 @@ const Navbar: React.FC = () => {
                           {result.status === "sold" && (
                             <Badge className='bg-blue-500'>
                               <DollarSign className='mr-1 h-3 w-3' />
-                              Sold - KES {result.sale_details?.unit_price?.toLocaleString()}
+                              Sold - KES{" "}
+                              {result.sale_details?.unit_price?.toLocaleString()}
                             </Badge>
                           )}
                         </div>
