@@ -1,9 +1,9 @@
 "use client";
-import DailyReports from "@/components/dailyreportspage/DailyReports";
+import DailyReports from "./DailyReports";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
-import DailyReportPDF from "@/components/dailyreportspage/DailyReportPDF";
+import DailyReportPDF from "./DailyReportPDF";
 import { useState, useEffect } from "react";
 import {
   getSaleBatches,
@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
-import TimeRangeReportPDF from "@/components/dailyreportspage/TimeRangeReportPDF";
+import TimeRangeReportPDF from "./TimeRangeReportPDF";
 import {
   calculateReportMetrics,
   filterSalesByDateRange,
