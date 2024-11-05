@@ -53,6 +53,7 @@ import {
   PlusCircle,
   Phone,
   Info,
+  Users2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import localFont from "next/font/local";
@@ -91,6 +92,20 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
   weight: "100 900",
 });
+
+const EmptyState = () => (
+  <div className='flex flex-col items-center justify-center p-8 text-gray-500'>
+    <div className="relative">
+      <Users2 className='w-12 h-12 mb-4 text-gray-400' />
+      <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#000080] opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#000080]"></span>
+      </span>
+    </div>
+    <p className='text-sm font-medium'>No agents registered yet</p>
+    <p className='text-xs text-gray-400 mt-1'>Add agents to start managing your team</p>
+  </div>
+);
 
 export default function Agents() {
   const [agents, setAgents] = useState<any[]>([]);
@@ -259,228 +274,239 @@ export default function Agents() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndPaginatedAgents().paginatedAgents.map((agent) => (
-                <TableRow key={agent.id} className='hover:bg-gray-50'>
-                  <TableCell className='font-medium'>{agent.name}</TableCell>
-                  <TableCell>
-                    <div className='flex items-center gap-2'>
-                      <PhoneCall className='h-4 w-4 text-[#000080]' />
-                      {agent.phone_number}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className='flex items-center gap-2'>
-                      <MapPin className='h-4 w-4 text-[#E46020]' />
-                      {agent.location}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant='outline'
-                      className={
-                        agent.is_active
-                          ? "bg-[#2ECC40] text-white"
-                          : "bg-gray-500 text-white"
-                      }>
-                      {agent.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant='ghost' className='h-8 w-8 p-0'>
-                          <MoreVertical className='h-4 w-4' />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align='end'>
-                        {/* View Inventory - Available to all users */}
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}>
-                              <ClipboardList className='mr-2 h-4 w-4 text-[#000080]' />
-                              View Inventory
-                            </DropdownMenuItem>
-                          </SheetTrigger>
-                          <SheetContent
-                            className={`${geistMono.className} min-w-[50vw]`}>
-                            <SheetHeader>
-                              <SheetTitle className='text-center'>
-                                Agent Inventory - {agent.name}
-                              </SheetTitle>
-                            </SheetHeader>
-                            <AgentInventory agentId={agent.id} />
-                          </SheetContent>
-                        </Sheet>
+              {filteredAndPaginatedAgents().paginatedAgents.length > 0 ? (
+                filteredAndPaginatedAgents().paginatedAgents.map((agent) => (
+                  <TableRow key={agent.id} className='hover:bg-gray-50'>
+                    <TableCell className='font-medium'>{agent.name}</TableCell>
+                    <TableCell>
+                      <div className='flex items-center gap-2'>
+                        <PhoneCall className='h-4 w-4 text-[#000080]' />
+                        {agent.phone_number}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className='flex items-center gap-2'>
+                        <MapPin className='h-4 w-4 text-[#E46020]' />
+                        {agent.location}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant='outline'
+                        className={
+                          agent.is_active
+                            ? "bg-[#2ECC40] text-white"
+                            : "bg-gray-500 text-white"
+                        }>
+                        {agent.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant='ghost' className='h-8 w-8 p-0'>
+                            <MoreVertical className='h-4 w-4' />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align='end'>
+                          {/* View Inventory - Available to all users */}
+                          <Sheet>
+                            <SheetTrigger asChild>
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}>
+                                <ClipboardList className='mr-2 h-4 w-4 text-[#000080]' />
+                                View Inventory
+                              </DropdownMenuItem>
+                            </SheetTrigger>
+                            <SheetContent
+                              className={`${geistMono.className} min-w-[50vw]`}>
+                              <SheetHeader>
+                                <SheetTitle className='text-center'>
+                                  Agent Inventory - {agent.name}
+                                </SheetTitle>
+                              </SheetHeader>
+                              <AgentInventory agentId={agent.id} />
+                            </SheetContent>
+                          </Sheet>
 
-                        {/* Admin-only actions */}
-                        {currentUser?.role === "admin" && (
-                          <>
-                            <DropdownMenuSeparator />
+                          {/* Admin-only actions */}
+                          {currentUser?.role === "admin" && (
+                            <>
+                              <DropdownMenuSeparator />
 
-                            {/* Edit Agent */}
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                setSelectedAgent(agent);
-                                setIsEditDialogOpen(true);
-                              }}>
-                              <Edit2 className='mr-2 h-4 w-4 text-[#000080]' />
-                              Edit Agent
-                            </DropdownMenuItem>
+                              {/* Edit Agent */}
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setSelectedAgent(agent);
+                                  setIsEditDialogOpen(true);
+                                }}>
+                                <Edit2 className='mr-2 h-4 w-4 text-[#000080]' />
+                                Edit Agent
+                              </DropdownMenuItem>
 
-                            {/* Record Sale */}
-                            <Drawer>
-                              <DrawerTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setSelectedAgent(agent);
-                                  }}>
-                                  <DollarSign className='mr-2 h-4 w-4 text-[#E46020]' />
-                                  Record Sale
-                                </DropdownMenuItem>
-                              </DrawerTrigger>
-                              <DrawerContent
-                                className={`${geistMono.className}`}>
-                                <DrawerHeader>
-                                  <DrawerTitle>
-                                    Record Sale - {agent.name}
-                                  </DrawerTitle>
-                                </DrawerHeader>
-                                <RecordAgentSale
-                                  agent={agent}
-                                  currentUser={currentUser}
-                                  onClose={() => setSelectedAgent(null)}
-                                />
-                              </DrawerContent>
-                            </Drawer>
+                              {/* Record Sale */}
+                              <Drawer>
+                                <DrawerTrigger asChild>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setSelectedAgent(agent);
+                                    }}>
+                                    <DollarSign className='mr-2 h-4 w-4 text-[#E46020]' />
+                                    Record Sale
+                                  </DropdownMenuItem>
+                                </DrawerTrigger>
+                                <DrawerContent
+                                  className={`${geistMono.className}`}>
+                                  <DrawerHeader>
+                                    <DrawerTitle>
+                                      Record Sale - {agent.name}
+                                    </DrawerTitle>
+                                  </DrawerHeader>
+                                  <RecordAgentSale
+                                    agent={agent}
+                                    currentUser={currentUser}
+                                    onClose={() => setSelectedAgent(null)}
+                                  />
+                                </DrawerContent>
+                              </Drawer>
 
-                            {/* Assign Meters */}
-                            <Sheet>
-                              <SheetTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setSelectedAgent(agent);
-                                    setIsAssigningMeters(true);
-                                  }}>
-                                  <PlusCircle className='mr-2 h-4 w-4 text-[#000080]' />
-                                  Assign Meters
-                                </DropdownMenuItem>
-                              </SheetTrigger>
-                              <SheetContent
-                                className={`${geistMono.className} min-w-[50vw]`}>
-                                <SheetHeader>
-                                  <SheetTitle className='flex items-center justify-center gap-2'>
-                                    <Badge
-                                      variant='outline'
-                                      className='bg-[#000080] text-white px-4 py-2 text-sm'>
-                                      Assigning Meters to {agent.name}
-                                    </Badge>
-                                  </SheetTitle>
-                                </SheetHeader>
-                                <AssignMetersToAgent
-                                  currentUser={currentUser}
-                                  preSelectedAgent={agent}
-                                />
-                              </SheetContent>
-                            </Sheet>
+                              {/* Assign Meters */}
+                              <Sheet>
+                                <SheetTrigger asChild>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setSelectedAgent(agent);
+                                      setIsAssigningMeters(true);
+                                    }}>
+                                    <PlusCircle className='mr-2 h-4 w-4 text-[#000080]' />
+                                    Assign Meters
+                                  </DropdownMenuItem>
+                                </SheetTrigger>
+                                <SheetContent
+                                  className={`${geistMono.className} min-w-[50vw]`}>
+                                  <SheetHeader>
+                                    <SheetTitle className='flex items-center justify-center gap-2'>
+                                      <Badge
+                                        variant='outline'
+                                        className='bg-[#000080] text-white px-4 py-2 text-sm'>
+                                        Assigning Meters to {agent.name}
+                                      </Badge>
+                                    </SheetTitle>
+                                  </SheetHeader>
+                                  <AssignMetersToAgent
+                                    currentUser={currentUser}
+                                    preSelectedAgent={agent}
+                                  />
+                                </SheetContent>
+                              </Sheet>
 
-                            {/* Toggle Status */}
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(agent)}>
-                              {agent.is_active ? (
-                                <>
-                                  <UserMinus className='mr-2 h-4 w-4 text-red-500' />
-                                  Deactivate Agent
-                                </>
-                              ) : (
-                                <>
-                                  <UserPlus className='mr-2 h-4 w-4 text-[#2ECC40]' />
-                                  Activate Agent
-                                </>
-                              )}
-                            </DropdownMenuItem>
+                              {/* Toggle Status */}
+                              <DropdownMenuItem
+                                onClick={() => handleToggleStatus(agent)}>
+                                {agent.is_active ? (
+                                  <>
+                                    <UserMinus className='mr-2 h-4 w-4 text-red-500' />
+                                    Deactivate Agent
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus className='mr-2 h-4 w-4 text-[#2ECC40]' />
+                                    Activate Agent
+                                  </>
+                                )}
+                              </DropdownMenuItem>
 
-                            {/* Delete Agent */}
-                            <AlertDialog
-                              open={isDeleteDialogOpen}
-                              onOpenChange={setIsDeleteDialogOpen}>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                  className='text-red-600'
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    handleDeleteClick(agent);
-                                  }}>
-                                  <Trash2 className='mr-2 h-4 w-4' />
-                                  Delete Agent
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent
-                                className={`${geistMono.className} min-w-[700px]`}>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Delete Agent: {agentToDelete?.name}
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
+                              {/* Delete Agent */}
+                              <AlertDialog
+                                open={isDeleteDialogOpen}
+                                onOpenChange={setIsDeleteDialogOpen}>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem
+                                    className='text-red-600'
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      handleDeleteClick(agent);
+                                    }}>
+                                    <Trash2 className='mr-2 h-4 w-4' />
+                                    Delete Agent
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent
+                                  className={`${geistMono.className} min-w-[700px]`}>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Delete Agent: {agentToDelete?.name}
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {agentInventory.length > 0 ? (
+                                        <>
+                                          <p>
+                                            This agent has{" "}
+                                            {agentInventory.length} meters in
+                                            their inventory.
+                                          </p>
+                                          <p className='mt-2'>
+                                            Choose how to proceed:
+                                          </p>
+                                        </>
+                                      ) : (
+                                        <p>
+                                          Are you sure you want to delete this
+                                          agent? This action cannot be undone.
+                                        </p>
+                                      )}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                      Cancel
+                                    </AlertDialogCancel>
                                     {agentInventory.length > 0 ? (
                                       <>
-                                        <p>
-                                          This agent has {agentInventory.length}{" "}
-                                          meters in their inventory.
-                                        </p>
-                                        <p className='mt-2'>
-                                          Choose how to proceed:
-                                        </p>
+                                        <Button
+                                          variant='destructive'
+                                          onClick={() => {
+                                            setIsDeleteDialogOpen(false);
+                                            handleDeleteAgent();
+                                          }}>
+                                          Continue Delete Without Scan
+                                        </Button>
+                                        <Button
+                                          onClick={() => {
+                                            setIsDeleteDialogOpen(false);
+                                            setIsDeletionSheetOpen(true);
+                                          }}
+                                          className='bg-[#000080] hover:bg-[#000066]'>
+                                          Scan To Delete
+                                        </Button>
                                       </>
                                     ) : (
-                                      <p>
-                                        Are you sure you want to delete this
-                                        agent? This action cannot be undone.
-                                      </p>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteAgent()}
+                                        className='bg-red-600 hover:bg-red-700'>
+                                        Delete
+                                      </AlertDialogAction>
                                     )}
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  {agentInventory.length > 0 ? (
-                                    <>
-                                      <Button
-                                        variant='destructive'
-                                        onClick={() => {
-                                          setIsDeleteDialogOpen(false);
-                                          handleDeleteAgent();
-                                        }}>
-                                        Continue Delete Without Scan
-                                      </Button>
-                                      <Button
-                                        onClick={() => {
-                                          setIsDeleteDialogOpen(false);
-                                          setIsDeletionSheetOpen(true);
-                                        }}
-                                        className='bg-[#000080] hover:bg-[#000066]'>
-                                        Scan To Delete
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteAgent()}
-                                      className='bg-red-600 hover:bg-red-700'>
-                                      Delete
-                                    </AlertDialogAction>
-                                  )}
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <EmptyState />
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>
@@ -500,250 +526,261 @@ export default function Agents() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndPaginatedAgents().paginatedAgents.map((agent) => (
-                <TableRow key={agent.id} className='hover:bg-gray-50'>
-                  <TableCell>
-                    <div className='font-medium'>{agent.name}</div>
-                    <a
-                      href={`tel:${agent.phone_number}`}
-                      className='flex items-center gap-1 text-sm text-[#000080] mt-1'>
-                      <Phone className='h-3 w-3' />
-                      {agent.phone_number}
-                    </a>
-                  </TableCell>
-                  <TableCell className='text-center'>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant='ghost' size='sm'>
-                          <Info className='h-4 w-4 text-[#000080]' />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align='end' className='w-56'>
-                        <div className='p-2'>
-                          <div className='mb-2'>
-                            <span className='text-sm font-medium'>
-                              Location:
-                            </span>
-                            <div className='flex items-center gap-2 mt-1'>
-                              <MapPin className='h-4 w-4 text-[#E46020]' />
-                              {agent.location}
+              {filteredAndPaginatedAgents().paginatedAgents.length > 0 ? (
+                filteredAndPaginatedAgents().paginatedAgents.map((agent) => (
+                  <TableRow key={agent.id} className='hover:bg-gray-50'>
+                    <TableCell>
+                      <div className='font-medium'>{agent.name}</div>
+                      <a
+                        href={`tel:${agent.phone_number}`}
+                        className='flex items-center gap-1 text-sm text-[#000080] mt-1'>
+                        <Phone className='h-3 w-3' />
+                        {agent.phone_number}
+                      </a>
+                    </TableCell>
+                    <TableCell className='text-center'>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant='ghost' size='sm'>
+                            <Info className='h-4 w-4 text-[#000080]' />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align='end' className='w-56'>
+                          <div className='p-2'>
+                            <div className='mb-2'>
+                              <span className='text-sm font-medium'>
+                                Location:
+                              </span>
+                              <div className='flex items-center gap-2 mt-1'>
+                                <MapPin className='h-4 w-4 text-[#E46020]' />
+                                {agent.location}
+                              </div>
+                            </div>
+                            <div>
+                              <span className='text-sm font-medium'>
+                                Status:
+                              </span>
+                              <div className='mt-1'>
+                                <Badge
+                                  variant='outline'
+                                  className={
+                                    agent.is_active
+                                      ? "bg-[#2ECC40] text-white"
+                                      : "bg-gray-500 text-white"
+                                  }>
+                                  {agent.is_active ? "Active" : "Inactive"}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
-                          <div>
-                            <span className='text-sm font-medium'>Status:</span>
-                            <div className='mt-1'>
-                              <Badge
-                                variant='outline'
-                                className={
-                                  agent.is_active
-                                    ? "bg-[#2ECC40] text-white"
-                                    : "bg-gray-500 text-white"
-                                }>
-                                {agent.is_active ? "Active" : "Inactive"}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                  <TableCell className='text-right'>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant='ghost' className='h-8 w-8 p-0'>
-                          <MoreVertical className='h-4 w-4' />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align='end'>
-                        {/* View Inventory - Available to all users */}
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}>
-                              <ClipboardList className='mr-2 h-4 w-4 text-[#000080]' />
-                              View Inventory
-                            </DropdownMenuItem>
-                          </SheetTrigger>
-                          <SheetContent
-                            className={`${geistMono.className} min-w-[50vw]`}>
-                            <SheetHeader>
-                              <SheetTitle className='text-center'>
-                                Agent Inventory - {agent.name}
-                              </SheetTitle>
-                            </SheetHeader>
-                            <AgentInventory agentId={agent.id} />
-                          </SheetContent>
-                        </Sheet>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                    <TableCell className='text-right'>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant='ghost' className='h-8 w-8 p-0'>
+                            <MoreVertical className='h-4 w-4' />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align='end'>
+                          {/* View Inventory - Available to all users */}
+                          <Sheet>
+                            <SheetTrigger asChild>
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}>
+                                <ClipboardList className='mr-2 h-4 w-4 text-[#000080]' />
+                                View Inventory
+                              </DropdownMenuItem>
+                            </SheetTrigger>
+                            <SheetContent
+                              className={`${geistMono.className} min-w-[50vw]`}>
+                              <SheetHeader>
+                                <SheetTitle className='text-center'>
+                                  Agent Inventory - {agent.name}
+                                </SheetTitle>
+                              </SheetHeader>
+                              <AgentInventory agentId={agent.id} />
+                            </SheetContent>
+                          </Sheet>
 
-                        {/* Admin-only actions */}
-                        {currentUser?.role === "admin" && (
-                          <>
-                            <DropdownMenuSeparator />
+                          {/* Admin-only actions */}
+                          {currentUser?.role === "admin" && (
+                            <>
+                              <DropdownMenuSeparator />
 
-                            {/* Edit Agent */}
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                setSelectedAgent(agent);
-                                setIsEditDialogOpen(true);
-                              }}>
-                              <Edit2 className='mr-2 h-4 w-4 text-[#000080]' />
-                              Edit Agent
-                            </DropdownMenuItem>
+                              {/* Edit Agent */}
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setSelectedAgent(agent);
+                                  setIsEditDialogOpen(true);
+                                }}>
+                                <Edit2 className='mr-2 h-4 w-4 text-[#000080]' />
+                                Edit Agent
+                              </DropdownMenuItem>
 
-                            {/* Record Sale */}
-                            <Drawer>
-                              <DrawerTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setSelectedAgent(agent);
-                                  }}>
-                                  <DollarSign className='mr-2 h-4 w-4 text-[#E46020]' />
-                                  Record Sale
-                                </DropdownMenuItem>
-                              </DrawerTrigger>
-                              <DrawerContent
-                                className={`${geistMono.className}`}>
-                                <DrawerHeader>
-                                  <DrawerTitle>
-                                    Record Sale - {agent.name}
-                                  </DrawerTitle>
-                                </DrawerHeader>
-                                <RecordAgentSale
-                                  agent={agent}
-                                  currentUser={currentUser}
-                                  onClose={() => setSelectedAgent(null)}
-                                />
-                              </DrawerContent>
-                            </Drawer>
+                              {/* Record Sale */}
+                              <Drawer>
+                                <DrawerTrigger asChild>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setSelectedAgent(agent);
+                                    }}>
+                                    <DollarSign className='mr-2 h-4 w-4 text-[#E46020]' />
+                                    Record Sale
+                                  </DropdownMenuItem>
+                                </DrawerTrigger>
+                                <DrawerContent
+                                  className={`${geistMono.className}`}>
+                                  <DrawerHeader>
+                                    <DrawerTitle>
+                                      Record Sale - {agent.name}
+                                    </DrawerTitle>
+                                  </DrawerHeader>
+                                  <RecordAgentSale
+                                    agent={agent}
+                                    currentUser={currentUser}
+                                    onClose={() => setSelectedAgent(null)}
+                                  />
+                                </DrawerContent>
+                              </Drawer>
 
-                            {/* Assign Meters */}
-                            <Sheet>
-                              <SheetTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setSelectedAgent(agent);
-                                    setIsAssigningMeters(true);
-                                  }}>
-                                  <PlusCircle className='mr-2 h-4 w-4 text-[#000080]' />
-                                  Assign Meters
-                                </DropdownMenuItem>
-                              </SheetTrigger>
-                              <SheetContent
-                                className={`${geistMono.className} min-w-[50vw]`}>
-                                <SheetHeader>
-                                  <SheetTitle className='flex items-center justify-center gap-2'>
-                                    <Badge
-                                      variant='outline'
-                                      className='bg-[#000080] text-white px-4 py-2 text-sm'>
-                                      Assigning Meters to {agent.name}
-                                    </Badge>
-                                  </SheetTitle>
-                                </SheetHeader>
-                                <AssignMetersToAgent
-                                  currentUser={currentUser}
-                                  preSelectedAgent={agent}
-                                />
-                              </SheetContent>
-                            </Sheet>
+                              {/* Assign Meters */}
+                              <Sheet>
+                                <SheetTrigger asChild>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setSelectedAgent(agent);
+                                      setIsAssigningMeters(true);
+                                    }}>
+                                    <PlusCircle className='mr-2 h-4 w-4 text-[#000080]' />
+                                    Assign Meters
+                                  </DropdownMenuItem>
+                                </SheetTrigger>
+                                <SheetContent
+                                  className={`${geistMono.className} min-w-[50vw]`}>
+                                  <SheetHeader>
+                                    <SheetTitle className='flex items-center justify-center gap-2'>
+                                      <Badge
+                                        variant='outline'
+                                        className='bg-[#000080] text-white px-4 py-2 text-sm'>
+                                        Assigning Meters to {agent.name}
+                                      </Badge>
+                                    </SheetTitle>
+                                  </SheetHeader>
+                                  <AssignMetersToAgent
+                                    currentUser={currentUser}
+                                    preSelectedAgent={agent}
+                                  />
+                                </SheetContent>
+                              </Sheet>
 
-                            {/* Toggle Status */}
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(agent)}>
-                              {agent.is_active ? (
-                                <>
-                                  <UserMinus className='mr-2 h-4 w-4 text-red-500' />
-                                  Deactivate Agent
-                                </>
-                              ) : (
-                                <>
-                                  <UserPlus className='mr-2 h-4 w-4 text-[#2ECC40]' />
-                                  Activate Agent
-                                </>
-                              )}
-                            </DropdownMenuItem>
+                              {/* Toggle Status */}
+                              <DropdownMenuItem
+                                onClick={() => handleToggleStatus(agent)}>
+                                {agent.is_active ? (
+                                  <>
+                                    <UserMinus className='mr-2 h-4 w-4 text-red-500' />
+                                    Deactivate Agent
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus className='mr-2 h-4 w-4 text-[#2ECC40]' />
+                                    Activate Agent
+                                  </>
+                                )}
+                              </DropdownMenuItem>
 
-                            {/* Delete Agent */}
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                  className='text-red-600'
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    handleDeleteClick(agent);
-                                  }}>
-                                  <Trash2 className='mr-2 h-4 w-4' />
-                                  Delete Agent
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent
-                                className={`${geistMono.className} w-[95%] sm:w-full sm:max-w-lg`}>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Delete Agent: {agentToDelete?.name}
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
+                              {/* Delete Agent */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem
+                                    className='text-red-600'
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      handleDeleteClick(agent);
+                                    }}>
+                                    <Trash2 className='mr-2 h-4 w-4' />
+                                    Delete Agent
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent
+                                  className={`${geistMono.className} w-[95%] sm:w-full sm:max-w-lg`}>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Delete Agent: {agentToDelete?.name}
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {agentInventory.length > 0 ? (
+                                        <>
+                                          <p>
+                                            This agent has{" "}
+                                            {agentInventory.length} meters in
+                                            their inventory.
+                                          </p>
+                                          <p className='mt-2'>
+                                            Choose how to proceed:
+                                          </p>
+                                        </>
+                                      ) : (
+                                        <p>
+                                          Are you sure you want to delete this
+                                          agent? This action cannot be undone.
+                                        </p>
+                                      )}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter className='flex flex-col sm:flex-row gap-2'>
+                                    <AlertDialogCancel className='mt-0'>
+                                      Cancel
+                                    </AlertDialogCancel>
                                     {agentInventory.length > 0 ? (
                                       <>
-                                        <p>
-                                          This agent has {agentInventory.length}{" "}
-                                          meters in their inventory.
-                                        </p>
-                                        <p className='mt-2'>
-                                          Choose how to proceed:
-                                        </p>
+                                        <Button
+                                          variant='destructive'
+                                          onClick={() => {
+                                            setIsDeleteDialogOpen(false);
+                                            handleDeleteAgent();
+                                          }}
+                                          className='flex-1 sm:flex-none'>
+                                          Continue Delete Without Scan
+                                        </Button>
+                                        <Button
+                                          onClick={() => {
+                                            setIsDeleteDialogOpen(false);
+                                            setIsDeletionSheetOpen(true);
+                                          }}
+                                          className='bg-[#000080] hover:bg-[#000066] flex-1 sm:flex-none'>
+                                          Scan To Delete
+                                        </Button>
                                       </>
                                     ) : (
-                                      <p>
-                                        Are you sure you want to delete this
-                                        agent? This action cannot be undone.
-                                      </p>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteAgent()}
+                                        className='bg-red-600 hover:bg-red-700'>
+                                        Delete
+                                      </AlertDialogAction>
                                     )}
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter className='flex flex-col sm:flex-row gap-2'>
-                                  <AlertDialogCancel className='mt-0'>
-                                    Cancel
-                                  </AlertDialogCancel>
-                                  {agentInventory.length > 0 ? (
-                                    <>
-                                      <Button
-                                        variant='destructive'
-                                        onClick={() => {
-                                          setIsDeleteDialogOpen(false);
-                                          handleDeleteAgent();
-                                        }}
-                                        className='flex-1 sm:flex-none'>
-                                        Continue Delete Without Scan
-                                      </Button>
-                                      <Button
-                                        onClick={() => {
-                                          setIsDeleteDialogOpen(false);
-                                          setIsDeletionSheetOpen(true);
-                                        }}
-                                        className='bg-[#000080] hover:bg-[#000066] flex-1 sm:flex-none'>
-                                        Scan To Delete
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteAgent()}
-                                      className='bg-red-600 hover:bg-red-700'>
-                                      Delete
-                                    </AlertDialogAction>
-                                  )}
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={3}>
+                    <EmptyState />
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>
