@@ -23,7 +23,13 @@ const geistMono = localFont({
 });
 
 interface AgentDeletionSheetProps {
-  agent: any;
+  agent: {
+    id: string;
+    name: string;
+    phone_number: string;
+    location: string;
+    is_active: boolean;
+  } | null;
   inventory: any[];
   currentUser: any;
   onDelete: (
@@ -58,18 +64,22 @@ export default function AgentDeletionSheet({
   };
 
   const handleScan = () => {
-    const meter = inventory.find((m) => m.serial_number === serialNumber);
+    const normalizedInput = serialNumber.toUpperCase();
+    const meter = inventory.find(
+      (m) => m.serial_number.toUpperCase() === normalizedInput
+    );
+
     if (!meter) {
       setErrorMessage("Serial number not found in agent's inventory");
       return;
     }
 
-    if (scannedMeters.includes(serialNumber)) {
+    if (scannedMeters.includes(meter.serial_number)) {
       setErrorMessage("Meter already scanned");
       return;
     }
 
-    setScannedMeters([...scannedMeters, serialNumber]);
+    setScannedMeters([...scannedMeters, meter.serial_number]);
     setSerialNumber("");
     setErrorMessage("");
   };
@@ -102,6 +112,14 @@ export default function AgentDeletionSheet({
       setIsDeleting(false);
     }
   };
+
+  if (!agent) {
+    return (
+      <div className={`${geistMono.className} p-4`}>
+        <p className="text-center text-red-500">Error: Agent data not found</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`${geistMono.className} p-2 sm:p-4 flex flex-col h-full`}>

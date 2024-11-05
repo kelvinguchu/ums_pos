@@ -63,7 +63,6 @@ export async function checkMeterExists(serialNumber: string): Promise<boolean> {
 
     // Return true if meter exists in any of these tables
     return !!(metersData || soldData || agentData);
-
   } catch (error) {
     console.error("Error checking meter existence:", error);
     throw error;
@@ -333,15 +332,22 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function getMeterBySerial(serialNumber: string) {
+  // Convert the input to uppercase for consistent comparison
+  const normalizedSerial = serialNumber.toUpperCase();
+
   const { data, error } = await supabase
     .from("meters")
     .select("*")
-    .eq("serial_number", serialNumber)
-    .single();
+    .ilike("serial_number", normalizedSerial) // Use ilike for case-insensitive matching
+    .maybeSingle(); // Use maybeSingle instead of single to handle no results gracefully
 
   if (error) {
     console.error("Error retrieving meter:", error);
-    return null;
+    if (error.code === "PGRST116") {
+      // No results found
+      return null;
+    }
+    throw error;
   }
 
   return data;
@@ -451,8 +457,12 @@ export async function addSaleBatch(batchData: {
 
   // Create a notification for the batch sale
   await createNotification({
-    type: 'METER_SALE',
-    message: `${batchData.user_name} sold ${batchData.batch_amount} ${batchData.meter_type} meter${batchData.batch_amount > 1 ? 's' : ''} to ${batchData.recipient} in ${batchData.destination}`,
+    type: "METER_SALE",
+    message: `${batchData.user_name} sold ${batchData.batch_amount} ${
+      batchData.meter_type
+    } meter${batchData.batch_amount > 1 ? "s" : ""} to ${
+      batchData.recipient
+    } in ${batchData.destination}`,
     metadata: {
       batchId: data.id,
       meterType: batchData.meter_type,
@@ -460,9 +470,9 @@ export async function addSaleBatch(batchData: {
       destination: batchData.destination,
       recipient: batchData.recipient,
       totalPrice: batchData.total_price,
-      unitPrice: batchData.unit_price
+      unitPrice: batchData.unit_price,
     },
-    createdBy: batchData.user_id
+    createdBy: batchData.user_id,
   });
 
   return data;
@@ -849,55 +859,68 @@ export async function deleteAgent(
   scannedMeters: string[] = [],
   unscannedMeters: string[] = []
 ) {
-  // Get all meters assigned to this agent
-  const { data: agentMeters, error: inventoryError } = await supabase
-    .from("agent_inventory")
-    .select("*")
-    .eq("agent_id", agentId);
-
-  if (inventoryError) throw inventoryError;
-
-  if (agentMeters && agentMeters.length > 0) {
-    // Handle scanned meters - move them back to meters table
-    const metersToRestore = agentMeters
-      .filter((meter) => scannedMeters.includes(meter.serial_number))
-      .map((meter) => ({
-        serial_number: meter.serial_number,
-        type: meter.type,
-        added_by: currentUser.id,
-        added_at: new Date().toISOString(),
-        adder_name: currentUser.name || currentUser.email,
-      }));
-
-    if (metersToRestore.length > 0) {
-      const { error: restoreError } = await supabase
-        .from("meters")
-        .insert(metersToRestore);
-
-      if (restoreError) throw restoreError;
-    }
-
-    // Delete all meters from agent_inventory
-    const { error: deleteInventoryError } = await supabase
-      .from("agent_inventory")
+  try {
+    // 1. First, delete all agent transactions
+    const { error: transactionError } = await supabase
+      .from("agent_transactions")
       .delete()
       .eq("agent_id", agentId);
 
-    if (deleteInventoryError) throw deleteInventoryError;
+    if (transactionError) throw transactionError;
+
+    // 2. Get all meters assigned to this agent
+    const { data: agentMeters, error: inventoryError } = await supabase
+      .from("agent_inventory")
+      .select("*")
+      .eq("agent_id", agentId);
+
+    if (inventoryError) throw inventoryError;
+
+    if (agentMeters && agentMeters.length > 0) {
+      // 3. Handle scanned meters - move them back to meters table
+      const metersToRestore = agentMeters
+        .filter((meter) => scannedMeters.includes(meter.serial_number))
+        .map((meter) => ({
+          serial_number: meter.serial_number,
+          type: meter.type,
+          added_by: currentUser.id,
+          added_at: new Date().toISOString(),
+          adder_name: currentUser.name || currentUser.email,
+        }));
+
+      if (metersToRestore.length > 0) {
+        const { error: restoreError } = await supabase
+          .from("meters")
+          .insert(metersToRestore);
+
+        if (restoreError) throw restoreError;
+      }
+
+      // 4. Delete all meters from agent_inventory
+      const { error: deleteInventoryError } = await supabase
+        .from("agent_inventory")
+        .delete()
+        .eq("agent_id", agentId);
+
+      if (deleteInventoryError) throw deleteInventoryError;
+    }
+
+    // 5. Finally delete the agent
+    const { error: deleteAgentError } = await supabase
+      .from("agents")
+      .delete()
+      .eq("id", agentId);
+
+    if (deleteAgentError) throw deleteAgentError;
+
+    return {
+      restoredCount: scannedMeters.length,
+      deletedCount: unscannedMeters.length,
+    };
+  } catch (error) {
+    console.error("Error in deleteAgent:", error);
+    throw error;
   }
-
-  // Finally delete the agent
-  const { error: deleteAgentError } = await supabase
-    .from("agents")
-    .delete()
-    .eq("id", agentId);
-
-  if (deleteAgentError) throw deleteAgentError;
-
-  return {
-    restoredCount: scannedMeters.length,
-    deletedCount: unscannedMeters.length,
-  };
 }
 
 export async function superSearchMeter(searchTerm: string) {
@@ -997,7 +1020,7 @@ export async function createNotification({
   type,
   message,
   metadata,
-  createdBy
+  createdBy,
 }: {
   type: string;
   message: string;
@@ -1005,19 +1028,19 @@ export async function createNotification({
   createdBy: string;
 }) {
   const { data, error } = await supabase
-    .from('notifications')
+    .from("notifications")
     .insert({
       type,
       message,
       metadata,
       created_by: createdBy,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     })
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating notification:', error);
+    console.error("Error creating notification:", error);
     throw error;
   }
 
@@ -1027,51 +1050,56 @@ export async function createNotification({
 // Fetch notifications for a user
 export async function getNotifications(userId: string, limit = 20) {
   const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .order('created_at', { ascending: false })
+    .from("notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) {
-    console.error('Error fetching notifications:', error);
+    console.error("Error fetching notifications:", error);
     throw error;
   }
 
   // Process notifications to determine read status for this specific user
-  return data.map(notification => ({
+  return data.map((notification) => ({
     ...notification,
-    is_read: notification.read_by?.includes(userId) || false
+    is_read: notification.read_by?.includes(userId) || false,
   }));
 }
 
 // Mark a notification as read
-export async function markNotificationAsRead(notificationId: string, userId: string) {
+export async function markNotificationAsRead(
+  notificationId: string,
+  userId: string
+) {
   // First get the current notification
   const { data: notification } = await supabase
-    .from('notifications')
-    .select('read_by')
-    .eq('id', notificationId)
+    .from("notifications")
+    .select("read_by")
+    .eq("id", notificationId)
     .single();
 
   // Create new read_by array with the userId
-  const readBy = Array.isArray(notification?.read_by) ? notification.read_by : [];
+  const readBy = Array.isArray(notification?.read_by)
+    ? notification.read_by
+    : [];
   if (!readBy.includes(userId)) {
     readBy.push(userId);
   }
 
   // Update the notification
   const { error } = await supabase
-    .from('notifications')
+    .from("notifications")
     .update({
       read_by: readBy,
       // Only mark as globally read if all users have read it
       // You might want to add logic here to check against total users
-      is_read: false 
+      is_read: false,
     })
-    .eq('id', notificationId);
+    .eq("id", notificationId);
 
   if (error) {
-    console.error('Error marking notification as read:', error);
+    console.error("Error marking notification as read:", error);
     throw error;
   }
 }
@@ -1080,47 +1108,51 @@ export async function markNotificationAsRead(notificationId: string, userId: str
 export async function markAllNotificationsAsRead(userId: string) {
   // First get all notifications that this user hasn't read yet
   const { data: notifications } = await supabase
-    .from('notifications')
-    .select('id, read_by')
-    .filter('read_by', 'not.cs', `{${userId}}`); // Use containment operator to check array
+    .from("notifications")
+    .select("id, read_by")
+    .filter("read_by", "not.cs", `{${userId}}`); // Use containment operator to check array
 
   if (!notifications || notifications.length === 0) return;
 
   // Update each notification
-  const updates = notifications.map(notification => {
-    const readBy = Array.isArray(notification.read_by) ? notification.read_by : [];
+  const updates = notifications.map((notification) => {
+    const readBy = Array.isArray(notification.read_by)
+      ? notification.read_by
+      : [];
     if (!readBy.includes(userId)) {
       readBy.push(userId);
     }
 
     return supabase
-      .from('notifications')
+      .from("notifications")
       .update({
         read_by: readBy,
         // Keep is_read as false since other users might not have read it
-        is_read: false
+        is_read: false,
       })
-      .eq('id', notification.id);
+      .eq("id", notification.id);
   });
 
   try {
     await Promise.all(updates);
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    console.error("Error marking all notifications as read:", error);
     throw error;
   }
 }
 
 // Subscribe to new notifications
-export function subscribeToNotifications(callback: (notification: any) => void) {
+export function subscribeToNotifications(
+  callback: (notification: any) => void
+) {
   return supabase
-    .channel('notifications')
+    .channel("notifications")
     .on(
-      'postgres_changes',
+      "postgres_changes",
       {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications'
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
       },
       (payload) => {
         callback(payload.new);
@@ -1130,20 +1162,22 @@ export function subscribeToNotifications(callback: (notification: any) => void) 
 }
 
 // Add this function near the other meter-related functions
-export async function checkMultipleSerialNumbers(serialNumbers: string[]): Promise<string[]> {
+export async function checkMultipleSerialNumbers(
+  serialNumbers: string[]
+): Promise<string[]> {
   try {
     const { data, error } = await supabase
-      .from('meters')
-      .select('serial_number')
-      .in('serial_number', serialNumbers);
+      .from("meters")
+      .select("serial_number")
+      .in("serial_number", serialNumbers);
 
     if (error) {
-      console.error('Error checking serial numbers:', error);
+      console.error("Error checking serial numbers:", error);
       throw error;
     }
 
     // Return array of existing serial numbers
-    return data ? data.map(meter => meter.serial_number) : [];
+    return data ? data.map((meter) => meter.serial_number) : [];
   } catch (error) {
     console.error("Error checking serial numbers:", error);
     throw error;

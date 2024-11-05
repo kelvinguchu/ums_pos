@@ -17,6 +17,14 @@ import {
   getRemainingMetersByType,
 } from "@/lib/actions/supabaseActions";
 import { useSidebar } from "@/components/ui/sidebar";
+import {
+  DollarSign,
+  Package,
+  Users,
+  Award,
+  BarChart3,
+  PackageOpen,
+} from "lucide-react";
 
 interface SaleBatch {
   id: string;
@@ -90,6 +98,20 @@ const Reports: React.FC = () => {
 
   const { state } = useSidebar();
 
+  // Empty state component
+  const EmptyState = ({
+    icon: Icon,
+    message,
+  }: {
+    icon: any;
+    message: string;
+  }) => (
+    <div className='flex flex-col items-center justify-center p-8 text-gray-500'>
+      <Icon className='w-12 h-12 mb-4' />
+      <p className='text-sm'>{message}</p>
+    </div>
+  );
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return `${date.getDate().toString().padStart(2, "0")}/${(
@@ -111,38 +133,46 @@ const Reports: React.FC = () => {
           state === "expanded" ? "" : "md:w-[93vw]"
         } px-2 sm:px-4`}>
         <Card className='col-span-full shadow-md hover:shadow-xl'>
-          <CardHeader>
+          <CardHeader className='flex flex-row items-center justify-between'>
             <CardTitle>Recent Sales</CardTitle>
+            <DollarSign className='w-5 h-5 text-[#000080]' />
           </CardHeader>
           <CardContent>
-            <div className='overflow-auto max-w-[100vw]'>
-              <div className='min-w-[640px]'>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Seller&apos;s Name</TableHead>
-                      <TableHead>Meter Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Total Price</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentSales.map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell>{sale.user_name}</TableCell>
-                        <TableCell>{sale.meter_type}</TableCell>
-                        <TableCell>{sale.batch_amount}</TableCell>
-                        <TableCell>
-                          KES {sale.total_price.toLocaleString()}
-                        </TableCell>
-                        <TableCell>{formatDate(sale.sale_date)}</TableCell>
+            {recentSales.length > 0 ? (
+              <div className='overflow-auto max-w-[100vw]'>
+                <div className='min-w-[640px]'>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Seller&apos;s Name</TableHead>
+                        <TableHead>Meter Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Total Price</TableHead>
+                        <TableHead>Date</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {recentSales.map((sale) => (
+                        <TableRow key={sale.id}>
+                          <TableCell>{sale.user_name}</TableCell>
+                          <TableCell>{sale.meter_type}</TableCell>
+                          <TableCell>{sale.batch_amount}</TableCell>
+                          <TableCell>
+                            KES {sale.total_price.toLocaleString()}
+                          </TableCell>
+                          <TableCell>{formatDate(sale.sale_date)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
+            ) : (
+              <EmptyState
+                icon={PackageOpen}
+                message='No recent sales to display'
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -152,39 +182,44 @@ const Reports: React.FC = () => {
               ? "col-span-full md:col-span-1"
               : "col-span-1 md:col-span-2"
           }`}>
-          <CardHeader>
+          <CardHeader className='flex flex-row items-center justify-between'>
             <CardTitle>Meters Remaining</CardTitle>
+            <Package className='w-5 h-5 text-[#E46020]' />
           </CardHeader>
           <CardContent>
-            <div className='overflow-auto'>
-              <div className='min-w-[300px]'>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Meter Type</TableHead>
-                      <TableHead>Remaining</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {remainingMetersByType.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{item.type}</TableCell>
-                        <TableCell>{item.remaining_meters}</TableCell>
+            {remainingMetersByType.length > 0 ? (
+              <div className='overflow-auto'>
+                <div className='min-w-[300px]'>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Meter Type</TableHead>
+                        <TableHead>Remaining</TableHead>
                       </TableRow>
-                    ))}
-                    <TableRow>
-                      <TableCell className='font-bold'>Total</TableCell>
-                      <TableCell className='font-bold'>
-                        {remainingMetersByType.reduce(
-                          (sum, item) => sum + item.remaining_meters,
-                          0
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {remainingMetersByType.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.type}</TableCell>
+                          <TableCell>{item.remaining_meters}</TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow>
+                        <TableCell className='font-bold'>Total</TableCell>
+                        <TableCell className='font-bold'>
+                          {remainingMetersByType.reduce(
+                            (sum, item) => sum + item.remaining_meters,
+                            0
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
+            ) : (
+              <EmptyState icon={PackageOpen} message='No meters in inventory' />
+            )}
           </CardContent>
         </Card>
 
@@ -194,41 +229,56 @@ const Reports: React.FC = () => {
               ? "col-span-full md:col-span-1"
               : "col-span-1 md:col-span-2"
           }`}>
-          <CardHeader>
+          <CardHeader className='flex flex-row items-center justify-between'>
             <CardTitle>Top Sellers</CardTitle>
+            <Users className='w-5 h-5 text-[#000080]' />
           </CardHeader>
           <CardContent>
-            <div className='overflow-auto'>
-              <div className='min-w-[300px]'>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Total Sales</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {topSellers.map((seller, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{seller.user_name}</TableCell>
-                        <TableCell>
-                          KES {seller.total_sales.toLocaleString()}
-                        </TableCell>
+            {topSellers.length > 0 ? (
+              <div className='overflow-auto'>
+                <div className='min-w-[300px]'>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Total Sales</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {topSellers.map((seller, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{seller.user_name}</TableCell>
+                          <TableCell>
+                            KES {seller.total_sales.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
+            ) : (
+              <EmptyState
+                icon={PackageOpen}
+                message='No seller data available'
+              />
+            )}
           </CardContent>
         </Card>
 
         <Card className='shadow-md hover:shadow-xl'>
-          <CardHeader>
+          <CardHeader className='flex flex-row items-center justify-between'>
             <CardTitle>Best Seller</CardTitle>
+            <Award className='w-5 h-5 text-[#E46020]' />
           </CardHeader>
           <CardContent>
-            <p className='text-2xl font-bold'>{mostSellingProduct}</p>
+            {mostSellingProduct ? (
+              <p className='text-2xl font-bold'>
+                {mostSellingProduct}
+              </p>
+            ) : (
+              <EmptyState icon={PackageOpen} message='No best seller data' />
+            )}
           </CardContent>
         </Card>
 
@@ -238,32 +288,40 @@ const Reports: React.FC = () => {
               ? "col-span-full md:col-span-1"
               : "col-span-1 md:col-span-2"
           }`}>
-          <CardHeader>
+          <CardHeader className='flex flex-row items-center justify-between'>
             <CardTitle>Earnings by Meter Type</CardTitle>
+            <BarChart3 className='w-5 h-5 text-[#000080]' />
           </CardHeader>
           <CardContent>
-            <div className='overflow-auto'>
-              <div className='min-w-[300px]'>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Meter Type</TableHead>
-                      <TableHead>Total Earnings</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {earningsByMeterType.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{item.meter_type}</TableCell>
-                        <TableCell>
-                          KES {item.total_earnings.toLocaleString()}
-                        </TableCell>
+            {earningsByMeterType.length > 0 ? (
+              <div className='overflow-auto'>
+                <div className='min-w-[300px]'>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Meter Type</TableHead>
+                        <TableHead>Total Earnings</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {earningsByMeterType.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.meter_type}</TableCell>
+                          <TableCell>
+                            KES {item.total_earnings.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
+            ) : (
+              <EmptyState
+                icon={PackageOpen}
+                message='No earnings data available'
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -273,13 +331,18 @@ const Reports: React.FC = () => {
               ? "col-span-full md:col-span-1"
               : "col-span-1 md:col-span-2"
           }`}>
-          <CardHeader>
+          <CardHeader className='flex flex-row items-center justify-between'>
             <CardTitle>Total Earnings</CardTitle>
+            <DollarSign className='w-5 h-5 text-[#E46020]' />
           </CardHeader>
           <CardContent>
-            <p className='text-4xl font-bold'>
-              KES {totalEarnings.toLocaleString()}
-            </p>
+            {totalEarnings > 0 ? (
+              <p className='text-4xl font-bold'>
+                KES {totalEarnings.toLocaleString()}
+              </p>
+            ) : (
+              <EmptyState icon={PackageOpen} message='No earnings recorded' />
+            )}
           </CardContent>
         </Card>
       </div>

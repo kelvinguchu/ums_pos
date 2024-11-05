@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Responsive
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { getSaleBatches } from '@/lib/actions/supabaseActions'
 import NumberTicker from "@/components/ui/number-ticker"
+import { TrendingDown, BarChart as ChartIcon, ArrowRight } from "lucide-react";
 
 
 interface SaleBatch {
@@ -70,6 +71,23 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null
 }
+
+const EmptyState = () => (
+  <div className='flex flex-col items-center justify-center h-full p-8 text-gray-500'>
+    <div className='relative'>
+      <ChartIcon className='w-16 h-16 mb-4 text-gray-300' />
+      <TrendingDown className='w-8 h-8 text-gray-400 absolute -bottom-2 -right-2 animate-bounce' />
+    </div>
+    <div className='text-center space-y-2'>
+      <p className='text-lg font-semibold text-gray-600'>No Sales Data Yet</p>
+      <p className='text-sm text-gray-400 flex items-center gap-2'>
+        Sales will appear here
+        <ArrowRight className='w-4 h-4' />
+        Beautiful charts incoming!
+      </p>
+    </div>
+  </div>
+);
 
 export function SalesBarchart() {
   const [chartData, setChartData] = useState<ChartData[]>([])
@@ -140,54 +158,64 @@ export function SalesBarchart() {
               <span className="text-xs text-muted-foreground">
                 {config.label}
               </span>
-              <span className="text-base font-bold leading-none lg:text-3xl">
-                <NumberTicker 
-                  value={total[key as keyof typeof chartConfig]} 
-                  className="text-base font-bold leading-none lg:text-3xl"
-                />
-              </span>
+              {total[key as keyof typeof chartConfig] > 0 ? (
+                <span className="text-base font-bold leading-none lg:text-3xl">
+                  <NumberTicker 
+                    value={total[key as keyof typeof chartConfig]} 
+                    className="text-base font-bold leading-none lg:text-3xl"
+                  />
+                </span>
+              ) : (
+                <span className="text-base font-bold leading-none lg:text-3xl text-gray-400">
+                  --
+                </span>
+              )}
             </button>
           ))}
         </div>
       </CardHeader>
       <CardContent className="p-2 h-[350px] lg:h-[400px] lg:p-6">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="date"
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                // On mobile, show only day number
-                if (window.innerWidth < 768) {
-                  return date.getDate().toString();
-                }
-                // On desktop, show month and day
-                return date.toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric' 
-                });
-              }}
-              tick={{ fontSize: window.innerWidth < 768 ? 12 : 14 }}
-            />
-            <YAxis 
-              tick={{ fontSize: window.innerWidth < 768 ? 12 : 14 }}
-              width={window.innerWidth < 768 ? 30 : 40}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              wrapperStyle={{
-                fontSize: window.innerWidth < 768 ? '12px' : '14px',
-                marginTop: '10px'
-              }}
-            />
-            <Bar
-              dataKey={activeChart}
-              fill={chartConfig[activeChart].color}
-              maxBarSize={window.innerWidth < 768 ? 30 : 50}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(value) => {
+                  const date = new Date(value);
+                  // On mobile, show only day number
+                  if (window.innerWidth < 768) {
+                    return date.getDate().toString();
+                  }
+                  // On desktop, show month and day
+                  return date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                  });
+                }}
+                tick={{ fontSize: window.innerWidth < 768 ? 12 : 14 }}
+              />
+              <YAxis 
+                tick={{ fontSize: window.innerWidth < 768 ? 12 : 14 }}
+                width={window.innerWidth < 768 ? 30 : 40}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{
+                  fontSize: window.innerWidth < 768 ? '12px' : '14px',
+                  marginTop: '10px'
+                }}
+              />
+              <Bar
+                dataKey={activeChart}
+                fill={chartConfig[activeChart].color}
+                maxBarSize={window.innerWidth < 768 ? 30 : 50}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <EmptyState />
+        )}
       </CardContent>
     </Card>
   )

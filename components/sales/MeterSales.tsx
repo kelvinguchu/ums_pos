@@ -32,7 +32,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { getLocalTimeZone, today, parseDate } from "@internationalized/date";
 import { DatePicker } from "@/components/ui/date-picker";
-import { X } from "lucide-react";
+import { X, PackageOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -64,6 +64,13 @@ interface SaleBatch {
   total_price: number;
   unit_price: number; // Add this field
 }
+
+const EmptyState = ({ message }: { message: string }) => (
+  <div className='flex flex-col items-center justify-center p-8 text-gray-500'>
+    <PackageOpen className='w-12 h-12 mb-4' />
+    <p className='text-sm'>{message}</p>
+  </div>
+);
 
 export default function MeterSales() {
   const { state } = useSidebar();
@@ -317,48 +324,52 @@ export default function MeterSales() {
           <CardTitle>Meter Sales</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Seller</TableHead>
-                <TableHead>Meter Type</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Sale Amount</TableHead>
-                <TableHead>Sale Date</TableHead>
-                <TableHead>Destination</TableHead>
-                <TableHead>Recipient</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentBatches.map((batch) => (
-                <React.Fragment key={batch.id}>
-                  <TableRow
-                    className='cursor-pointer hover:bg-muted/50'
-                    onClick={() => setSelectedBatch(batch.id)}>
-                    <TableCell>{batch.user_name}</TableCell>
-                    <TableCell>{batch.meter_type}</TableCell>
-                    <TableCell>{batch.batch_amount}</TableCell>
-                    <TableCell>
-                      {batch.total_price.toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "KES",
-                      })}
-                    </TableCell>
-                    <TableCell>{formatDate(batch.sale_date)}</TableCell>
-                    <TableCell>{batch.destination}</TableCell>
-                    <TableCell>{batch.recipient}</TableCell>
-                  </TableRow>
-                  <MeterSalesRow
-                    batch={batch}
-                    isOpen={selectedBatch === batch.id}
-                    onOpenChange={(open) =>
-                      setSelectedBatch(open ? batch.id : null)
-                    }
-                  />
-                </React.Fragment>
-              ))}
-            </TableBody>
-          </Table>
+          {currentBatches.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Seller</TableHead>
+                  <TableHead>Meter Type</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Sale Amount</TableHead>
+                  <TableHead>Sale Date</TableHead>
+                  <TableHead>Destination</TableHead>
+                  <TableHead>Recipient</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentBatches.map((batch) => (
+                  <React.Fragment key={batch.id}>
+                    <TableRow
+                      className='cursor-pointer hover:bg-muted/50'
+                      onClick={() => setSelectedBatch(batch.id)}>
+                      <TableCell>{batch.user_name}</TableCell>
+                      <TableCell>{batch.meter_type}</TableCell>
+                      <TableCell>{batch.batch_amount}</TableCell>
+                      <TableCell>
+                        {batch.total_price.toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "KES",
+                        })}
+                      </TableCell>
+                      <TableCell>{formatDate(batch.sale_date)}</TableCell>
+                      <TableCell>{batch.destination}</TableCell>
+                      <TableCell>{batch.recipient}</TableCell>
+                    </TableRow>
+                    <MeterSalesRow
+                      batch={batch}
+                      isOpen={selectedBatch === batch.id}
+                      onOpenChange={(open) =>
+                        setSelectedBatch(open ? batch.id : null)
+                      }
+                    />
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <EmptyState message="No sales data available" />
+          )}
         </CardContent>
       </Card>
 
