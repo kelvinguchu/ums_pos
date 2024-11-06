@@ -997,8 +997,8 @@ export async function superSearchMeter(searchTerm: string) {
       sale_details: {
         sold_at: meter.sale_batches[0]?.sale_date || meter.sold_at,
         sold_by: meter.sale_batches[0]?.user_name,
-        seller_name: meter.seller?.name, // Changed from users to seller
-        seller_role: meter.seller?.role, // Changed from users to seller
+        seller_name: meter.seller?.name, 
+        seller_role: meter.seller?.role, 
         destination: meter.destination,
         recipient: meter.recipient,
         unit_price: meter.unit_price,
@@ -1013,7 +1013,6 @@ export async function superSearchMeter(searchTerm: string) {
   return formattedResults;
 }
 
-// Add these new notification-related functions near the end of the file
 
 // Create a new notification
 export async function createNotification({
@@ -1093,7 +1092,6 @@ export async function markNotificationAsRead(
     .update({
       read_by: readBy,
       // Only mark as globally read if all users have read it
-      // You might want to add logic here to check against total users
       is_read: false,
     })
     .eq("id", notificationId);
@@ -1161,7 +1159,6 @@ export function subscribeToNotifications(
     .subscribe();
 }
 
-// Add this function near the other meter-related functions
 export async function checkMultipleSerialNumbers(
   serialNumbers: string[]
 ): Promise<string[]> {
