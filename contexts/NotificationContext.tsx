@@ -160,12 +160,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const checkPushSupport = async () => {
       const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+      console.log('Push supported:', supported);
       setPushSupported(supported);
 
       if (supported) {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        const subscription = await registration.pushManager.getSubscription();
-        setPushSubscription(subscription);
+        try {
+          const registration = await navigator.serviceWorker.register('/custom-sw.js');
+          console.log('Service Worker registered:', registration);
+          const subscription = await registration.pushManager.getSubscription();
+          console.log('Current subscription:', subscription);
+          setPushSubscription(subscription);
+        } catch (error) {
+          console.error('Service Worker registration failed:', error);
+        }
       }
     };
 
@@ -174,7 +181,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const subscribeToPushNotifications = async () => {
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.getRegistration('/custom-sw.js');
+      if (!registration) {
+        throw new Error('Service Worker not found');
+      }
+
+      console.log('VAPID key:', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+      
+      if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+        throw new Error('VAPID public key not found');
+      }
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -191,7 +208,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       console.error('Error subscribing to push notifications:', error);
       toast({
         title: "Error",
-        description: "Failed to enable push notifications",
+        description: `Failed to enable push notifications: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     }
