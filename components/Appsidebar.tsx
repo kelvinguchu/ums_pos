@@ -132,7 +132,7 @@ export function AppSidebar({ user }: { user: any }) {
     <Sidebar className='mt-16 flex flex-col justify-between h-[calc(100vh-4rem)]'>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className='text-lg font-bold'>
+          <SidebarGroupLabel className='text-lg font-bold drop-shadow-lg'>
             Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -153,7 +153,7 @@ export function AppSidebar({ user }: { user: any }) {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel className='text-lg font-bold'>
+          <SidebarGroupLabel className='text-lg font-bold drop-shadow-lg'>
             Actions
           </SidebarGroupLabel>
           <SidebarGroupContent>

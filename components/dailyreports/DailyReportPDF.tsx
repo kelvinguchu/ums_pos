@@ -96,6 +96,7 @@ interface DailyReportPDFProps {
   todaySales: any[];
   yesterdaySales: any[];
   remainingMetersByType: any[];
+  agentInventory: any[];
   todayTotalEarnings: number;
   yesterdayTotalEarnings: number;
 }
@@ -105,10 +106,14 @@ interface MetersSoldByType {
   [key: string]: number;
 }
 
+// Add the constant for meter types
+const METER_TYPES = ['integrated', 'split', 'gas', 'water', 'smart', '3 phase'] as const;
+
 const DailyReportPDF = ({ 
   todaySales, 
   yesterdaySales, 
   remainingMetersByType,
+  agentInventory,
   todayTotalEarnings,
   yesterdayTotalEarnings 
 }: DailyReportPDFProps) => {
@@ -118,11 +123,39 @@ const DailyReportPDF = ({
   const salesGrowth = ((todayTotalEarnings - yesterdayTotalEarnings) / yesterdayTotalEarnings) * 100;
   const salesGrowthText = `${salesGrowth >= 0 ? '+' : ''}${salesGrowth.toFixed(2)}%`;
   
-  // Calculate meters sold by type for today with proper typing
+  // Calculate meters sold by type for today
   const metersSoldByType = todaySales.reduce<MetersSoldByType>((acc, sale) => {
     acc[sale.meter_type] = (acc[sale.meter_type] || 0) + sale.batch_amount;
     return acc;
   }, {});
+
+  // Function to get agent inventory count
+  const getAgentCount = (meterType: string) => {
+    const inventory = agentInventory.find(item => 
+      item.type.toLowerCase() === meterType.toLowerCase()
+    );
+    return inventory?.with_agents || 0;
+  };
+
+  // Ensure all meter types are represented
+  const allMeterTypes = METER_TYPES.map(type => {
+    const existingData = remainingMetersByType.find(
+      item => item.type.toLowerCase() === type.toLowerCase()
+    );
+    return {
+      type,
+      remaining: existingData?.remaining_meters || 0,
+      withAgents: getAgentCount(type),
+      soldToday: metersSoldByType[type] || 0
+    };
+  });
+
+  // Calculate totals
+  const totals = {
+    remaining: allMeterTypes.reduce((sum, item) => sum + item.remaining, 0),
+    withAgents: allMeterTypes.reduce((sum, item) => sum + item.withAgents, 0),
+    soldToday: allMeterTypes.reduce((sum, item) => sum + item.soldToday, 0)
+  };
 
   return (
     <Document>
@@ -152,24 +185,26 @@ const DailyReportPDF = ({
           <View style={styles.table}>
             <View style={[styles.tableRow, styles.tableHeader]}>
               <Text style={styles.tableHeaderCell}>Meter Type</Text>
+              <Text style={styles.tableHeaderCell}>In Stock</Text>
+              <Text style={styles.tableHeaderCell}>With Agents</Text>
               <Text style={styles.tableHeaderCell}>Sold Today</Text>
-              <Text style={styles.tableHeaderCell}>Remaining</Text>
+              <Text style={styles.tableHeaderCell}>Total Available</Text>
             </View>
-            {remainingMetersByType.map((item, index) => (
+            {allMeterTypes.map((item, index) => (
               <View key={index} style={styles.tableRow}>
                 <Text style={styles.tableCell}>{item.type}</Text>
-                <Text style={styles.tableCell}>{metersSoldByType[item.type] || 0}</Text>
-                <Text style={styles.tableCell}>{item.remaining_meters}</Text>
+                <Text style={styles.tableCell}>{item.remaining}</Text>
+                <Text style={styles.tableCell}>{item.withAgents}</Text>
+                <Text style={styles.tableCell}>{item.soldToday}</Text>
+                <Text style={styles.tableCell}>{item.remaining + item.withAgents}</Text>
               </View>
             ))}
             <View style={[styles.tableRow, styles.totalRow]}>
               <Text style={styles.totalCell}>Total</Text>
-              <Text style={styles.totalCell}>
-                {Object.values(metersSoldByType).reduce((a, b) => a + b, 0).toString()}
-              </Text>
-              <Text style={styles.totalCell}>
-                {remainingMetersByType.reduce((sum, item) => sum + item.remaining_meters, 0).toString()}
-              </Text>
+              <Text style={styles.totalCell}>{totals.remaining}</Text>
+              <Text style={styles.totalCell}>{totals.withAgents}</Text>
+              <Text style={styles.totalCell}>{totals.soldToday}</Text>
+              <Text style={styles.totalCell}>{totals.remaining + totals.withAgents}</Text>
             </View>
           </View>
         </View>

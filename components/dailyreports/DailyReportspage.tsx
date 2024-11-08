@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import {
   getSaleBatches,
   getRemainingMetersByType,
+  getAgentInventoryCount,
 } from "@/lib/actions/supabaseActions";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -60,6 +61,11 @@ interface DateRange {
   label: string;
 }
 
+interface AgentInventory {
+  type: string;
+  with_agents: number;
+}
+
 const DailyReportsPage = () => {
   const [todaySales, setTodaySales] = useState<SaleBatch[]>([]);
   const [yesterdaySales, setYesterdaySales] = useState<SaleBatch[]>([]);
@@ -77,11 +83,14 @@ const DailyReportsPage = () => {
   );
   const [customDateRange, setCustomDateRange] = useState<any>(null);
   const [specificDate, setSpecificDate] = useState<any>(null);
+  const [agentInventory, setAgentInventory] = useState<AgentInventory[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const sales = await getSaleBatches();
+        const remainingMeters = await getRemainingMetersByType();
+        const agentInventoryData = await getAgentInventoryCount();
 
         const today = new Date().toISOString().split("T")[0];
         const yesterday = new Date(Date.now() - 86400000)
@@ -97,6 +106,8 @@ const DailyReportsPage = () => {
 
         setTodaySales(todaysSales);
         setYesterdaySales(yesterdaysSales);
+        setRemainingMetersByType(remainingMeters);
+        setAgentInventory(agentInventoryData);
 
         const todayTotal = todaysSales.reduce(
           (sum, sale) => sum + sale.total_price,
@@ -109,9 +120,6 @@ const DailyReportsPage = () => {
 
         setTodayTotalEarnings(todayTotal);
         setYesterdayTotalEarnings(yesterdayTotal);
-
-        const remainingMeters = await getRemainingMetersByType();
-        setRemainingMetersByType(remainingMeters);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -164,6 +172,7 @@ const DailyReportsPage = () => {
           remainingMetersByType={remainingMetersByType}
           todayTotalEarnings={todayTotalEarnings}
           yesterdayTotalEarnings={yesterdayTotalEarnings}
+          agentInventory={agentInventory}
         />
       ).toBlob();
 
@@ -241,6 +250,8 @@ const DailyReportsPage = () => {
             label: "Yesterday's Report",
           }}
           metrics={metrics}
+          remainingMetersByType={remainingMetersByType}
+          agentInventory={agentInventory}
         />
       ).toBlob();
 
@@ -279,6 +290,8 @@ const DailyReportsPage = () => {
           sales={filteredSales}
           dateRange={dateRange}
           metrics={metrics}
+          remainingMetersByType={remainingMetersByType}
+          agentInventory={agentInventory}
         />
       ).toBlob();
 
@@ -354,6 +367,8 @@ const DailyReportsPage = () => {
             label: "UMS Report",
           }}
           metrics={metrics}
+          remainingMetersByType={remainingMetersByType}
+          agentInventory={agentInventory}
         />
       ).toBlob();
 
@@ -399,6 +414,8 @@ const DailyReportsPage = () => {
             label: "UMS Report",
           }}
           metrics={metrics}
+          remainingMetersByType={remainingMetersByType}
+          agentInventory={agentInventory}
         />
       ).toBlob();
 
@@ -413,7 +430,7 @@ const DailyReportsPage = () => {
   return (
     <div
       className={`${geistMono.className} mt-20 lg:mt-8 transition-all duration-300 ease-in-out mx-auto w-full sm:w-auto overflow-hidden px-2 sm:px-4 relative`}>
-      <h1 className='text-3xl font-bold text-center mb-2'>Daily Reports</h1>
+      <h1 className='text-3xl font-bold text-center mb-2 drop-shadow-lg'>Daily Reports</h1>
       <div className='mb-6 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end'>
         <Button
           variant='outline'

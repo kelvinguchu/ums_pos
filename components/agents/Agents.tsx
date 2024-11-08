@@ -256,8 +256,12 @@ export default function Agents() {
   };
 
   return (
-    <div className={`${geistMono.className} container w-full md:w-[75vw] `}>
-      <div className='rounded-md border'>
+    <div
+      className={cn(
+        `${geistMono.className} container transition-all duration-200 ease-linear p-4 md:p-6`,
+        state === "expanded" ? "w-full md:w-[75vw]" : "w-full md:w-[90vw]"
+      )}>
+      <div className='rounded-md border p-4 md:p-6'>
         <div className='mb-4 mt-2 mx-2 md:mx-5 md:mb-6 md:mt-4 flex items-center justify-between'>
           <div className='relative w-1/2 md:w-72'>
             <Search className='absolute left-2 top-2.5 h-4 w-4 text-[#000080]' />

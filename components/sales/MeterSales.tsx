@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/pagination";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
-import { getLocalTimeZone, today, parseDate } from "@internationalized/date";
 import { DatePicker } from "@/components/ui/date-picker";
 import { X, PackageOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,6 +45,7 @@ import { pdf } from "@react-pdf/renderer";
 import TableReportPDF from "@/components/sharedcomponents/TableReportPDF";
 import { MeterSalesRow } from "./MeterSalesRow";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -251,25 +251,29 @@ export default function MeterSales() {
   };
 
   return (
-    <div className={`${geistMono.className} mx-auto mt-10`}>
-      <h1 className='text-3xl font-bold mb-6 text-center'>Sales</h1>
+    <div className={cn(
+      `${geistMono.className} container transition-all duration-200 ease-linear mt-10 lg:mt-2 p-4 md:p-6 mx-auto`,
+      state === "expanded" ? "w-full md:w-[75vw]" : "w-full md:w-[95vw]"
+    )}>
+      <h1 className='text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-center drop-shadow-lg'>Sales</h1>
 
-      {/* Search and Filter Section */}
-      <div className='mb-6'>
-        <div className='flex gap-4 mb-2 justify-between'>
-          <div className='flex gap-4'>
+      {/* Search and Filter Section - Made more mobile-friendly */}
+      <div className='mb-4 md:mb-6 space-y-4'>
+        <div className='flex flex-col space-y-4'>
+          {/* Search and Type Filter */}
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:flex gap-3'>
             <Input
               type='text'
               placeholder='Search by user...'
               value={searchUser}
               onChange={(e) => setSearchUser(e.target.value)}
-              className='max-w-xs'
+              className='w-full md:max-w-xs'
             />
 
             <Select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}>
-              <SelectTrigger className='w-[180px]'>
+              <SelectTrigger className='w-full md:w-[180px]'>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -283,13 +287,14 @@ export default function MeterSales() {
               </SelectContent>
             </Select>
 
-            <div className='flex gap-4'>
+            {/* Date Filters */}
+            <div className='flex flex-col sm:flex-row gap-3 w-full lg:w-auto'>
               <DatePicker
                 value={selectedDate}
                 onChange={setSelectedDate}
                 label='Search by date'
               />
-              <span className='text-sm text-muted-foreground self-center'>
+              <span className='hidden lg:block text-sm text-muted-foreground self-center'>
                 or
               </span>
               <DateRangePicker
@@ -298,83 +303,86 @@ export default function MeterSales() {
                 label='Search by date range'
               />
             </div>
+
+            {/* Export Button */}
+            <div className='w-full sm:w-auto lg:ml-auto'>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant='outline' className='w-full sm:w-auto'>
+                    <Download className='mr-2 h-4 w-4' />
+                    Export Table
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportPDF}>PDF</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>CSV</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant='outline'>
-                <Download className='mr-2 h-4 w-4' />
-                Export Table as
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={handleExportPDF}>PDF</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportCSV}>CSV</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Clear Filters Button */}
+          {hasActiveFilters() && (
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={clearSearch}
+              className='text-muted-foreground hover:text-foreground w-full sm:w-auto'>
+              Clear filters
+              <X className='ml-2 h-4 w-4' />
+            </Button>
+          )}
         </div>
-
-        {hasActiveFilters() && (
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={clearSearch}
-            className='text-muted-foreground hover:text-foreground'>
-            Clear search
-            <X className='ml-2 h-4 w-4' />
-          </Button>
-        )}
       </div>
 
       {/* Table Card */}
-      <Card
-        className={`${
-          state === "expanded" ? "w-[75vw] " : "w-[93vw]"
-        } mx-auto`}>
-        <CardHeader>
-          <CardTitle>Meter Sales</CardTitle>
+      <Card className='w-full transition-all duration-200 ease-linear'>
+        <CardHeader className='p-4 md:p-6'>
+          <CardTitle className='text-lg md:text-xl'>Meter Sales</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className='p-0 md:p-6'>
           {currentBatches.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Seller</TableHead>
-                  <TableHead>Meter Type</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Sale Amount</TableHead>
-                  <TableHead>Sale Date</TableHead>
-                  <TableHead>Customer Type</TableHead>
-                  <TableHead>County</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className='overflow-x-auto'>
+              {/* Mobile View */}
+              <div className='md:hidden space-y-4 p-4'>
                 {currentBatches.map((batch) => (
-                  <React.Fragment key={batch.id}>
-                    <TableRow
-                      className='cursor-pointer hover:bg-muted/50'
-                      onClick={() => setSelectedBatch(batch.id)}>
-                      <TableCell>{batch.user_name}</TableCell>
-                      <TableCell>{batch.meter_type}</TableCell>
-                      <TableCell>{batch.batch_amount}</TableCell>
-                      <TableCell>
-                        {batch.total_price.toLocaleString("en-US", {
+                  <div 
+                    key={batch.id} 
+                    className='bg-white p-4 rounded-lg border shadow-sm space-y-2'
+                    onClick={() => setSelectedBatch(batch.id)}
+                  >
+                    <div className='flex justify-between items-start'>
+                      <div>
+                        <p className='font-medium'>{batch.user_name}</p>
+                        <p className='text-sm text-muted-foreground'>{formatDate(batch.sale_date)}</p>
+                      </div>
+                      <Badge variant='outline' className='bg-blue-100'>
+                        {batch.customer_type}
+                      </Badge>
+                    </div>
+                    <div className='grid grid-cols-2 gap-2 text-sm'>
+                      <div>
+                        <p className='text-muted-foreground'>Meter Type</p>
+                        <p>{batch.meter_type}</p>
+                      </div>
+                      <div>
+                        <p className='text-muted-foreground'>Amount</p>
+                        <p>{batch.batch_amount}</p>
+                      </div>
+                      <div>
+                        <p className='text-muted-foreground'>Sale Amount</p>
+                        <p>{batch.total_price.toLocaleString("en-US", {
                           style: "currency",
                           currency: "KES",
-                        })}
-                      </TableCell>
-                      <TableCell>{formatDate(batch.sale_date)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-blue-100">
-                          {batch.customer_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-green-100">
+                        })}</p>
+                      </div>
+                      <div>
+                        <p className='text-muted-foreground'>County</p>
+                        <Badge variant='outline' className='bg-green-100'>
                           {batch.customer_county}
                         </Badge>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                     <MeterSalesRow
                       batch={batch}
                       isOpen={selectedBatch === batch.id}
@@ -382,20 +390,74 @@ export default function MeterSales() {
                         setSelectedBatch(open ? batch.id : null)
                       }
                     />
-                  </React.Fragment>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Desktop View */}
+              <div className='hidden md:block'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Seller</TableHead>
+                      <TableHead>Meter Type</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Sale Amount</TableHead>
+                      <TableHead>Sale Date</TableHead>
+                      <TableHead>Customer Type</TableHead>
+                      <TableHead>County</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentBatches.map((batch) => (
+                      <React.Fragment key={batch.id}>
+                        <TableRow
+                          className='cursor-pointer hover:bg-muted/50'
+                          onClick={() => setSelectedBatch(batch.id)}>
+                          <TableCell>{batch.user_name}</TableCell>
+                          <TableCell>{batch.meter_type}</TableCell>
+                          <TableCell>{batch.batch_amount}</TableCell>
+                          <TableCell>
+                            {batch.total_price.toLocaleString("en-US", {
+                              style: "currency",
+                              currency: "KES",
+                            })}
+                          </TableCell>
+                          <TableCell>{formatDate(batch.sale_date)}</TableCell>
+                          <TableCell>
+                            <Badge variant='outline' className='bg-blue-100'>
+                              {batch.customer_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant='outline' className='bg-green-100'>
+                              {batch.customer_county}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                        <MeterSalesRow
+                          batch={batch}
+                          isOpen={selectedBatch === batch.id}
+                          onOpenChange={(open) =>
+                            setSelectedBatch(open ? batch.id : null)
+                          }
+                        />
+                      </React.Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           ) : (
-            <EmptyState message="No sales data available" />
+            <EmptyState message='No sales data available' />
           )}
         </CardContent>
       </Card>
 
-      {/* Pagination */}
-      <div className='mt-4 flex justify-center'>
+      {/* Pagination - Made responsive */}
+      <div className='mt-4 md:mt-6'>
         <Pagination>
-          <PaginationContent>
+          <PaginationContent className='flex-wrap justify-center gap-2'>
             <PaginationItem>
               <PaginationPrevious
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}

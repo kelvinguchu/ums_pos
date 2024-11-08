@@ -12,15 +12,22 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle, Loader2, Send, Bot, Sparkles, Trash2 } from "lucide-react";
+import {
+  MessageCircle,
+  Loader2,
+  Send,
+  Bot,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { getChatResponse } from "@/lib/actions/geminiActions";
 import { Badge } from "@/components/ui/badge";
-import { usePathname } from 'next/navigation';
+import { usePathname } from "next/navigation";
 import { getCurrentUser } from "@/lib/actions/supabaseActions";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import localFont from "next/font/local";    
+import localFont from "next/font/local";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -29,7 +36,7 @@ const geistMono = localFont({
 });
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   isTyping?: boolean;
 }
@@ -40,7 +47,7 @@ interface ChatContext {
   recentActions: string[];
 }
 
-const CHAT_CACHE_KEY = 'chatMessages';
+const CHAT_CACHE_KEY = "chatMessages";
 const CHAT_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
 interface CachedMessages {
@@ -51,13 +58,13 @@ interface CachedMessages {
 export function AIChatAssistant() {
   const [messages, setMessages] = useState<Message[]>(() => {
     // Load and validate cached messages on initial render
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const cached = localStorage.getItem(CHAT_CACHE_KEY);
       if (cached) {
         try {
           const parsedCache: CachedMessages = JSON.parse(cached);
           const now = Date.now();
-          
+
           // Check if cache is still valid (less than 24 hours old)
           if (now - parsedCache.timestamp < CHAT_CACHE_DURATION) {
             return parsedCache.messages;
@@ -66,22 +73,22 @@ export function AIChatAssistant() {
             localStorage.removeItem(CHAT_CACHE_KEY);
           }
         } catch (error) {
-          console.error('Error parsing cached messages:', error);
+          console.error("Error parsing cached messages:", error);
           localStorage.removeItem(CHAT_CACHE_KEY);
         }
       }
     }
     return [];
   });
-  
-  const [input, setInput] = useState('');
+
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [context, setContext] = useState<ChatContext>({
-    role: '',
-    currentPage: '',
-    recentActions: []
+    role: "",
+    currentPage: "",
+    recentActions: [],
   });
-  
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +100,7 @@ export function AIChatAssistant() {
     if (messages.length > 0) {
       const cacheData: CachedMessages = {
         messages,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(cacheData));
     }
@@ -112,7 +119,7 @@ export function AIChatAssistant() {
             setMessages([]); // Clear messages in state
           }
         } catch (error) {
-          console.error('Error checking cache expiry:', error);
+          console.error("Error checking cache expiry:", error);
           localStorage.removeItem(CHAT_CACHE_KEY);
         }
       }
@@ -150,28 +157,31 @@ export function AIChatAssistant() {
 
   // Increased typing speed (changed from 30ms to 15ms)
   const typeMessage = async (content: string) => {
-    let currentMessage = '';
-    
+    let currentMessage = "";
+
     // Add message once with empty content
-    setMessages(prev => [...prev, { 
-      role: 'assistant', 
-      content: currentMessage,
-      isTyping: true 
-    }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: currentMessage,
+        isTyping: true,
+      },
+    ]);
 
     // Type each character with increased speed
     for (let i = 0; i < content.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 15)); // Increased speed here
-      
+      await new Promise((resolve) => setTimeout(resolve, 15)); // Increased speed here
+
       currentMessage += content[i];
-      
-      setMessages(prev => [
+
+      setMessages((prev) => [
         ...prev.slice(0, -1),
         {
-          role: 'assistant',
+          role: "assistant",
           content: currentMessage,
-          isTyping: i < content.length - 1
-        }
+          isTyping: i < content.length - 1,
+        },
       ]);
 
       scrollToBottom();
@@ -184,14 +194,14 @@ export function AIChatAssistant() {
       try {
         const user = await getCurrentUser();
         if (user) {
-          setContext(prev => ({
+          setContext((prev) => ({
             ...prev,
-            role: user.role || 'user',
-            currentPage: pathname
+            role: user.role || "user",
+            currentPage: pathname,
           }));
         }
       } catch (error) {
-        console.error('Error initializing context:', error);
+        console.error("Error initializing context:", error);
       }
     };
 
@@ -199,9 +209,9 @@ export function AIChatAssistant() {
   }, [pathname]);
 
   const updateRecentActions = (action: string) => {
-    setContext(prev => ({
+    setContext((prev) => ({
       ...prev,
-      recentActions: [action, ...(prev.recentActions || [])].slice(0, 5)
+      recentActions: [action, ...(prev.recentActions || [])].slice(0, 5),
     }));
   };
 
@@ -210,17 +220,17 @@ export function AIChatAssistant() {
 
     setIsLoading(true);
     const userMessage = input;
-    setInput('');
-    
+    setInput("");
+
     // Add user message
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     updateRecentActions(userMessage);
     scrollToBottom();
 
     try {
       let attempts = 0;
       let response;
-      
+
       while (attempts < 3) {
         try {
           response = await getChatResponse(userMessage, context);
@@ -228,18 +238,20 @@ export function AIChatAssistant() {
         } catch (error) {
           attempts++;
           if (attempts === 3) throw error;
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
 
       if (response) {
         await typeMessage(response);
       } else {
-        throw new Error('No response received');
+        throw new Error("No response received");
       }
     } catch (error) {
-      console.error('Chat error:', error);
-      await typeMessage('I apologize, but I encountered an error. Please try rephrasing your question or try again later.');
+      console.error("Chat error:", error);
+      await typeMessage(
+        "I apologize, but I encountered an error. Please try rephrasing your question or try again later."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -268,7 +280,7 @@ export function AIChatAssistant() {
   const handleClearChat = () => {
     setMessages([]);
     localStorage.removeItem(CHAT_CACHE_KEY);
-    
+
     // Show success toast
     toast({
       title: "Chat Cleared",
@@ -293,8 +305,7 @@ export function AIChatAssistant() {
         </Button>
       </SheetTrigger>
       <SheetContent
-        className={`${geistMono.className} min-w-[90vw] lg:min-w-[50vw] h-[100vh] flex flex-col p-0 gap-0 bg-gradient-to-b from-white to-gray-50`}
-      >
+        className={`${geistMono.className} min-w-[90vw] lg:min-w-[50vw] h-[100vh] flex flex-col p-0 gap-0 bg-gradient-to-b from-white to-gray-50`}>
         <SheetHeader className='px-6 py-4 border-b'>
           <div className='flex items-center justify-between'>
             <SheetTitle className='flex items-center gap-2 text-lg'>
@@ -326,7 +337,7 @@ export function AIChatAssistant() {
           className='flex-1 px-6 py-4 overflow-y-auto'
           ref={scrollAreaRef}>
           <div className='space-y-4'>
-            <AnimatePresence initial={false} mode="sync">
+            <AnimatePresence initial={false} mode='sync'>
               {messages.map((message, i) => (
                 <motion.div
                   key={i}
@@ -427,7 +438,7 @@ export function AIChatAssistant() {
 
 // Update the clear chat history function
 export function clearChatHistory() {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     localStorage.removeItem(CHAT_CACHE_KEY);
   }
-} 
+}

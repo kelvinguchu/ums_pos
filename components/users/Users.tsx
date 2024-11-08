@@ -181,7 +181,7 @@ export default function UsersPage() {
   const filteredAndPaginatedUsers = () => {
     let filtered = users;
     if (!showDeactivated) {
-      filtered = users.filter(user => user.isActive);
+      filtered = users.filter((user) => user.isActive);
     }
 
     filtered = filtered.filter(
@@ -201,17 +201,17 @@ export default function UsersPage() {
 
   return (
     <div className={`${geistMono.className} container w-full md:w-[75vw]`}>
-      <h1 className='text-3xl font-bold mb-6 text-center'>Users</h1>
+      <h1 className='text-3xl font-bold mb-6 text-center drop-shadow-lg'>Users</h1>
 
       <div className='mb-6 mt-4 space-y-4'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-2'>
             <Switch
-              id="show-deactivated"
+              id='show-deactivated'
               checked={showDeactivated}
               onCheckedChange={setShowDeactivated}
             />
-            <Label htmlFor="show-deactivated">Show deactivated users</Label>
+            <Label htmlFor='show-deactivated'>Show deactivated users</Label>
           </div>
           <div className='text-sm text-muted-foreground font-medium'>
             Total: {filteredAndPaginatedUsers().totalUsers} users
@@ -283,7 +283,7 @@ export default function UsersPage() {
                             <DropdownMenuContent align='end'>
                               <Dialog>
                                 <DialogTrigger asChild>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onSelect={(e) => {
                                       e.preventDefault();
                                       setEditingUser(user);
@@ -304,7 +304,7 @@ export default function UsersPage() {
                                   />
                                   <DialogFooter>
                                     <DialogClose asChild>
-                                      <Button 
+                                      <Button
                                         variant='outline'
                                         onClick={() => {
                                           setEditingUser(null);
@@ -313,7 +313,7 @@ export default function UsersPage() {
                                         Cancel
                                       </Button>
                                     </DialogClose>
-                                    <Button 
+                                    <Button
                                       onClick={() => {
                                         handleUpdateName();
                                         setNewName("");
@@ -410,7 +410,7 @@ export default function UsersPage() {
                             <DropdownMenuContent align='end'>
                               <Dialog>
                                 <DialogTrigger asChild>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onSelect={(e) => {
                                       e.preventDefault();
                                       setEditingUser(user);
@@ -431,7 +431,7 @@ export default function UsersPage() {
                                   />
                                   <DialogFooter>
                                     <DialogClose asChild>
-                                      <Button 
+                                      <Button
                                         variant='outline'
                                         onClick={() => {
                                           setEditingUser(null);
@@ -440,7 +440,7 @@ export default function UsersPage() {
                                         Cancel
                                       </Button>
                                     </DialogClose>
-                                    <Button 
+                                    <Button
                                       onClick={() => {
                                         handleUpdateName();
                                         setNewName("");

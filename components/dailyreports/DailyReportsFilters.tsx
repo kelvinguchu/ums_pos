@@ -9,15 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface FiltersProps {
-  searchUser: string;
-  selectedType: string;
-  onSearchChange: (value: string) => void;
-  onTypeChange: (value: string) => void;
-  onClearFilters: () => void;
-  hasActiveFilters: boolean;
-}
+import type { FiltersProps } from "./types";
 
 export const DailyReportsFilters = memo(function DailyReportsFilters({
   searchUser,

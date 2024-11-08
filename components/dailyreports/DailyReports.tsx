@@ -2,11 +2,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSidebar } from "@/components/ui/sidebar";
-import { useSalesData } from "@/hooks/useSalesData";
+import { useSalesData } from "./hooks/useSalesData";
 import { SalesTable } from "./SalesTable";
 import { DailyReportsFilters } from "./DailyReportsFilters";
 import { DailyReportsSummary } from "./DailyReportsSummary";
-import type { DateRange } from "@/types";
+import type { DateRange } from "@/components/dailyreports/types";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -19,26 +19,35 @@ import {
 import { pdf } from "@react-pdf/renderer";
 import TableReportPDF from "@/components/sharedcomponents/TableReportPDF";
 import { generateCSV } from "@/lib/utils/csvGenerator";
+import {
+  getRemainingMetersByType,
+  getAgentInventoryCount,
+} from "@/lib/actions/supabaseActions";
 
-// Define interfaces within the component
-interface SaleBatch {
-  id: number;
-  user_name: string;
-  meter_type: string;
-  batch_amount: number;
-  sale_date: string;
-  destination: string;
-  recipient: string;
-  total_price: number;
-  unit_price: number;
-  customer_type: string;
-  customer_county: string;
-  customer_contact: string;
-}
 
 interface DailyReportsProps {
   selectedDateRange: DateRange | null;
   setSelectedDateRange: (range: DateRange | null) => void;
+}
+
+const METER_TYPES = [
+  "integrated",
+  "split",
+  "gas",
+  "water",
+  "smart",
+  "3 phase",
+] as const;
+type MeterType = (typeof METER_TYPES)[number];
+
+interface RemainingMetersByType {
+  type: MeterType;
+  remaining_meters: number;
+}
+
+interface AgentInventory {
+  type: MeterType;
+  with_agents: number;
 }
 
 export default function DailyReports({
@@ -52,6 +61,11 @@ export default function DailyReports({
 
   const { state } = useSidebar();
   const { salesData, isLoading, isError, error } = useSalesData();
+
+  const [remainingMetersByType, setRemainingMetersByType] = useState<
+    RemainingMetersByType[]
+  >([]);
+  const [agentInventory, setAgentInventory] = useState<AgentInventory[]>([]);
 
   // Memoize filtered sales
   const filteredSales = useMemo(() => {
@@ -112,7 +126,7 @@ export default function DailyReports({
       "Time",
       "Customer Type",
       "County",
-      "Contact"
+      "Contact",
     ];
     const data = dataToExport.map((sale) => [
       sale.user_name,
@@ -122,7 +136,7 @@ export default function DailyReports({
       new Date(sale.sale_date).toLocaleTimeString(),
       sale.customer_type,
       sale.customer_county,
-      sale.customer_contact
+      sale.customer_contact,
     ]);
 
     const blob = await pdf(
@@ -156,7 +170,7 @@ export default function DailyReports({
       "Time",
       "Customer Type",
       "County",
-      "Contact"
+      "Contact",
     ];
     const data = dataToExport.map((sale) => [
       sale.user_name,
@@ -166,11 +180,52 @@ export default function DailyReports({
       new Date(sale.sale_date).toLocaleTimeString(),
       sale.customer_type,
       sale.customer_county,
-      sale.customer_contact
+      sale.customer_contact,
     ]);
 
     generateCSV("daily_sales_report", headers, data);
   };
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const remainingMeters = await getRemainingMetersByType();
+        const agentInventoryData = await getAgentInventoryCount();
+
+        // Ensure all meter types are included in remainingMeters with proper typing
+        const normalizedRemainingMeters: RemainingMetersByType[] =
+          METER_TYPES.map((type) => {
+            const existing = remainingMeters.find(
+              (meter) => meter.type.toLowerCase() === type.toLowerCase()
+            );
+            return {
+              type: type, // This ensures type is one of the valid MeterType values
+              remaining_meters: existing?.remaining_meters || 0,
+            };
+          });
+
+        // Ensure all meter types are included in agentInventory with proper typing
+        const normalizedAgentInventory: AgentInventory[] = METER_TYPES.map(
+          (type) => {
+            const existing = agentInventoryData.find(
+              (inventory) => inventory.type.toLowerCase() === type.toLowerCase()
+            );
+            return {
+              type: type, // This ensures type is one of the valid MeterType values
+              with_agents: existing?.with_agents || 0,
+            };
+          }
+        );
+
+        setRemainingMetersByType(normalizedRemainingMeters);
+        setAgentInventory(normalizedAgentInventory);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
+
+    fetchData();
+  }, []);
 
   if (isError) {
     return (
@@ -246,8 +301,9 @@ export default function DailyReports({
             (sum, sale) => sum + sale.total_price,
             0
           )}
-          remainingMetersByType={salesData.remainingMetersByType}
+          remainingMetersByType={remainingMetersByType}
           sidebarState={state}
+          agentInventory={agentInventory}
         />
       </ErrorBoundary>
     </div>

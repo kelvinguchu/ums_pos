@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import MeterAdditionReceipt from "@/components/addmeter/MeterAdditionReceipt";
 import { useToast } from "@/hooks/use-toast";
-import type { MeterCount } from "@/types";
+import type { MeterCount } from "@/components/dailyreports/types";
 
 interface Meter {
   serialNumber: string;

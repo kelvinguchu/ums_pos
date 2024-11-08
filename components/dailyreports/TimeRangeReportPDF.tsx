@@ -84,6 +84,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 10,
   },
+  totalRow: {
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000080',
+  },
+  totalCell: {
+    padding: 8,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#000080',
+  },
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -108,9 +120,38 @@ interface TimeRangeReportPDFProps {
     totalMeters: number;
     metersByType: { [key: string]: number };
   };
+  remainingMetersByType: any[];
+  agentInventory: any[];
 }
 
-const TimeRangeReportPDF = ({ sales, dateRange, metrics }: TimeRangeReportPDFProps) => {
+const METER_TYPES = ['integrated', 'split', 'gas', 'water', 'smart', '3 phase'] as const;
+
+const TimeRangeReportPDF = ({ sales, dateRange, metrics, remainingMetersByType, agentInventory }: TimeRangeReportPDFProps) => {
+  const getAgentCount = (meterType: string) => {
+    const inventory = agentInventory.find(item => 
+      item.type.toLowerCase() === meterType.toLowerCase()
+    );
+    return inventory?.with_agents || 0;
+  };
+
+  const allMeterTypes = METER_TYPES.map(type => {
+    const existingData = remainingMetersByType.find(
+      item => item.type.toLowerCase() === type.toLowerCase()
+    );
+    return {
+      type,
+      remaining: existingData?.remaining_meters || 0,
+      withAgents: getAgentCount(type),
+      soldInPeriod: metrics.metersByType[type] || 0
+    };
+  });
+
+  const totals = {
+    remaining: allMeterTypes.reduce((sum, item) => sum + item.remaining, 0),
+    withAgents: allMeterTypes.reduce((sum, item) => sum + item.withAgents, 0),
+    soldInPeriod: allMeterTypes.reduce((sum, item) => sum + item.soldInPeriod, 0)
+  };
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -140,18 +181,31 @@ const TimeRangeReportPDF = ({ sales, dateRange, metrics }: TimeRangeReportPDFPro
         </View>
 
         <View style={styles.summarySection}>
-          <Text style={styles.subtitle}>Meters Sold by Type</Text>
+          <Text style={styles.subtitle}>Meters Status by Type</Text>
           <View style={styles.table}>
             <View style={[styles.tableRow, styles.tableHeader]}>
               <Text style={styles.tableHeaderCell}>Meter Type</Text>
-              <Text style={styles.tableHeaderCell}>Amount Sold</Text>
+              <Text style={styles.tableHeaderCell}>In Stock</Text>
+              <Text style={styles.tableHeaderCell}>With Agents</Text>
+              <Text style={styles.tableHeaderCell}>Sold in Period</Text>
+              <Text style={styles.tableHeaderCell}>Total Available</Text>
             </View>
-            {Object.entries(metrics.metersByType).map(([type, amount], index) => (
+            {allMeterTypes.map((item, index) => (
               <View key={index} style={styles.tableRow}>
-                <Text style={styles.tableCell}>{type}</Text>
-                <Text style={styles.tableCell}>{amount}</Text>
+                <Text style={styles.tableCell}>{item.type}</Text>
+                <Text style={styles.tableCell}>{item.remaining}</Text>
+                <Text style={styles.tableCell}>{item.withAgents}</Text>
+                <Text style={styles.tableCell}>{item.soldInPeriod}</Text>
+                <Text style={styles.tableCell}>{item.remaining + item.withAgents}</Text>
               </View>
             ))}
+            <View style={[styles.tableRow, styles.totalRow]}>
+              <Text style={styles.totalCell}>Total</Text>
+              <Text style={styles.totalCell}>{totals.remaining}</Text>
+              <Text style={styles.totalCell}>{totals.withAgents}</Text>
+              <Text style={styles.totalCell}>{totals.soldInPeriod}</Text>
+              <Text style={styles.totalCell}>{totals.remaining + totals.withAgents}</Text>
+            </View>
           </View>
         </View>
 

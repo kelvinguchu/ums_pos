@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import crypto from "crypto";
 import { KENYA_COUNTIES, KenyaCounty, CustomerType } from "@/lib/constants/locationData";
 
 const supabase = createClient(
@@ -96,7 +95,6 @@ export async function signIn(email: string, password: string) {
 
     // Check if user is active
     if (authData.user) {
-      console.log("User authenticated:", authData.user.id); // Debug log
 
       const { data: profiles, error: profileError } = await supabase
         .from("user_profiles")
@@ -107,8 +105,6 @@ export async function signIn(email: string, password: string) {
         console.error("Profile fetch error:", profileError);
         throw new Error(`Error fetching user profile: ${profileError.message}`);
       }
-
-      console.log("Profiles returned:", profiles); // Debug log
 
       if (!profiles || profiles.length === 0) {
         throw new Error(`User profile not found for ID: ${authData.user.id}`);
@@ -1217,5 +1213,70 @@ export async function checkMultipleSerialNumbers(
   } catch (error) {
     console.error("Error checking serial numbers:", error);
     throw error;
+  }
+}
+
+// Add this new function after getRemainingMetersByType
+export async function getAgentInventoryCount() {
+  try {
+    const { data, error } = await supabase
+      .from("agent_inventory")
+      .select("type");
+
+    if (error) {
+      console.error("Error fetching agent inventory count:", error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const meterCounts: { [key: string]: number } = {};
+    data.forEach((meter) => {
+      if (meter.type in meterCounts) {
+        meterCounts[meter.type]++;
+      } else {
+        meterCounts[meter.type] = 1;
+      }
+    });
+
+    const agentInventory = Object.entries(meterCounts).map(([type, count]) => ({
+      type,
+      with_agents: count,
+    }));
+
+    return agentInventory;
+  } catch (error) {
+    console.error("Unexpected error in getAgentInventoryCount:", error);
+    return [];
+  }
+}
+
+export async function getCustomerTypeCounts() {
+  try {
+    const { data, error } = await supabase
+      .from('sale_batches')
+      .select('customer_type')
+      .not('customer_type', 'is', null);
+
+    if (error) throw error;
+
+    // Count occurrences of each customer type
+    const typeCounts: { [key: string]: number } = {};
+    data.forEach(item => {
+      const type = item.customer_type;
+      typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+
+    // Transform to required format
+    return Object.entries(typeCounts).map(([type, count]) => ({
+      type,
+      count
+    }));
+
+  } catch (error) {
+    console.error('Error fetching customer type counts:', error);
+    return [];
   }
 }

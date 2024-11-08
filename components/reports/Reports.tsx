@@ -1,353 +1,88 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  getSaleBatches,
-  getTopSellingUsers,
-  getMostSellingProduct,
-  getEarningsByMeterType,
-  getRemainingMetersByType,
-} from "@/lib/actions/supabaseActions";
+import React from "react";
 import { useSidebar } from "@/components/ui/sidebar";
-import {
-  DollarSign,
-  Package,
-  Users,
-  Award,
-  BarChart3,
-  PackageOpen,
-} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useReportsData } from "./hooks/useReportsData";
+import Loader from "@/components/Loader";
 
-interface SaleBatch {
-  id: string;
-  user_name: string;
-  meter_type: string;
-  batch_amount: number;
-  unit_price: number;
-  total_price: number;
-  destination: string;
-  recipient: string;
-  sale_date: string;
-}
+// Import all card components
+import { MeterInventoryCard } from "./cards/MeterInventoryCard";
+import { TopSellersCard } from "./cards/TopSellersCard";
+import { BestSellerCard } from "./cards/BestSellerCard";
+import { EarningsByTypeCard } from "./cards/EarningsByTypeCard";
+import { TotalEarningsCard } from "./cards/TotalEarningsCard";
+import { CustomerDistributionCard } from "./cards/CustomerDistributionCard";
 
-interface TopSeller {
-  user_name: string;
-  total_sales: number;
-}
+// Error component
+const ErrorState = ({ message }: { message: string }) => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="text-lg text-red-500">Error: {message}</div>
+  </div>
+);
 
-interface MeterTypeEarnings {
-  meter_type: string;
-  total_earnings: number;
-}
-
-interface RemainingMetersByType {
-  type: string;
-  remaining_meters: number;
-}
-
-const Reports: React.FC = () => {
-  const [recentSales, setRecentSales] = useState<SaleBatch[]>([]);
-  const [remainingMetersByType, setRemainingMetersByType] = useState<
-    RemainingMetersByType[]
-  >([]);
-  const [topSellers, setTopSellers] = useState<TopSeller[]>([]);
-  const [mostSellingProduct, setMostSellingProduct] = useState<string>("");
-  const [earningsByMeterType, setEarningsByMeterType] = useState<
-    MeterTypeEarnings[]
-  >([]);
-  const [totalEarnings, setTotalEarnings] = useState<number>(0);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const sales = await getSaleBatches();
-        setRecentSales(sales.slice(0, 10));
-
-        const topUsers = await getTopSellingUsers();
-        setTopSellers(topUsers);
-
-        const topProduct = await getMostSellingProduct();
-        setMostSellingProduct(topProduct);
-
-        const earnings = await getEarningsByMeterType();
-        setEarningsByMeterType(earnings);
-
-        const total = earnings.reduce(
-          (sum, item) => sum + item.total_earnings,
-          0
-        );
-        setTotalEarnings(total);
-
-        const remainingMeters = await getRemainingMetersByType();
-        setRemainingMetersByType(remainingMeters);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
+export default function Reports() {
   const { state } = useSidebar();
+  const { 
+    data: {
+      remainingMetersByType,
+      topSellers,
+      mostSellingProduct,
+      earningsByMeterType,
+      totalEarnings,
+      userRole,
+      agentInventory,
+      customerTypeData
+    },
+    isLoading,
+    error
+  } = useReportsData();
 
-  // Empty state component
-  const EmptyState = ({
-    icon: Icon,
-    message,
-  }: {
-    icon: any;
-    message: string;
-  }) => (
-    <div className='flex flex-col items-center justify-center p-8 text-gray-500'>
-      <Icon className='w-12 h-12 mb-4' />
-      <p className='text-sm'>{message}</p>
-    </div>
-  );
+  if (error) {
+    return <ErrorState message={error.message} />;
+  }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getDate().toString().padStart(2, "0")}/${(
-      date.getMonth() + 1
-    )
-      .toString()
-      .padStart(2, "0")}/${date.getFullYear()}`;
-  };
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
-    <div>
-      <h1 className='text-3xl font-bold text-center mb-2'>Overall Reports</h1>
-      <div
-        className={`grid gap-4 transition-all duration-300 ease-in-out ${
-          state === "expanded"
-            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-            : "grid-cols-1 md:grid-cols-3 lg:grid-cols-4"
-        } w-full md:w-[75vw] ${
-          state === "expanded" ? "" : "md:w-[93vw]"
-        } px-2 sm:px-4`}>
-        <Card className='col-span-full shadow-md hover:shadow-xl'>
-          <CardHeader className='flex flex-row items-center justify-between'>
-            <CardTitle>Recent Sales</CardTitle>
-            <DollarSign className='w-5 h-5 text-[#000080]' />
-          </CardHeader>
-          <CardContent>
-            {recentSales.length > 0 ? (
-              <div className='overflow-auto max-w-[100vw]'>
-                <div className='min-w-[640px]'>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Seller&apos;s Name</TableHead>
-                        <TableHead>Meter Type</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Total Price</TableHead>
-                        <TableHead>Date</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentSales.map((sale) => (
-                        <TableRow key={sale.id}>
-                          <TableCell>{sale.user_name}</TableCell>
-                          <TableCell>{sale.meter_type}</TableCell>
-                          <TableCell>{sale.batch_amount}</TableCell>
-                          <TableCell>
-                            KES {sale.total_price.toLocaleString()}
-                          </TableCell>
-                          <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ) : (
-              <EmptyState
-                icon={PackageOpen}
-                message='No recent sales to display'
-              />
-            )}
-          </CardContent>
-        </Card>
+    <div className={cn(
+      `container transition-all duration-200 ease-linear p-4 md:p-6 mx-auto`,
+      state === "expanded" ? "w-full lg:w-[75vw]" : "w-full lg:w-[95vw]"
+    )}>
+      <h1 className='text-2xl md:text-3xl font-bold text-center mb-4 md:mb-6 drop-shadow-lg'>
+        Overall Reports
+      </h1>
+      
+      <div className={cn(
+        'grid gap-4',
+        'grid-cols-1 sm:grid-cols-2',
+        state === "expanded" 
+          ? 'lg:grid-cols-2 xl:grid-cols-3' 
+          : 'lg:grid-cols-3 xl:grid-cols-4'
+      )}>
+        <MeterInventoryCard 
+          remainingMetersByType={remainingMetersByType}
+          agentInventory={agentInventory}
+          sidebarState={state}
+        />
 
-        <Card
-          className={`shadow-md hover:shadow-xl ${
-            state === "expanded"
-              ? "col-span-full md:col-span-1"
-              : "col-span-1 md:col-span-2"
-          }`}>
-          <CardHeader className='flex flex-row items-center justify-between'>
-            <CardTitle>Meters Remaining</CardTitle>
-            <Package className='w-5 h-5 text-[#E46020]' />
-          </CardHeader>
-          <CardContent>
-            {remainingMetersByType.length > 0 ? (
-              <div className='overflow-auto'>
-                <div className='min-w-[300px]'>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Meter Type</TableHead>
-                        <TableHead>Remaining</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {remainingMetersByType.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.type}</TableCell>
-                          <TableCell>{item.remaining_meters}</TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow>
-                        <TableCell className='font-bold'>Total</TableCell>
-                        <TableCell className='font-bold'>
-                          {remainingMetersByType.reduce(
-                            (sum, item) => sum + item.remaining_meters,
-                            0
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ) : (
-              <EmptyState icon={PackageOpen} message='No meters in inventory' />
-            )}
-          </CardContent>
-        </Card>
+        <TopSellersCard topSellers={topSellers} />
+        
+        <BestSellerCard product={mostSellingProduct} />
 
-        <Card
-          className={`shadow-md hover:shadow-xl ${
-            state === "expanded"
-              ? "col-span-full md:col-span-1"
-              : "col-span-1 md:col-span-2"
-          }`}>
-          <CardHeader className='flex flex-row items-center justify-between'>
-            <CardTitle>Top Sellers</CardTitle>
-            <Users className='w-5 h-5 text-[#000080]' />
-          </CardHeader>
-          <CardContent>
-            {topSellers.length > 0 ? (
-              <div className='overflow-auto'>
-                <div className='min-w-[300px]'>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Total Sales</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {topSellers.map((seller, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{seller.user_name}</TableCell>
-                          <TableCell>
-                            KES {seller.total_sales.toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ) : (
-              <EmptyState
-                icon={PackageOpen}
-                message='No seller data available'
-              />
-            )}
-          </CardContent>
-        </Card>
+        {userRole === "admin" && (
+          <>
+            <EarningsByTypeCard earnings={earningsByMeterType} />
+            <TotalEarningsCard total={totalEarnings} />
+          </>
+        )}
 
-        <Card className='shadow-md hover:shadow-xl'>
-          <CardHeader className='flex flex-row items-center justify-between'>
-            <CardTitle>Best Seller</CardTitle>
-            <Award className='w-5 h-5 text-[#E46020]' />
-          </CardHeader>
-          <CardContent>
-            {mostSellingProduct ? (
-              <p className='text-2xl font-bold'>
-                {mostSellingProduct}
-              </p>
-            ) : (
-              <EmptyState icon={PackageOpen} message='No best seller data' />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card
-          className={`shadow-md hover:shadow-xl ${
-            state === "expanded"
-              ? "col-span-full md:col-span-1"
-              : "col-span-1 md:col-span-2"
-          }`}>
-          <CardHeader className='flex flex-row items-center justify-between'>
-            <CardTitle>Earnings by Meter Type</CardTitle>
-            <BarChart3 className='w-5 h-5 text-[#000080]' />
-          </CardHeader>
-          <CardContent>
-            {earningsByMeterType.length > 0 ? (
-              <div className='overflow-auto'>
-                <div className='min-w-[300px]'>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Meter Type</TableHead>
-                        <TableHead>Total Earnings</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {earningsByMeterType.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.meter_type}</TableCell>
-                          <TableCell>
-                            KES {item.total_earnings.toLocaleString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ) : (
-              <EmptyState
-                icon={PackageOpen}
-                message='No earnings data available'
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card
-          className={`shadow-md hover:shadow-xl ${
-            state === "expanded"
-              ? "col-span-full md:col-span-1"
-              : "col-span-1 md:col-span-2"
-          }`}>
-          <CardHeader className='flex flex-row items-center justify-between'>
-            <CardTitle>Total Earnings</CardTitle>
-            <DollarSign className='w-5 h-5 text-[#E46020]' />
-          </CardHeader>
-          <CardContent>
-            {totalEarnings > 0 ? (
-              <p className='text-4xl font-bold'>
-                KES {totalEarnings.toLocaleString()}
-              </p>
-            ) : (
-              <EmptyState icon={PackageOpen} message='No earnings recorded' />
-            )}
-          </CardContent>
-        </Card>
+        <CustomerDistributionCard 
+          data={customerTypeData}
+          sidebarState={state}
+        />
       </div>
     </div>
   );
-};
-
-export default Reports;
+}
