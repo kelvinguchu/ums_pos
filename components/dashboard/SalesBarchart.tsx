@@ -22,6 +22,7 @@ import { getSaleBatches } from "@/lib/actions/supabaseActions";
 import NumberTicker from "@/components/ui/number-ticker";
 import { TrendingDown, BarChart as ChartIcon, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface SaleBatch {
   id: number;
@@ -127,6 +128,7 @@ export function SalesBarchart() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [activeChart, setActiveChart] =
     useState<keyof typeof chartConfig>("integrated");
+  const { state } = useSidebar();
 
   useEffect(() => {
     async function fetchAndProcessData() {
@@ -202,8 +204,10 @@ export function SalesBarchart() {
   return (
     <Card
       className={cn(
-        "!h-[95vh] lg:h-[500px] mt-4 lg:mt-0 w-[93vw] -ml-[7vw] lg:w-full transition-all duration-200 ease-linear",
-        "relative overflow-hidden"
+        "transition-all duration-200 ease-linear relative overflow-hidden",
+        "w-[93vw] -ml-[7vw] h-[95vh] mt-4",
+        "lg:w-full lg:mx-auto lg:px-2 lg:h-[500px] lg:mt-0",
+        state === "expanded" ? "lg:w-[75vw]" : "lg:w-[94vw]"
       )}>
       <CardHeader className='flex flex-col items-stretch space-y-4 border-b p-4 lg:p-0 lg:space-y-0 lg:flex-row'>
         <div className='flex flex-1 flex-col justify-center gap-1 lg:px-6 lg:py-6'>
@@ -244,7 +248,12 @@ export function SalesBarchart() {
           <ResponsiveContainer width='100%' height='100%'>
             <BarChart
               data={chartData}
-              margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+              margin={{ 
+                top: 5, 
+                right: window.innerWidth < 768 ? 0 : 5, 
+                bottom: 5, 
+                left: window.innerWidth < 768 ? -15 : 0 
+              }}>
               {renderGradients()}
               <CartesianGrid strokeDasharray='3 3' />
               <XAxis

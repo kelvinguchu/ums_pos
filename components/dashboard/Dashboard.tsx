@@ -14,7 +14,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     <section
       className={cn(
         "container transition-all duration-200 ease-linear py-4 md:p-6 mx-auto",
-        state === "expanded" ? " !w-[98vw] lg:w-[75vw]" : " !w-[98vw] lg:w-[96vw]"
+        state === "expanded" ? " lg:w-[80vw]" : " lg:w-[96vw]"
       )}>
       <SalesBarchart />
     </section>
