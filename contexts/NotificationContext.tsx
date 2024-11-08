@@ -163,9 +163,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setPushSupported(supported);
 
       if (supported) {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        const subscription = await registration.pushManager.getSubscription();
-        setPushSubscription(subscription);
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/',
+            updateViaCache: 'none' // Prevent the browser from caching the service worker
+          });
+          
+          // Force update if needed
+          await registration.update();
+          
+          const subscription = await registration.pushManager.getSubscription();
+          setPushSubscription(subscription);
+        } catch (error) {
+          console.error('Service Worker registration failed:', error);
+          setPushSupported(false);
+        }
       }
     };
 
