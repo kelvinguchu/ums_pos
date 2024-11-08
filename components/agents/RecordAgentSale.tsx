@@ -24,6 +24,7 @@ import {
 } from "@/lib/actions/supabaseActions";
 import { pdf } from "@react-pdf/renderer";
 import MeterSalesReceipt from "@/components/sharedcomponents/MeterSalesReceipt";
+import { KenyaCounty, CustomerType } from "@/lib/constants/locationData";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -36,6 +37,8 @@ interface RecordAgentSaleProps {
     id: string;
     name: string;
     location: string;
+    county: string;
+    phone_number: string;
   };
   currentUser: {
     id: string;
@@ -152,13 +155,16 @@ export default function RecordAgentSale({
         // Create sale batch and get batch ID
         const batchData = await addSaleBatch({
           user_id: currentUser.id,
-          user_name: currentUser.name || currentUser.email,
+          user_name: userName,
           meter_type: type,
           batch_amount: batchAmount,
           unit_price: typeUnitPrice,
           total_price: totalPrice,
           destination: agent.location,
           recipient: agent.name,
+          customer_type: "agent" as CustomerType,
+          customer_county: agent.county as KenyaCounty,
+          customer_contact: agent.phone_number,
         });
 
         // Process individual meters in the batch
@@ -176,6 +182,9 @@ export default function RecordAgentSale({
             serial_number: meter.serial_number,
             unit_price: typeUnitPrice,
             batch_id: batchData.id,
+            customer_type: "agent" as CustomerType,
+            customer_county: agent.county as KenyaCounty,
+            customer_contact: agent.phone_number,
           });
         }
 
@@ -198,6 +207,9 @@ export default function RecordAgentSale({
         recipient: agent.name,
         unitPrices,
         userName: currentUser.name || currentUser.email,
+        customerType: "agent" as const,
+        customerCounty: agent.county,
+        customerContact: agent.phone_number,
       };
 
       localStorage.setItem(
@@ -240,6 +252,9 @@ export default function RecordAgentSale({
           recipient={lastSubmittedData.recipient}
           unitPrices={lastSubmittedData.unitPrices}
           userName={lastSubmittedData.userName}
+          customerType={lastSubmittedData.customerType}
+          customerCounty={lastSubmittedData.customerCounty}
+          customerContact={lastSubmittedData.customerContact}
         />
       ).toBlob();
 

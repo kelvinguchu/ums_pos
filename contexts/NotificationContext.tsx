@@ -16,7 +16,18 @@ interface Notification {
   message: string;
   created_at: string;
   read_by: string[];
-  metadata: any;
+  metadata: {
+    batchId: string;
+    meterType: string;
+    batchAmount: number;
+    destination: string;
+    recipient: string;
+    totalPrice: number;
+    unitPrice: number;
+    customerType: string;
+    customerCounty: string;
+    customerContact: string;
+  };
   created_by: string;
   is_read: boolean;
 }

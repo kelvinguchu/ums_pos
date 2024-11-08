@@ -86,6 +86,7 @@ import {
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
+import { KenyaCounty } from "@/lib/constants/locationData";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -95,20 +96,33 @@ const geistMono = localFont({
 
 const EmptyState = () => (
   <div className='flex flex-col items-center justify-center p-8 text-gray-500'>
-    <div className="relative">
+    <div className='relative'>
       <Users2 className='w-12 h-12 mb-4 text-gray-400' />
-      <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#000080] opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#000080]"></span>
+      <span className='absolute -bottom-1 -right-1 flex h-3 w-3'>
+        <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-[#000080] opacity-75'></span>
+        <span className='relative inline-flex rounded-full h-3 w-3 bg-[#000080]'></span>
       </span>
     </div>
     <p className='text-sm font-medium'>No agents registered yet</p>
-    <p className='text-xs text-gray-400 mt-1'>Add agents to start managing your team</p>
+    <p className='text-xs text-gray-400 mt-1'>
+      Add agents to start managing your team
+    </p>
   </div>
 );
 
+// Update the agent interface
+interface Agent {
+  id: string;
+  name: string;
+  phone_number: string;
+  location: string;
+  county: KenyaCounty;
+  is_active: boolean;
+  total_meters: number;
+}
+
 export default function Agents() {
-  const [agents, setAgents] = useState<any[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -228,7 +242,8 @@ export default function Agents() {
       (agent) =>
         agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         agent.phone_number.includes(searchTerm) ||
-        agent.location.toLowerCase().includes(searchTerm.toLowerCase())
+        agent.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agent.county.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -269,6 +284,7 @@ export default function Agents() {
                 <TableHead className='font-semibold'>Name</TableHead>
                 <TableHead className='font-semibold'>Contact</TableHead>
                 <TableHead className='font-semibold'>Location</TableHead>
+                <TableHead className='font-semibold'>County</TableHead>
                 <TableHead className='font-semibold'>Status</TableHead>
                 <TableHead className='font-semibold'>Actions</TableHead>
               </TableRow>
@@ -289,6 +305,13 @@ export default function Agents() {
                         <MapPin className='h-4 w-4 text-[#E46020]' />
                         {agent.location}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant='outline'
+                        className='bg-gray-100 text-gray-800'>
+                        {agent.county}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -502,7 +525,7 @@ export default function Agents() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={6}>
                     <EmptyState />
                   </TableCell>
                 </TableRow>
@@ -554,6 +577,18 @@ export default function Agents() {
                               <div className='flex items-center gap-2 mt-1'>
                                 <MapPin className='h-4 w-4 text-[#E46020]' />
                                 {agent.location}
+                              </div>
+                            </div>
+                            <div className='mb-2'>
+                              <span className='text-sm font-medium'>
+                                County:
+                              </span>
+                              <div className='mt-1'>
+                                <Badge
+                                  variant='outline'
+                                  className='bg-gray-100 text-gray-800'>
+                                  {agent.county}
+                                </Badge>
                               </div>
                             </div>
                             <div>

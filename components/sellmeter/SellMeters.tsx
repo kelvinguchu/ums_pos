@@ -34,6 +34,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Edit2 } from "lucide-react"; // For edit icon
 import SaleDetailsDialog from "./SaleDetailsDialog";
+import { KenyaCounty, CustomerType } from "@/lib/constants/locationData";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -51,6 +52,9 @@ interface SaleDetails {
   destination: string;
   recipient: string;
   unitPrices: UnitPrices;
+  customerType: CustomerType;
+  customerCounty: KenyaCounty;
+  customerContact: string;
 }
 
 export default function SellMeters({ currentUser }: { currentUser: any }) {
@@ -83,7 +87,9 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
   });
   const [saleDetails, setSaleDetails] = useState<SaleDetails | null>(() => {
     const cached = localStorage.getItem("cachedSaleDetails");
-    return cached ? JSON.parse(cached) : null;
+    return cached
+      ? JSON.parse(cached)
+      : null;
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSellingMeters, setIsSellingMeters] = useState(false);
@@ -256,8 +262,11 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
           batch_amount: batchAmount,
           unit_price: typeUnitPrice,
           total_price: totalPrice,
-          destination,
-          recipient,
+          destination: saleDetails.destination,
+          recipient: saleDetails.recipient,
+          customer_type: saleDetails.customerType,
+          customer_county: saleDetails.customerCounty,
+          customer_contact: saleDetails.customerContact,
         });
 
         // Remove meters and add to sold_meters with batch_id
@@ -267,11 +276,14 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
             meter_id: meter.id,
             sold_by: currentUser.id,
             sold_at: new Date().toISOString(),
-            destination,
-            recipient,
+            destination: saleDetails.destination,
+            recipient: saleDetails.recipient,
             serial_number: meter.serialNumber,
             unit_price: typeUnitPrice,
-            batch_id: batchData.id, // Add the batch_id here
+            batch_id: batchData.id,
+            customer_type: saleDetails.customerType,
+            customer_county: saleDetails.customerCounty,
+            customer_contact: saleDetails.customerContact,
           });
         }
       }
@@ -281,10 +293,13 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
         "lastSubmittedSaleMeters",
         JSON.stringify({
           meters,
-          destination,
-          recipient,
-          unitPrices,
+          destination: saleDetails.destination,
+          recipient: saleDetails.recipient,
+          unitPrices: saleDetails.unitPrices,
           userName,
+          customerType: saleDetails.customerType,
+          customerCounty: saleDetails.customerCounty,
+          customerContact: saleDetails.customerContact,
         })
       );
 
@@ -344,6 +359,9 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
           recipient={lastSubmittedData.recipient}
           unitPrices={lastSubmittedData.unitPrices}
           userName={lastSubmittedData.userName}
+          customerType={lastSubmittedData.customerType}
+          customerCounty={lastSubmittedData.customerCounty}
+          customerContact={lastSubmittedData.customerContact}
         />
       ).toBlob();
 
@@ -443,6 +461,21 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
                       variant='secondary'
                       className='bg-gradient-to-r from-orange-500/50 to-yellow-500/50 text-black'>
                       Recipient: {saleDetails.recipient}
+                    </Badge>
+                    <Badge
+                      variant='secondary'
+                      className='bg-gradient-to-r from-purple-500/50 to-pink-500/50 text-black'>
+                      Contact: {saleDetails.customerContact}
+                    </Badge>
+                    <Badge
+                      variant='secondary'
+                      className='bg-gradient-to-r from-blue-500/50 to-indigo-500/50 text-black'>
+                      Type: {saleDetails.customerType}
+                    </Badge>
+                    <Badge
+                      variant='secondary'
+                      className='bg-gradient-to-r from-red-500/50 to-orange-500/50 text-black'>
+                      County: {saleDetails.customerCounty}
                     </Badge>
                     {Object.entries(saleDetails.unitPrices).map(
                       ([type, price]) => (

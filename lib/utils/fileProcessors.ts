@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-const meterTypes = ["Split", "Integrated", "Gas", "Water"];
+const meterTypes = ["Split", "Integrated", "Gas", "Water", "3 Phase", "Smart"];
 
 export const processCSV = (csvText: string): Array<{serialNumber: string; type: string}> => {
   const rows = csvText.split('\n');

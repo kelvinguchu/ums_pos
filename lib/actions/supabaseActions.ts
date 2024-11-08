@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import { KENYA_COUNTIES, KenyaCounty, CustomerType } from "@/lib/constants/locationData";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -362,7 +363,8 @@ export async function removeMeter(meterId: string) {
   }
 }
 
-export async function addSoldMeter(soldMeter: {
+// Update the interface for sold meter data
+interface SoldMeterData {
   meter_id: string;
   sold_by: string;
   sold_at: string;
@@ -371,7 +373,12 @@ export async function addSoldMeter(soldMeter: {
   serial_number: string;
   unit_price: number;
   batch_id: string;
-}) {
+  customer_type: CustomerType;
+  customer_county: KenyaCounty;
+  customer_contact: string;
+}
+
+export async function addSoldMeter(soldMeter: SoldMeterData) {
   return withActiveUserCheck(soldMeter.sold_by, async () => {
     const { data, error } = await supabase
       .from("sold_meters")
@@ -435,7 +442,8 @@ export async function getUsersList() {
   }));
 }
 
-export async function addSaleBatch(batchData: {
+// Update the interface for batch data
+interface SaleBatchData {
   user_id: string;
   user_name: string;
   meter_type: string;
@@ -444,7 +452,12 @@ export async function addSaleBatch(batchData: {
   total_price: number;
   destination: string;
   recipient: string;
-}) {
+  customer_type: CustomerType;
+  customer_county: KenyaCounty;
+  customer_contact: string;
+}
+
+export async function addSaleBatch(batchData: SaleBatchData) {
   const { data, error } = await supabase
     .from("sale_batches")
     .insert(batchData)
@@ -471,6 +484,9 @@ export async function addSaleBatch(batchData: {
       recipient: batchData.recipient,
       totalPrice: batchData.total_price,
       unitPrice: batchData.unit_price,
+      customerType: batchData.customer_type,
+      customerCounty: batchData.customer_county,
+      customerContact: batchData.customer_contact,
     },
     createdBy: batchData.user_id,
   });
@@ -682,6 +698,7 @@ export async function getAgentsList() {
     name: agent.name,
     phone_number: agent.phone_number,
     location: agent.location,
+    county: agent.county,
     is_active: agent.is_active,
     total_meters: agent.agent_inventory?.[0]?.count || 0,
   }));
@@ -702,21 +719,43 @@ export async function updateAgentDetails(
     name?: string;
     phone_number?: string;
     location?: string;
+    county?: KenyaCounty;
   }
 ) {
+  // Validate county if it's being updated
+  if (updates.county && !KENYA_COUNTIES.includes(updates.county)) {
+    throw new Error("Invalid county selected");
+  }
+
   const { error } = await supabase
     .from("agents")
-    .update(updates)
+    .update({
+      name: updates.name,
+      phone_number: updates.phone_number,
+      location: updates.location,
+      county: updates.county,
+    })
     .eq("id", agentId);
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("Phone number already registered to another agent");
+    }
+    throw error;
+  }
 }
 
 export async function createAgent(agentData: {
   name: string;
   phone_number: string;
   location: string;
+  county: KenyaCounty;
 }) {
+  // Validate county
+  if (!KENYA_COUNTIES.includes(agentData.county)) {
+    throw new Error("Invalid county selected");
+  }
+
   const { data, error } = await supabase
     .from("agents")
     .insert({

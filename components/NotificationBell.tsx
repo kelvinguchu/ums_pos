@@ -64,7 +64,31 @@ export function NotificationBell() {
               onClick={() => !notification.is_read && markAsRead(notification.id, currentUser.id)}
             >
               <div className="font-medium">{notification.message}</div>
-              <div className="text-sm text-muted-foreground mt-1">
+              {notification.metadata && (
+                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  {notification.type === "METER_SALE" && (
+                    <>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="bg-blue-100">
+                          Type: {notification.metadata.customerType}
+                        </Badge>
+                        <Badge variant="outline" className="bg-green-100">
+                          County: {notification.metadata.customerCounty}
+                        </Badge>
+                        <Badge variant="outline" className="bg-yellow-100">
+                          Contact: {notification.metadata.customerContact}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>Total Price: KES {notification.metadata.totalPrice.toLocaleString()}</span>
+                        <span>•</span>
+                        <span>Unit Price: KES {notification.metadata.unitPrice.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground mt-2">
                 {format(new Date(notification.created_at), 'PPp')}
               </div>
             </div>

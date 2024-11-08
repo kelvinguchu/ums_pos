@@ -50,6 +50,14 @@ const chartConfig = {
     label: "Water",
     color: "hsl(var(--chart-4))",
   },
+  smart: {
+    label: "Smart",
+    color: "hsl(var(--chart-5))",
+  },
+  '3 phase': {
+    label: "3_Phase",
+    color: "hsl(var(--chart-6))",
+  },
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -109,13 +117,19 @@ export function SalesBarchart() {
             })
           }
           
-          const meterType = batch.meter_type.toLowerCase() as keyof typeof chartConfig
-          processedData[date][meterType] = (processedData[date][meterType] as number) + batch.batch_amount
-
-          if (!processedData[date].userSales[meterType][batch.user_name]) {
-            processedData[date].userSales[meterType][batch.user_name] = 0
+          const meterType = batch.meter_type.toLowerCase().trim()
+          const chartKey = Object.keys(chartConfig).find(
+            key => key.toLowerCase() === meterType
+          )
+          
+          if (chartKey) {
+            processedData[date][chartKey] = (processedData[date][chartKey] as number) + batch.batch_amount
+            
+            if (!processedData[date].userSales[chartKey][batch.user_name]) {
+              processedData[date].userSales[chartKey][batch.user_name] = 0
+            }
+            processedData[date].userSales[chartKey][batch.user_name] += batch.batch_amount
           }
-          processedData[date].userSales[meterType][batch.user_name] += batch.batch_amount
         })
 
         setChartData(Object.values(processedData))

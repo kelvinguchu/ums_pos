@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo } from "react";
 import {
   Table,
   TableBody,
@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { SaleBatch } from '@/types';
+import { Badge } from "@/components/ui/badge";
 import {
   Pagination,
   PaginationContent,
@@ -18,6 +18,22 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
+// Define the SaleBatch interface within the component
+interface SaleBatch {
+  id: number;
+  user_name: string;
+  meter_type: string;
+  batch_amount: number;
+  sale_date: string;
+  destination: string;
+  recipient: string;
+  total_price: number;
+  unit_price: number;
+  customer_type: string;
+  customer_county: string;
+  customer_contact: string;
+}
+
 interface SalesTableProps {
   sales: SaleBatch[];
   currentPage: number;
@@ -26,25 +42,23 @@ interface SalesTableProps {
   onPageChange: (page: number) => void;
 }
 
-export const SalesTable = memo(function SalesTable({ 
+export const SalesTable = memo(function SalesTable({
   sales,
   currentPage,
   itemsPerPage,
   totalPages,
-  onPageChange
+  onPageChange,
 }: SalesTableProps) {
   const NoDataMessage = () => (
-    <div className="text-center py-8">
-      <p className="text-muted-foreground text-lg">
-        No sales data available
-      </p>
+    <div className='text-center py-8'>
+      <p className='text-muted-foreground text-lg'>No sales data available</p>
     </div>
   );
 
   return (
     <>
-      <div className="overflow-auto max-w-[100vw] sm:max-w-full">
-        <div className="min-w-[640px] sm:min-w-0">
+      <div className='overflow-auto max-w-[100vw] sm:max-w-full'>
+        <div className='min-w-[640px] sm:min-w-0'>
           <Table>
             <TableHeader>
               <TableRow>
@@ -53,6 +67,8 @@ export const SalesTable = memo(function SalesTable({
                 <TableHead>Amount</TableHead>
                 <TableHead>Total Price</TableHead>
                 <TableHead>Time</TableHead>
+                <TableHead>Customer Type</TableHead>
+                <TableHead>County</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -68,11 +84,21 @@ export const SalesTable = memo(function SalesTable({
                     <TableCell>
                       {new Date(sale.sale_date).toLocaleTimeString()}
                     </TableCell>
+                    <TableCell>
+                      <Badge variant='outline' className='bg-blue-100'>
+                        {sale.customer_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant='outline' className='bg-green-100'>
+                        {sale.customer_county}
+                      </Badge>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={7}>
                     <NoDataMessage />
                   </TableCell>
                 </TableRow>
@@ -89,7 +115,11 @@ export const SalesTable = memo(function SalesTable({
               <PaginationItem>
                 <PaginationPrevious
                   onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={
+                    currentPage === 1
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
                 />
               </PaginationItem>
 
@@ -105,8 +135,14 @@ export const SalesTable = memo(function SalesTable({
 
               <PaginationItem>
                 <PaginationNext
-                  onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  onClick={() =>
+                    onPageChange(Math.min(totalPages, currentPage + 1))
+                  }
+                  className={
+                    currentPage === totalPages
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
                 />
               </PaginationItem>
             </PaginationContent>
@@ -115,4 +151,4 @@ export const SalesTable = memo(function SalesTable({
       )}
     </>
   );
-}); 
+});

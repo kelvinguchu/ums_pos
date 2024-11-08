@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,22 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { createAgent } from "@/lib/actions/supabaseActions";
 import localFont from "next/font/local";
-
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { KENYA_COUNTIES, type KenyaCounty } from "@/lib/constants/locationData";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -37,8 +53,10 @@ export default function CreateAgentDialog({
     name: "",
     phone_number: "",
     location: "",
+    county: "Nairobi" as KenyaCounty,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [openCombobox, setOpenCombobox] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +80,7 @@ export default function CreateAgentDialog({
       
       onAgentCreated();
       onClose();
-      setFormData({ name: "", phone_number: "", location: "" });
+      setFormData({ name: "", phone_number: "", location: "", county: "Nairobi" });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -79,6 +97,9 @@ export default function CreateAgentDialog({
       <DialogContent className={`${geistMono.className} sm:max-w-[425px]`}>
         <DialogHeader>
           <DialogTitle>Create New Agent</DialogTitle>
+          <DialogDescription>
+            Fill in the details below to create a new agent.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className='space-y-4 mt-4'>
           <div className='space-y-2'>
@@ -116,6 +137,59 @@ export default function CreateAgentDialog({
               placeholder='Agent Location'
               required
             />
+          </div>
+          <div className='space-y-2'>
+            <Label>County</Label>
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openCombobox}
+                  className="w-full justify-between bg-white border-2 border-gray-200 hover:border-[#000080] transition-colors font-medium"
+                >
+                  {formData.county || "Select county..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className={`w-full p-0 ${geistMono.className}`}>
+                <Command className="w-full">
+                  <CommandInput 
+                    placeholder="Search county..." 
+                    className="h-9 border-none focus:ring-0"
+                  />
+                  <CommandList className="max-h-[300px] overflow-y-auto">
+                    <CommandEmpty>No county found.</CommandEmpty>
+                    <CommandGroup>
+                      {KENYA_COUNTIES.map((county) => (
+                        <CommandItem
+                          key={county}
+                          value={county}
+                          onSelect={(currentValue) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              county: currentValue as KenyaCounty,
+                            }));
+                            setOpenCombobox(false);
+                          }}
+                          className="hover:bg-[#000080]/10 cursor-pointer font-medium"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.county === county 
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          {county}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <DialogFooter>
             <Button

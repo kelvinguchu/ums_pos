@@ -56,6 +56,8 @@ export const DailyReportsFilters = memo(function DailyReportsFilters({
             <SelectItem value="integrated">Integrated</SelectItem>
             <SelectItem value="gas">Gas</SelectItem>
             <SelectItem value="water">Water</SelectItem>
+            <SelectItem value="3 Phase">3 Phase</SelectItem>
+            <SelectItem value="Smart">Smart</SelectItem>
           </SelectContent>
         </Select>
       </div>

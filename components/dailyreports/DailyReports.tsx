@@ -20,6 +20,22 @@ import { pdf } from "@react-pdf/renderer";
 import TableReportPDF from "@/components/sharedcomponents/TableReportPDF";
 import { generateCSV } from "@/lib/utils/csvGenerator";
 
+// Define interfaces within the component
+interface SaleBatch {
+  id: number;
+  user_name: string;
+  meter_type: string;
+  batch_amount: number;
+  sale_date: string;
+  destination: string;
+  recipient: string;
+  total_price: number;
+  unit_price: number;
+  customer_type: string;
+  customer_county: string;
+  customer_contact: string;
+}
+
 interface DailyReportsProps {
   selectedDateRange: DateRange | null;
   setSelectedDateRange: (range: DateRange | null) => void;
@@ -81,9 +97,12 @@ export default function DailyReports({
     setCurrentPage(1);
   }, []);
 
+  const hasActiveFilters = () => {
+    return searchUser || selectedType;
+  };
+
   const handleExportPDF = async () => {
-    const dataToExport =
-      searchUser || selectedType ? currentItems : filteredSales;
+    const dataToExport = hasActiveFilters() ? currentItems : filteredSales;
 
     const headers = [
       "Seller's Name",
@@ -91,6 +110,9 @@ export default function DailyReports({
       "Amount",
       "Total Price",
       "Time",
+      "Customer Type",
+      "County",
+      "Contact"
     ];
     const data = dataToExport.map((sale) => [
       sale.user_name,
@@ -98,6 +120,9 @@ export default function DailyReports({
       sale.batch_amount.toString(),
       `KES ${sale.total_price.toLocaleString()}`,
       new Date(sale.sale_date).toLocaleTimeString(),
+      sale.customer_type,
+      sale.customer_county,
+      sale.customer_contact
     ]);
 
     const blob = await pdf(
@@ -121,8 +146,7 @@ export default function DailyReports({
   };
 
   const handleExportCSV = () => {
-    const dataToExport =
-      searchUser || selectedType ? currentItems : filteredSales;
+    const dataToExport = hasActiveFilters() ? currentItems : filteredSales;
 
     const headers = [
       "Seller's Name",
@@ -130,6 +154,9 @@ export default function DailyReports({
       "Amount",
       "Total Price",
       "Time",
+      "Customer Type",
+      "County",
+      "Contact"
     ];
     const data = dataToExport.map((sale) => [
       sale.user_name,
@@ -137,6 +164,9 @@ export default function DailyReports({
       sale.batch_amount.toString(),
       sale.total_price.toString(),
       new Date(sale.sale_date).toLocaleTimeString(),
+      sale.customer_type,
+      sale.customer_county,
+      sale.customer_contact
     ]);
 
     generateCSV("daily_sales_report", headers, data);

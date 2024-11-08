@@ -93,6 +93,8 @@ export const MeterInputForm = memo(function MeterInputForm({
               <SelectItem value="Integrated">Integrated</SelectItem>
               <SelectItem value="Gas">Gas</SelectItem>
               <SelectItem value="Water">Water</SelectItem>
+              <SelectItem value="3 Phase">3 Phase</SelectItem>
+              <SelectItem value="Smart">Smart</SelectItem>
             </SelectContent>
           </Select>
         </div>

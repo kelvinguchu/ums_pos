@@ -45,6 +45,7 @@ import { generateCSV } from "@/lib/utils/csvGenerator";
 import { pdf } from "@react-pdf/renderer";
 import TableReportPDF from "@/components/sharedcomponents/TableReportPDF";
 import { MeterSalesRow } from "./MeterSalesRow";
+import { Badge } from "@/components/ui/badge";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -52,7 +53,7 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-// Update the SaleBatch interface to include unit_price
+// Update the SaleBatch interface to include new fields
 interface SaleBatch {
   id: number;
   user_name: string;
@@ -62,7 +63,10 @@ interface SaleBatch {
   destination: string;
   recipient: string;
   total_price: number;
-  unit_price: number; // Add this field
+  unit_price: number;
+  customer_type: string;
+  customer_county: string;
+  customer_contact: string;
 }
 
 const EmptyState = ({ message }: { message: string }) => (
@@ -176,23 +180,23 @@ export default function MeterSales() {
       "Amount",
       "Sale Amount",
       "Sale Date",
-      "Destination",
-      "Recipient",
+      "Customer Type",
+      "County",
+      "Contact",
     ];
     const data = dataToExport.map((batch) => [
       batch.user_name,
       batch.meter_type,
       batch.batch_amount.toString(),
-      // Remove .00 from sale amount by using Math.round and adding KES prefix
       `KES ${Math.round(batch.total_price).toLocaleString()}`,
-      // Simplify date format to just show the date without time
       new Date(batch.sale_date).toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
       }),
-      batch.destination,
-      batch.recipient,
+      batch.customer_type,
+      batch.customer_county,
+      batch.customer_contact,
     ]);
 
     const blob = await pdf(
@@ -216,7 +220,6 @@ export default function MeterSales() {
   };
 
   const handleExportCSV = () => {
-    // Use all filtered batches instead of just currentBatches
     const dataToExport = hasActiveFilters() ? currentBatches : filteredBatches;
 
     const headers = [
@@ -227,6 +230,9 @@ export default function MeterSales() {
       "Sale Date",
       "Destination",
       "Recipient",
+      "Customer Type",
+      "County",
+      "Contact",
     ];
     const data = dataToExport.map((batch) => [
       batch.user_name,
@@ -236,6 +242,9 @@ export default function MeterSales() {
       formatDate(batch.sale_date),
       batch.destination,
       batch.recipient,
+      batch.customer_type,
+      batch.customer_county,
+      batch.customer_contact,
     ]);
 
     generateCSV("meter_sales_report", headers, data);
@@ -269,6 +278,8 @@ export default function MeterSales() {
                 <SelectItem value='integrated'>Integrated</SelectItem>
                 <SelectItem value='gas'>Gas</SelectItem>
                 <SelectItem value='water'>Water</SelectItem>
+                <SelectItem value='3 Phase'>3 Phase</SelectItem>
+                <SelectItem value='Smart'>Smart</SelectItem>
               </SelectContent>
             </Select>
 
@@ -333,8 +344,8 @@ export default function MeterSales() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Sale Amount</TableHead>
                   <TableHead>Sale Date</TableHead>
-                  <TableHead>Destination</TableHead>
-                  <TableHead>Recipient</TableHead>
+                  <TableHead>Customer Type</TableHead>
+                  <TableHead>County</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -353,8 +364,16 @@ export default function MeterSales() {
                         })}
                       </TableCell>
                       <TableCell>{formatDate(batch.sale_date)}</TableCell>
-                      <TableCell>{batch.destination}</TableCell>
-                      <TableCell>{batch.recipient}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-blue-100">
+                          {batch.customer_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-green-100">
+                          {batch.customer_county}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                     <MeterSalesRow
                       batch={batch}

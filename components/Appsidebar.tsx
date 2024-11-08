@@ -203,13 +203,11 @@ export function AppSidebar({ user }: { user: any }) {
                           <span>Create Agent</span>
                         </SidebarMenuButton>
                       </DialogTrigger>
-                      <DialogContent>
-                        <CreateAgentDialog
-                          isOpen={isCreateAgentOpen}
-                          onClose={() => setIsCreateAgentOpen(false)}
-                          onAgentCreated={() => setIsCreateAgentOpen(false)}
-                        />
-                      </DialogContent>
+                      <CreateAgentDialog
+                        isOpen={isCreateAgentOpen}
+                        onClose={() => setIsCreateAgentOpen(false)}
+                        onAgentCreated={() => setIsCreateAgentOpen(false)}
+                      />
                     </Dialog>
                   </SidebarMenuItem>
                   <SidebarMenuItem>

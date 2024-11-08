@@ -1,13 +1,16 @@
 export interface SaleBatch {
-  id: string;
+  id: number;
   user_name: string;
   meter_type: string;
   batch_amount: number;
-  unit_price: number;
-  total_price: number;
+  sale_date: string;
   destination: string;
   recipient: string;
-  sale_date: string;
+  total_price: number;
+  unit_price: number;
+  customer_type: string;
+  customer_county: string;
+  customer_contact: string;
 }
 
 export interface RemainingMetersByType {

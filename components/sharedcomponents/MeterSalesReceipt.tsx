@@ -141,9 +141,21 @@ interface MeterSalesReceiptProps {
   recipient: string;
   unitPrices: { [key: string]: string };
   userName: string;
+  customerType: string;
+  customerCounty: string;
+  customerContact: string;
 }
 
-const MeterSalesReceipt = ({ meters, destination, recipient, unitPrices, userName }: MeterSalesReceiptProps) => {
+const MeterSalesReceipt = ({ 
+  meters, 
+  destination, 
+  recipient, 
+  unitPrices, 
+  userName,
+  customerType,
+  customerCounty,
+  customerContact 
+}: MeterSalesReceiptProps) => {
   const metersByType = meters.reduce((acc: { [key: string]: typeof meters }, meter) => {
     if (!acc[meter.type]) acc[meter.type] = [];
     acc[meter.type].push(meter);
@@ -177,6 +189,33 @@ const MeterSalesReceipt = ({ meters, destination, recipient, unitPrices, userNam
         <Text style={styles.title}>Store Transaction Report</Text>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Customer Information</Text>
+          <View style={[styles.table, { marginBottom: 20 }]}>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 1 }]}>Customer Type:</Text>
+              <Text style={[styles.tableCell, { flex: 2, textTransform: 'capitalize' }]}>{customerType}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 1 }]}>County:</Text>
+              <Text style={[styles.tableCell, { flex: 2 }]}>{customerCounty}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 1 }]}>Contact:</Text>
+              <Text style={[styles.tableCell, { flex: 2 }]}>{customerContact}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 1 }]}>Recipient:</Text>
+              <Text style={[styles.tableCell, { flex: 2 }]}>{recipient}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 1 }]}>Destination:</Text>
+              <Text style={[styles.tableCell, { flex: 2 }]}>{destination}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Meter Details</Text>
           <View style={styles.table}>
             <View style={[styles.tableRow, styles.tableHeader]}>
               <Text style={styles.tableHeaderCell}>Meter Type</Text>
@@ -216,11 +255,6 @@ const MeterSalesReceipt = ({ meters, destination, recipient, unitPrices, userNam
             <Text style={styles.signatureLabel}>Date: _________________</Text>
             <Text style={styles.signatureLabel}>Signature: _________________</Text>
           </View>
-        </View>
-
-        <View style={styles.recipientInfo}>
-          <Text>Recipient: {recipient}</Text>
-          <Text>Destination: {destination}</Text>
         </View>
 
         <Text style={styles.footer}>
