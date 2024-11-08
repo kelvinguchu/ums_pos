@@ -17,7 +17,19 @@ self.addEventListener('push', (event) => {
       url: self.location.origin,
     },
     requireInteraction: true,
-    silent: false
+    silent: false,
+    tag: 'ums-pos',
+    renotify: true,
+    actions: [
+      {
+        action: 'open',
+        title: 'Open App'
+      },
+      {
+        action: 'close',
+        title: 'Dismiss'
+      }
+    ]
   };
 
   event.waitUntil(
@@ -27,7 +39,11 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(
-    clients.openWindow(event.notification.data.url)
-  );
+
+  // Handle action clicks
+  if (event.action === 'open') {
+    event.waitUntil(
+      clients.openWindow(event.notification.data.url)
+    );
+  }
 });

@@ -160,15 +160,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const checkPushSupport = async () => {
       const supported = 'serviceWorker' in navigator && 'PushManager' in window;
-      console.log('Push supported:', supported);
       setPushSupported(supported);
 
       if (supported) {
         try {
           const registration = await navigator.serviceWorker.register('/custom-sw.js');
-          console.log('Service Worker registered:', registration);
           const subscription = await registration.pushManager.getSubscription();
-          console.log('Current subscription:', subscription);
           setPushSubscription(subscription);
         } catch (error) {
           console.error('Service Worker registration failed:', error);
@@ -186,8 +183,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         throw new Error('Service Worker not found');
       }
 
-      console.log('VAPID key:', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
-      
       if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
         throw new Error('VAPID public key not found');
       }
