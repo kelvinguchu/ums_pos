@@ -129,7 +129,7 @@ export function AppSidebar({ user }: { user: any }) {
   };
 
   return (
-    <Sidebar className='mt-16 flex flex-col justify-between h-[calc(100vh-4rem)]'>
+    <Sidebar className='mt-16 flex flex-col justify-between h-[calc(100vh-4rem)] bg-background'>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className='text-lg font-bold drop-shadow-lg'>
@@ -314,7 +314,7 @@ export function AppSidebar({ user }: { user: any }) {
           </SidebarGroup>
         )}
       </SidebarContent>
-      <div className={`${geistMono.className} p-4 border-t border-gray-200`}>
+      <div className={`${geistMono.className} p-4 border-t border-gray-200 bg-background`}>
         <div className='flex items-center gap-2'>
           <span className='text-sm text-gray-600'>{userName}</span>
           <Badge
