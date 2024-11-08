@@ -200,10 +200,11 @@ export function SalesBarchart() {
   );
 
   return (
-    <Card className={cn(
-      'h-auto lg:h-[500px] mt-16 lg:mt-0 w-full transition-all duration-200 ease-linear',
-      'relative overflow-hidden'
-    )}>
+    <Card
+      className={cn(
+        "!h-[95vh] lg:h-[500px] mt-4 lg:mt-0 w-[93vw] -ml-[7vw] lg:w-full transition-all duration-200 ease-linear",
+        "relative overflow-hidden"
+      )}>
       <CardHeader className='flex flex-col items-stretch space-y-4 border-b p-4 lg:p-0 lg:space-y-0 lg:flex-row'>
         <div className='flex flex-1 flex-col justify-center gap-1 lg:px-6 lg:py-6'>
           <CardTitle>Meter Sales Chart</CardTitle>
@@ -238,7 +239,7 @@ export function SalesBarchart() {
           ))}
         </div>
       </CardHeader>
-      <CardContent className='p-2 h-[350px] lg:h-[400px] lg:p-6'>
+      <CardContent className='p-2 h-[350px] lg:h-[400px] w-full lg:p-6'>
         {chartData.length > 0 ? (
           <ResponsiveContainer width='100%' height='100%'>
             <BarChart
