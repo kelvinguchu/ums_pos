@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from 'lucide-react';
+import { Bell, BellRing, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -22,6 +22,7 @@ import { getCurrentUser } from '@/lib/actions/supabaseActions';
 import { useEffect, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import localFont from 'next/font/local';
+import { useToast } from '@/hooks/use-toast';
 
 const geistMono = localFont({
   src: '../public/fonts/GeistMonoVF.woff',
@@ -30,9 +31,21 @@ const geistMono = localFont({
 });
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    refreshNotifications,
+    pushNotificationSupported,
+    pushNotificationSubscribed,
+    subscribeToPushNotifications,
+    unsubscribeFromPushNotifications,
+    pushSubscription
+  } = useNotifications();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -100,12 +113,30 @@ export function NotificationBell() {
 
   const HeaderContent = () => (
     <div className={`${geistMono.className} flex items-center justify-between`}>
-      <div>Notifications</div>
+      <div className="flex items-center gap-2">
+        <span>Notifications</span>
+        {pushNotificationSupported && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={pushNotificationSubscribed ? unsubscribeFromPushNotifications : subscribeToPushNotifications}
+            title={pushNotificationSubscribed ? 'Disable Push Notifications' : 'Enable Push Notifications'}
+          >
+            {pushNotificationSubscribed ? (
+              <BellRing className="h-4 w-4 text-green-500" />
+            ) : (
+              <BellOff className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        )}
+      </div>
       {unreadCount > 0 && (
         <Button 
           variant="outline" 
           size="sm"
           onClick={() => markAllAsRead(currentUser.id)}
+          className="text-xs"
         >
           Mark all as read
         </Button>
@@ -146,7 +177,7 @@ export function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" className="relative">
+        <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge 
@@ -158,9 +189,15 @@ export function NotificationBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-4" align="end">
-        <HeaderContent />
-        <div className="mt-4">
+      <PopoverContent 
+        className="w-[380px] p-0" 
+        align="end"
+        sideOffset={8}
+      >
+        <div className="p-4 border-b">
+          <HeaderContent />
+        </div>
+        <div className="p-2">
           <NotificationList />
         </div>
       </PopoverContent>

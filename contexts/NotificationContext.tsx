@@ -9,6 +9,7 @@ import {
   getCurrentUser 
 } from '@/lib/actions/supabaseActions';
 import { useToast } from '@/hooks/use-toast';
+import { sendPushNotification } from '@/app/actions/pushNotifications';
 
 interface Notification {
   id: string;
@@ -38,6 +39,11 @@ interface NotificationContextType {
   markAsRead: (notificationId: string, userId: string) => Promise<void>;
   markAllAsRead: (userId: string) => Promise<void>;
   refreshNotifications: (userId: string) => Promise<void>;
+  subscribeToPushNotifications: () => Promise<void>;
+  unsubscribeFromPushNotifications: () => Promise<void>;
+  pushNotificationSupported: boolean;
+  pushNotificationSubscribed: boolean;
+  pushSubscription: PushSubscription | null;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -46,6 +52,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const { toast } = useToast();
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null);
 
   const refreshNotifications = async (userId: string) => {
     try {
@@ -113,26 +121,101 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     const subscription = subscribeToNotifications((notification) => {
       setNotifications(prev => {
-        // Check if notification already exists to prevent duplicates
         const exists = prev.some(n => n.id === notification.id);
         if (exists) return prev;
         return [notification, ...prev];
       });
       
-      // Show toast for new notification
       toast({
         title: notification.type,
         description: notification.message,
         duration: 5000,
       });
+
+      if (pushSubscription) {
+        const subscriptionObject = {
+          endpoint: pushSubscription.endpoint,
+          keys: {
+            p256dh: btoa(String.fromCharCode.apply(null, 
+              new Uint8Array(pushSubscription.getKey('p256dh')!) as any)),
+            auth: btoa(String.fromCharCode.apply(null, 
+              new Uint8Array(pushSubscription.getKey('auth')!) as any))
+          }
+        };
+
+        sendPushNotification(subscriptionObject, {
+          icon: '/favi.png',
+          body: notification.message
+        });
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser, toast]);
+  }, [currentUser, pushSubscription, toast]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  useEffect(() => {
+    const checkPushSupport = async () => {
+      const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+      setPushSupported(supported);
+
+      if (supported) {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        const subscription = await registration.pushManager.getSubscription();
+        setPushSubscription(subscription);
+      }
+    };
+
+    checkPushSupport();
+  }, []);
+
+  const subscribeToPushNotifications = async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      });
+
+      setPushSubscription(subscription);
+      
+      toast({
+        title: "Success",
+        description: "Push notifications enabled",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error subscribing to push notifications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to enable push notifications",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const unsubscribeFromPushNotifications = async () => {
+    try {
+      await pushSubscription?.unsubscribe();
+      setPushSubscription(null);
+      
+      toast({
+        title: "Success",
+        description: "Push notifications disabled",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error unsubscribing from push notifications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to disable push notifications",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <NotificationContext.Provider value={{
@@ -141,6 +224,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       markAsRead,
       markAllAsRead,
       refreshNotifications,
+      subscribeToPushNotifications,
+      unsubscribeFromPushNotifications,
+      pushNotificationSupported: pushSupported,
+      pushNotificationSubscribed: !!pushSubscription,
+      pushSubscription,
     }}>
       {children}
     </NotificationContext.Provider>
