@@ -109,9 +109,10 @@ interface MetersSoldByType {
 // Add the constant for meter types
 const METER_TYPES = ['integrated', 'split', 'gas', 'water', 'smart', '3 phase'] as const;
 
+// Heavy PDF generation logic running on the main thread
 const DailyReportPDF = ({ 
-  todaySales, 
-  yesterdaySales, 
+  todaySales,
+  yesterdaySales,
   remainingMetersByType,
   agentInventory,
   todayTotalEarnings,

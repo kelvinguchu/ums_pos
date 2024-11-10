@@ -13,16 +13,15 @@ export default function QueryProvider({
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 1000 * 60 * 5, // 5 minutes
-            gcTime: 1000 * 60 * 30, // 30 minutes
-            refetchOnWindowFocus: false,
-            retry: 1,
+            staleTime: 60 * 1000, // 1 minute
           },
         },
       })
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
   );
 } 

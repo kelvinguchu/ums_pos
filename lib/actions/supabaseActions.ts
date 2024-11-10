@@ -1,5 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-import { KENYA_COUNTIES, KenyaCounty, CustomerType } from "@/lib/constants/locationData";
+import {
+  KENYA_COUNTIES,
+  KenyaCounty,
+  CustomerType,
+} from "@/lib/constants/locationData";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,7 +99,6 @@ export async function signIn(email: string, password: string) {
 
     // Check if user is active
     if (authData.user) {
-
       const { data: profiles, error: profileError } = await supabase
         .from("user_profiles")
         .select("is_active")
@@ -1032,8 +1035,8 @@ export async function superSearchMeter(searchTerm: string) {
       sale_details: {
         sold_at: meter.sale_batches[0]?.sale_date || meter.sold_at,
         sold_by: meter.sale_batches[0]?.user_name,
-        seller_name: meter.seller?.name, 
-        seller_role: meter.seller?.role, 
+        seller_name: meter.seller?.name,
+        seller_role: meter.seller?.role,
         destination: meter.destination,
         recipient: meter.recipient,
         unit_price: meter.unit_price,
@@ -1047,7 +1050,6 @@ export async function superSearchMeter(searchTerm: string) {
 
   return formattedResults;
 }
-
 
 // Create a new notification
 export async function createNotification({
@@ -1256,15 +1258,15 @@ export async function getAgentInventoryCount() {
 export async function getCustomerTypeCounts() {
   try {
     const { data, error } = await supabase
-      .from('sale_batches')
-      .select('customer_type')
-      .not('customer_type', 'is', null);
+      .from("sale_batches")
+      .select("customer_type")
+      .not("customer_type", "is", null);
 
     if (error) throw error;
 
     // Count occurrences of each customer type
     const typeCounts: { [key: string]: number } = {};
-    data.forEach(item => {
+    data.forEach((item) => {
       const type = item.customer_type;
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     });
@@ -1272,11 +1274,386 @@ export async function getCustomerTypeCounts() {
     // Transform to required format
     return Object.entries(typeCounts).map(([type, count]) => ({
       type,
-      count
+      count,
+    }));
+  } catch (error) {
+    console.error("Error fetching customer type counts:", error);
+    return [];
+  }
+}
+
+export async function getAgentInventoryBySerial(
+  serialNumber: string,
+  agentId: string
+) {
+  // Convert the input to uppercase for consistent comparison
+  const normalizedSerial = serialNumber.toUpperCase();
+
+  const { data, error } = await supabase
+    .from("agent_inventory")
+    .select("*")
+    .eq("agent_id", agentId)
+    .ilike("serial_number", normalizedSerial) // Use ilike for case-insensitive matching
+    .maybeSingle(); // Use maybeSingle instead of single to handle no results gracefully
+
+  if (error) {
+    console.error("Error retrieving meter from agent inventory:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function returnMetersFromAgent({
+  agentId,
+  meters,
+  returnedBy,
+  returnerName,
+}: {
+  agentId: string;
+  meters: Array<{ meter_id: string; serial_number: string; type: string }>;
+  returnedBy: string;
+  returnerName: string;
+}) {
+  try {
+    // 1. Move meters back to meters table
+    const metersToRestore = meters.map((meter) => ({
+      serial_number: meter.serial_number,
+      type: meter.type,
+      added_by: returnedBy,
+      added_at: new Date().toISOString(),
+      adder_name: returnerName,
     }));
 
+    const { error: restoreError } = await supabase
+      .from("meters")
+      .insert(metersToRestore);
+
+    if (restoreError) {
+      console.error("Error restoring meters:", restoreError);
+      throw restoreError;
+    }
+
+    // 2. Remove meters from agent_inventory
+    const { error: removeError } = await supabase
+      .from("agent_inventory")
+      .delete()
+      .eq("agent_id", agentId)
+      .in(
+        "serial_number",
+        meters.map((m) => m.serial_number)
+      );
+
+    if (removeError) {
+      console.error("Error removing from agent inventory:", removeError);
+      throw removeError;
+    }
+
+    // 3. Create transaction records - update to match your schema
+    const { error: transactionRecordError } = await supabase
+      .from("agent_transactions")
+      .insert(
+        meters.map((meter) => ({
+          agent_id: agentId,
+          transaction_type: "return",
+          meter_type: meter.type,
+          quantity: 1,
+          transaction_date: new Date().toISOString(),
+        }))
+      );
+
+    if (transactionRecordError) {
+      console.error(
+        "Error creating transaction records:",
+        transactionRecordError
+      );
+      throw transactionRecordError;
+    }
+
+    // If all operations succeed, return success
+    return { success: true };
   } catch (error) {
-    console.error('Error fetching customer type counts:', error);
-    return [];
+    console.error("Error returning meters:", error);
+    throw error;
+  }
+}
+
+export async function getSoldMeterBySerial(serialNumber: string) {
+  const normalizedSerial = serialNumber.toUpperCase();
+
+  // First get the meter with its sale batch details
+  const { data: soldMeter, error: soldMeterError } = await supabase
+    .from("sold_meters")
+    .select(
+      `
+      id,
+      serial_number,
+      sold_at,
+      batch_id,
+      status,
+      sale_batches (
+        meter_type
+      )
+    `
+    )
+    .eq("serial_number", normalizedSerial)
+    .single();
+
+  if (soldMeterError) {
+    if (soldMeterError.code === "PGRST116") {
+      throw new Error(`Meter ${normalizedSerial} not found in sold meters`);
+    }
+    throw soldMeterError;
+  }
+
+  if (!soldMeter) {
+    throw new Error(`Meter ${normalizedSerial} not found in sold meters`);
+  }
+
+  // Check meter status
+  if (soldMeter.status !== "active") {
+    throw new Error(
+      `Meter ${normalizedSerial} is already marked as ${soldMeter.status}`
+    );
+  }
+
+  // Get the meter type from the sale batch
+  const { data: saleBatch, error: saleBatchError } = await supabase
+    .from("sale_batches")
+    .select("meter_type")
+    .eq("id", soldMeter.batch_id)
+    .single();
+
+  if (saleBatchError) {
+    throw new Error(`Failed to retrieve meter type for ${normalizedSerial}`);
+  }
+
+  // Return combined data
+  return {
+    id: soldMeter.id,
+    serial_number: soldMeter.serial_number,
+    sold_at: soldMeter.sold_at,
+    type: saleBatch.meter_type,
+    status: soldMeter.status,
+  };
+}
+
+export async function returnSoldMeter({
+  meters,
+  returnedBy,
+  returnerName,
+  replacements = [],
+}: {
+  meters: Array<{
+    id: string;
+    serial_number: string;
+    type: string;
+    status: "healthy" | "faulty";
+    fault_description?: string;
+  }>;
+  returnedBy: string;
+  returnerName: string;
+  replacements?: Array<{
+    original_id: string;
+    new_serial: string;
+    new_type: string;
+  }>;
+}) {
+  try {
+    // Separate healthy and faulty meters
+    const healthyMeters = meters.filter((m) => m.status === "healthy");
+    const faultyMeters = meters.filter((m) => m.status === "faulty");
+
+    // Handle healthy meters
+    if (healthyMeters.length > 0) {
+      // 1. First add to meters table
+      const metersToRestore = healthyMeters.map((meter) => ({
+        serial_number: meter.serial_number,
+        type: meter.type,
+        added_by: returnedBy,
+        added_at: new Date().toISOString(),
+        adder_name: returnerName,
+      }));
+
+      const { error: restoreError } = await supabase
+        .from("meters")
+        .insert(metersToRestore);
+
+      if (restoreError) throw restoreError;
+
+      // 2. Then delete from sold_meters (since they're healthy and back in stock)
+      const { error: deleteError } = await supabase
+        .from("sold_meters")
+        .delete()
+        .in(
+          "id",
+          healthyMeters.map((m) => m.id)
+        );
+
+      if (deleteError) throw deleteError;
+    }
+
+    // Handle faulty meters
+    if (faultyMeters.length > 0) {
+      for (const meter of faultyMeters) {
+        // 1. Create faulty return record
+        const { error: faultyError } = await supabase
+          .from("faulty_returns")
+          .insert({
+            serial_number: meter.serial_number,
+            type: meter.type,
+            returned_by: returnedBy,
+            returner_name: returnerName,
+            original_sale_id: meter.id,
+            fault_description: meter.fault_description,
+            status: "pending",
+          });
+
+        if (faultyError) throw faultyError;
+
+        // 2. Update sold_meters status to 'faulty'
+        const { error: updateError } = await supabase
+          .from("sold_meters")
+          .update({ status: "faulty" })
+          .eq("id", meter.id);
+
+        if (updateError) throw updateError;
+
+        // 3. Handle replacement if exists
+        const replacement = replacements.find(
+          (r) => r.original_id === meter.id
+        );
+        if (replacement) {
+          // Remove replacement meter from meters table
+          const { error: removeError } = await supabase
+            .from("meters")
+            .delete()
+            .eq("serial_number", replacement.new_serial);
+
+          if (removeError) throw removeError;
+
+          // Update original sold_meters record with replacement info
+          const { error: replacementError } = await supabase
+            .from("sold_meters")
+            .update({
+              status: "replaced",
+              replacement_serial: replacement.new_serial,
+              replacement_date: new Date().toISOString(),
+              replacement_by: returnedBy,
+            })
+            .eq("id", meter.id);
+
+          if (replacementError) throw replacementError;
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error returning sold meters:", error);
+    throw error;
+  }
+}
+
+// Add function to get available meters for replacement
+export async function getAvailableReplacementMeters(type: string) {
+  const { data, error } = await supabase
+    .from("meters")
+    .select("serial_number, type")
+    .eq("type", type);
+
+  if (error) throw error;
+  return data;
+}
+
+// Add these functions after the existing ones
+
+// Function to add a meter purchase batch
+export async function addMeterPurchaseBatch({
+  purchaseDate,
+  addedBy,
+  batchGroups,
+}: {
+  purchaseDate: Date;
+  addedBy: string;
+  batchGroups: Array<{
+    type: string;
+    count: number;
+    totalCost: string;
+  }>;
+}) {
+  try {
+    // Create a batch record for each meter type
+    const batchPromises = batchGroups.map(async (group) => {
+      const { data, error } = await supabase
+        .from('meter_purchase_batches')
+        .insert({
+          meter_type: group.type.toLowerCase(),
+          quantity: group.count,
+          total_cost: parseFloat(group.totalCost),
+          purchase_date: purchaseDate.toISOString(),
+          added_by: addedBy,
+          created_at: new Date().toISOString(),
+          batch_number: `PB-${Date.now()}-${group.type.substring(0, 3).toUpperCase()}`
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    });
+
+    const batches = await Promise.all(batchPromises);
+    return batches[0]; // Return the first batch for reference
+  } catch (error) {
+    console.error('Error adding meter purchase batch:', error);
+    throw error;
+  }
+}
+
+// Function to get purchase batches
+export async function getPurchaseBatches() {
+  try {
+    const { data, error } = await supabase
+      .from('meter_purchase_batches')
+      .select(`
+        id,
+        batch_number,
+        meter_type,
+        quantity,
+        total_cost,
+        unit_cost,
+        purchase_date,
+        created_at,
+        added_by,
+        user_profiles (
+          name
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching purchase batches:', error);
+    throw error;
+  }
+}
+
+// Function to update meters with their purchase batch ID
+export async function updateMeterPurchaseBatch(
+  serialNumbers: string[],
+  batchId: string
+) {
+  try {
+    const { error } = await supabase
+      .from('meters')
+      .update({ batch_id: batchId })
+      .in('serial_number', serialNumbers);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating meter batch IDs:', error);
+    throw error;
   }
 }

@@ -1,13 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  getUsersList,
-  getUserProfile,
-  getCurrentUser,
-  updateUserProfile,
-  deleteUserProfile,
-} from "@/lib/actions/supabaseActions";
+import { useState } from "react";
+import { useUsersData } from "./hooks/useUsersData";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +12,7 @@ import {
   UserMinus,
   UserPlus,
   MoreVertical,
+  RefreshCw,
 } from "lucide-react";
 import {
   Table,
@@ -43,17 +38,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import localFont from "next/font/local";
@@ -70,6 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import Loader from "@/components/Loader";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -78,31 +63,23 @@ const geistMono = localFont({
 });
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [newName, setNewName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showDeactivated, setShowDeactivated] = useState(false);
   const itemsPerPage = 10;
   const { toast } = useToast();
-  const [showDeactivated, setShowDeactivated] = useState(false);
 
-  // Fetch users and current user on component mount
-  useEffect(() => {
-    const fetchData = async () => {
-      const usersList = await getUsersList();
-      const current = await getCurrentUser();
-      const currentUserProfile = current
-        ? await getUserProfile(current.id)
-        : null;
-
-      setUsers(usersList);
-      setCurrentUser(currentUserProfile);
-    };
-
-    fetchData();
-  }, []);
+  const {
+    users,
+    currentUser,
+    isLoading,
+    error,
+    updateUser,
+    isPending,
+    refetch
+  } = useUsersData(showDeactivated);
 
   const handleUpdateName = async () => {
     if (!editingUser || !newName.trim()) {
@@ -115,18 +92,18 @@ export default function UsersPage() {
     }
 
     try {
-      await updateUserProfile(editingUser.id, { name: newName });
-      setUsers(
-        users.map((user) =>
-          user.id === editingUser.id ? { ...user, name: newName } : user
-        )
-      );
+      await updateUser({ 
+        userId: editingUser.id, 
+        updates: { name: newName }
+      });
+      
       toast({
         title: "Success",
         description: "User name updated successfully",
         style: { backgroundColor: "#2ECC40", color: "white" },
       });
       setEditingUser(null);
+      setNewName("");
     } catch (error) {
       toast({
         title: "Error",
@@ -139,13 +116,15 @@ export default function UsersPage() {
   const handleToggleRole = async (user: any) => {
     try {
       const newRole = user.role === "admin" ? "user" : "admin";
-      await updateUserProfile(user.id, { role: newRole });
-      setUsers(
-        users.map((u) => (u.id === user.id ? { ...u, role: newRole } : u))
-      );
+      await updateUser({
+        userId: user.id,
+        updates: { role: newRole }
+      });
+      
       toast({
         title: "Success",
         description: `User role updated to ${newRole}`,
+        style: { backgroundColor: "#2ECC40", color: "white" },
       });
     } catch (error) {
       toast({
@@ -159,15 +138,15 @@ export default function UsersPage() {
   const handleToggleStatus = async (user: any) => {
     try {
       const newStatus = !user.isActive;
-      await updateUserProfile(user.id, { is_active: newStatus });
-      setUsers(
-        users.map((u) => (u.id === user.id ? { ...u, isActive: newStatus } : u))
-      );
+      await updateUser({
+        userId: user.id,
+        updates: { isActive: newStatus }
+      });
+      
       toast({
         title: "Success",
-        description: `User ${
-          newStatus ? "activated" : "deactivated"
-        } successfully`,
+        description: `User ${newStatus ? "activated" : "deactivated"} successfully`,
+        style: { backgroundColor: "#2ECC40", color: "white" },
       });
     } catch (error) {
       toast({
@@ -178,17 +157,17 @@ export default function UsersPage() {
     }
   };
 
+  // Filter and pagination logic
   const filteredAndPaginatedUsers = () => {
     let filtered = users;
-    if (!showDeactivated) {
-      filtered = users.filter((user) => user.isActive);
-    }
 
-    filtered = filtered.filter(
-      (user) =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (user) =>
+          user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -198,6 +177,22 @@ export default function UsersPage() {
       totalUsers: filtered.length,
     };
   };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="text-lg text-red-500">Error: {error.message}</div>
+        <Button onClick={() => refetch()} variant="outline">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div className={`${geistMono.className} container w-full md:w-[75vw]`}>

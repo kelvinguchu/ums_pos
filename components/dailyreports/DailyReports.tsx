@@ -9,7 +9,7 @@ import { DailyReportsSummary } from "./DailyReportsSummary";
 import type { DateRange } from "@/components/dailyreports/types";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +23,8 @@ import {
   getRemainingMetersByType,
   getAgentInventoryCount,
 } from "@/lib/actions/supabaseActions";
-
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface DailyReportsProps {
   selectedDateRange: DateRange | null;
@@ -60,7 +61,8 @@ export default function DailyReports({
   const itemsPerPage = 10;
 
   const { state } = useSidebar();
-  const { salesData, isLoading, isError, error } = useSalesData();
+  const { toast } = useToast();
+  const { salesData, isLoading, isError, error, refetch } = useSalesData();
 
   const [remainingMetersByType, setRemainingMetersByType] = useState<
     RemainingMetersByType[]
@@ -227,6 +229,24 @@ export default function DailyReports({
     fetchData();
   }, []);
 
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Success",
+        description: "Data refreshed successfully",
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh data",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isError) {
     return (
       <div className='text-center py-8 text-red-500'>
@@ -245,15 +265,25 @@ export default function DailyReports({
       <ErrorBoundary>
         <Card className='col-span-full shadow-md hover:shadow-xl'>
           <CardHeader>
-            <CardTitle>
-              {selectedDateRange ? selectedDateRange.label : "Today's Sales"}
-              {selectedDateRange && (
-                <span className='text-sm text-muted-foreground ml-2'>
-                  ({selectedDateRange.startDate.toLocaleDateString()} -{" "}
-                  {selectedDateRange.endDate.toLocaleDateString()})
-                </span>
-              )}
-            </CardTitle>
+            <div className='flex justify-between items-center'>
+              <CardTitle>
+                {selectedDateRange ? selectedDateRange.label : "Today's Sales"}
+                {selectedDateRange && (
+                  <span className='text-sm text-muted-foreground ml-2'>
+                    ({selectedDateRange.startDate.toLocaleDateString()} -{" "}
+                    {selectedDateRange.endDate.toLocaleDateString()})
+                  </span>
+                )}
+              </CardTitle>
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={handleRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className='mb-6'>

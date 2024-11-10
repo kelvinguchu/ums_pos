@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   getUserProfile,
   getCurrentUser,
@@ -54,6 +54,7 @@ import {
   Phone,
   Info,
   Users2,
+  ArrowLeftCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import localFont from "next/font/local";
@@ -87,6 +88,10 @@ import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { KenyaCounty } from "@/lib/constants/locationData";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAgentsData } from "./hooks/useAgentsData";
+import ReturnMetersFromAgent from "./ReturnMetersFromAgent";
+import Loader from "@/components/Loader";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -122,8 +127,6 @@ interface Agent {
 }
 
 export default function Agents() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAssigningMeters, setIsAssigningMeters] = useState(false);
@@ -137,37 +140,23 @@ export default function Agents() {
   const itemsPerPage = 10;
   const { state } = useSidebar();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const current = await getCurrentUser();
-        if (!current) {
-          throw new Error("User not found");
-        }
-        const currentUserProfile = await getUserProfile(current.id);
-        setCurrentUser({ ...current, ...currentUserProfile });
+  // Use the new hook
+  const {
+    agentsData: { agents, currentUser },
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useAgentsData();
 
-        const agentsList = await getAgentsList();
-        setAgents(agentsList || []);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load data",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchData();
-  }, []);
+  const queryClient = useQueryClient();
 
   const handleToggleStatus = async (agent: any) => {
     try {
       await updateAgentStatus(agent.id, !agent.is_active);
 
-      setAgents(
-        agents.map((a) =>
+      queryClient.setQueryData(["agents"], (oldData: Agent[] = []) =>
+        oldData.map((a) =>
           a.id === agent.id ? { ...a, is_active: !a.is_active } : a
         )
       );
@@ -180,6 +169,8 @@ export default function Agents() {
         style: { backgroundColor: "#2ECC40", color: "white" },
       });
     } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
+
       toast({
         title: "Error",
         description: "Failed to update agent status",
@@ -215,7 +206,10 @@ export default function Agents() {
         scannedMeters,
         unscannedMeters
       );
-      setAgents(agents.filter((a) => a.id !== agentToDelete.id));
+
+      queryClient.setQueryData(["agents"], (oldData: Agent[] = []) =>
+        oldData.filter((a) => a.id !== agentToDelete.id)
+      );
 
       toast({
         title: "Success",
@@ -228,6 +222,8 @@ export default function Agents() {
       setAgentToDelete(null);
       setAgentInventory([]);
     } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
+
       console.error("Error deleting agent:", error);
       toast({
         title: "Error",
@@ -254,6 +250,14 @@ export default function Agents() {
       totalAgents: filtered.length,
     };
   };
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isError) {
+    return <div>Error: {error?.message}</div>;
+  }
 
   return (
     <div
@@ -391,11 +395,18 @@ export default function Agents() {
                                       Record Sale - {agent.name}
                                     </DrawerTitle>
                                   </DrawerHeader>
-                                  <RecordAgentSale
-                                    agent={agent}
-                                    currentUser={currentUser}
-                                    onClose={() => setSelectedAgent(null)}
-                                  />
+                                  {currentUser && (
+                                    <RecordAgentSale
+                                      agent={agent}
+                                      currentUser={{
+                                        id: currentUser.id,
+                                        email: currentUser.email || "",
+                                        role: currentUser.role,
+                                        name: currentUser.name,
+                                      }}
+                                      onClose={() => setSelectedAgent(null)}
+                                    />
+                                  )}
                                 </DrawerContent>
                               </Drawer>
 
@@ -427,6 +438,41 @@ export default function Agents() {
                                     currentUser={currentUser}
                                     preSelectedAgent={agent}
                                   />
+                                </SheetContent>
+                              </Sheet>
+
+                              {/* Return Meters */}
+                              <Sheet>
+                                <SheetTrigger asChild>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setSelectedAgent(agent);
+                                    }}>
+                                    <ArrowLeftCircle className='mr-2 h-4 w-4 text-[#E46020]' />
+                                    Return Meters
+                                  </DropdownMenuItem>
+                                </SheetTrigger>
+                                <SheetContent
+                                  className={`${geistMono.className} min-w-[50vw]`}>
+                                  <SheetHeader>
+                                    <SheetTitle className='flex items-center justify-center gap-2'>
+                                      <Badge
+                                        variant='outline'
+                                        className='bg-[#000080] text-white px-4 py-2 text-sm'>
+                                        Return Meters from {agent.name}
+                                      </Badge>
+                                    </SheetTitle>
+                                  </SheetHeader>
+                                  {currentUser && (
+                                    <ReturnMetersFromAgent
+                                      agent={agent}
+                                      currentUser={{
+                                        id: currentUser.id,
+                                        name: currentUser.name,
+                                      }}
+                                    />
+                                  )}
                                 </SheetContent>
                               </Sheet>
 
@@ -678,11 +724,18 @@ export default function Agents() {
                                       Record Sale - {agent.name}
                                     </DrawerTitle>
                                   </DrawerHeader>
-                                  <RecordAgentSale
-                                    agent={agent}
-                                    currentUser={currentUser}
-                                    onClose={() => setSelectedAgent(null)}
-                                  />
+                                  {currentUser && (
+                                    <RecordAgentSale
+                                      agent={agent}
+                                      currentUser={{
+                                        id: currentUser.id,
+                                        email: currentUser.email || "",
+                                        role: currentUser.role,
+                                        name: currentUser.name,
+                                      }}
+                                      onClose={() => setSelectedAgent(null)}
+                                    />
+                                  )}
                                 </DrawerContent>
                               </Drawer>
 
@@ -714,6 +767,41 @@ export default function Agents() {
                                     currentUser={currentUser}
                                     preSelectedAgent={agent}
                                   />
+                                </SheetContent>
+                              </Sheet>
+
+                              {/* Return Meters */}
+                              <Sheet>
+                                <SheetTrigger asChild>
+                                  <DropdownMenuItem
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setSelectedAgent(agent);
+                                    }}>
+                                    <ArrowLeftCircle className='mr-2 h-4 w-4 text-[#E46020]' />
+                                    Return Meters
+                                  </DropdownMenuItem>
+                                </SheetTrigger>
+                                <SheetContent
+                                  className={`${geistMono.className} min-w-[50vw]`}>
+                                  <SheetHeader>
+                                    <SheetTitle className='flex items-center justify-center gap-2'>
+                                      <Badge
+                                        variant='outline'
+                                        className='bg-[#000080] text-white px-4 py-2 text-sm'>
+                                        Return Meters from {agent.name}
+                                      </Badge>
+                                    </SheetTitle>
+                                  </SheetHeader>
+                                  {currentUser && (
+                                    <ReturnMetersFromAgent
+                                      agent={agent}
+                                      currentUser={{
+                                        id: currentUser.id,
+                                        name: currentUser.name,
+                                      }}
+                                    />
+                                  )}
                                 </SheetContent>
                               </Sheet>
 
@@ -833,11 +921,7 @@ export default function Agents() {
               setSelectedAgent(null);
             }}
             onAgentUpdated={() => {
-              const fetchAgents = async () => {
-                const agentsList = await getAgentsList();
-                setAgents(agentsList || []);
-              };
-              fetchAgents();
+              queryClient.invalidateQueries({ queryKey: ["agents"] });
             }}
             agent={selectedAgent}
           />

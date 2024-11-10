@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Home,
   ShoppingCart,
@@ -10,6 +10,7 @@ import {
   HandPlatter,
   SmilePlus,
   LogOut,
+  ArrowLeftCircle,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -43,6 +44,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "@/lib/actions/supabaseActions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useAuth } from "@/contexts/AuthContext";
+import ReturnSoldMeters from "@/components/returns/ReturnSoldMeters";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -64,13 +67,13 @@ const items = [
   { title: "Agents", url: "/agents", icon: HandPlatter },
 ];
 
-export function AppSidebar({ user }: { user: any }) {
+export function AppSidebar() {
+  const { user, userRole } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [userRole, setUserRole] = useState("");
+  const [userName, setUserName] = useState(user?.name || "");
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isAddMetersOpen, setIsAddMetersOpen] = useState(() => {
     return localStorage.getItem("addMetersSheetOpen") === "true";
@@ -110,23 +113,19 @@ export function AppSidebar({ user }: { user: any }) {
 
   const isAdmin = userRole === "admin";
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user?.id) {
-        const profile = await getUserProfile(user.id);
-        if (profile) {
-          setUserName(profile.name || "");
-          setUserRole(profile.role || "");
-        }
-      }
-    };
-    fetchUserProfile();
-  }, [user?.id]);
-
   const handleLogout = async () => {
     await signOut();
     router.push("/signin");
   };
+
+  // Ensure user is properly typed and available before rendering sensitive components
+  const currentUserData = useMemo(() => {
+    if (!user?.id || !user?.name) return null;
+    return {
+      id: user.id,
+      name: user.name,
+    };
+  }, [user]);
 
   return (
     <Sidebar className='mt-16 flex flex-col justify-between h-[calc(100vh-4rem)] bg-background'>
@@ -158,6 +157,28 @@ export function AppSidebar({ user }: { user: any }) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <Sheet
+                  open={isSellMetersOpen}
+                  onOpenChange={setIsSellMetersOpen}>
+                  <SheetTrigger asChild>
+                    <SidebarMenuButton>
+                      <DollarSign className='mr-2 h-4 w-4 text-blue-600' />
+                      <span>Sell Meters</span>
+                    </SidebarMenuButton>
+                  </SheetTrigger>
+                  <SheetContent className='min-w-[50vw]'>
+                    <SheetHeader>
+                      <SheetTitle className='text-left'>
+                        <Badge variant='outline' className='ml-2 bg-blue-100'>
+                          {userName}
+                        </Badge>
+                      </SheetTitle>
+                    </SheetHeader>
+                    <SellMeters currentUser={user} />
+                  </SheetContent>
+                </Sheet>
+              </SidebarMenuItem>
               {isAdmin && (
                 <>
                   {/* <SidebarMenuItem>
@@ -230,7 +251,9 @@ export function AppSidebar({ user }: { user: any }) {
                             </Badge>
                           </SheetTitle>
                         </SheetHeader>
-                        <AddMeterForm currentUser={user} />
+                        {currentUserData && (
+                          <AddMeterForm currentUser={currentUserData} />
+                        )}
                       </SheetContent>
                     </Sheet>
                   </SidebarMenuItem>
@@ -258,30 +281,32 @@ export function AppSidebar({ user }: { user: any }) {
                       </SheetContent>
                     </Sheet>
                   </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <SidebarMenuButton>
+                          <ArrowLeftCircle className='mr-2 h-4 w-4 text-red-600' />
+                          <span>Return Sold Meters</span>
+                        </SidebarMenuButton>
+                      </SheetTrigger>
+                      <SheetContent className='min-w-[70vw] max-h-[100vh] overflow-y-auto'>
+                        <SheetHeader>
+                          <SheetTitle className='text-left'>
+                            <Badge
+                              variant='outline'
+                              className='ml-2 bg-blue-100'>
+                              Return Sold Meters
+                            </Badge>
+                          </SheetTitle>
+                        </SheetHeader>
+                        {currentUserData && (
+                          <ReturnSoldMeters currentUser={currentUserData} />
+                        )}
+                      </SheetContent>
+                    </Sheet>
+                  </SidebarMenuItem>
                 </>
               )}
-              <SidebarMenuItem>
-                <Sheet
-                  open={isSellMetersOpen}
-                  onOpenChange={setIsSellMetersOpen}>
-                  <SheetTrigger asChild>
-                    <SidebarMenuButton>
-                      <DollarSign className='mr-2 h-4 w-4 text-blue-600' />
-                      <span>Sell Meters</span>
-                    </SidebarMenuButton>
-                  </SheetTrigger>
-                  <SheetContent className='min-w-[50vw]'>
-                    <SheetHeader>
-                      <SheetTitle className='text-left'>
-                        <Badge variant='outline' className='ml-2 bg-blue-100'>
-                          {userName}
-                        </Badge>
-                      </SheetTitle>
-                    </SheetHeader>
-                    <SellMeters currentUser={user} />
-                  </SheetContent>
-                </Sheet>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -314,7 +339,8 @@ export function AppSidebar({ user }: { user: any }) {
           </SidebarGroup>
         )}
       </SidebarContent>
-      <div className={`${geistMono.className} p-4 border-t border-gray-200 bg-background`}>
+      <div
+        className={`${geistMono.className} p-4 border-t border-gray-200 bg-background`}>
         <div className='flex items-center gap-2'>
           <span className='text-sm text-gray-600'>{userName}</span>
           <Badge

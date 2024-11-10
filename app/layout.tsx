@@ -4,8 +4,9 @@ import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import AuthWrapper from "@/components/auth/AuthWrapper";
 import Reload from "@/components/Reload";
-import { NotificationProvider } from '@/contexts/NotificationContext';
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -25,38 +26,36 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#000080' },
-    { media: '(prefers-color-scheme: dark)', color: '#000080' }
+    { media: "(prefers-color-scheme: light)", color: "#000080" },
+    { media: "(prefers-color-scheme: dark)", color: "#000080" },
   ],
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 5,
   minimumScale: 1,
-  viewportFit: 'cover',
-  colorScheme: 'light'
+  viewportFit: "cover",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/favi.png" />
-      </head>
-      <body className={`${poppins.className} antialiased`}>
-        <QueryProvider>
-          <NotificationProvider>
-            <AuthWrapper>
-              {children}
-              <Toaster />
-              <Reload />
-            </AuthWrapper>
-          </NotificationProvider>
-        </QueryProvider>
+    <html lang='en'>
+      <body>
+        <AuthProvider>
+          <QueryProvider>
+            <NotificationProvider>
+              <AuthWrapper>
+                {children}
+                <Toaster />
+                <Reload />
+              </AuthWrapper>
+            </NotificationProvider>
+          </QueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );

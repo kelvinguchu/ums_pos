@@ -141,9 +141,9 @@ export const DailyReportsSummary = memo(function DailyReportsSummary({
               />
             </p>
           ) : (
-            <div className='flex flex-col items-center justify-center py-2'>
+            <div className='flex flex-col items-center justify-center py-4'>
               <PackageOpen className='h-12 w-12 text-muted-foreground mb-2' />
-              <p className='text-muted-foreground text-sm'>Empty Coffers</p>
+              <p className='text-muted-foreground text-md'>Empty Coffers</p>
             </div>
           )}
         </CardContent>

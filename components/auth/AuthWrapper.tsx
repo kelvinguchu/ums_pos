@@ -2,13 +2,10 @@
 
 import { useEffect, useState, ReactNode, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import {
-  signOut,
-  getCurrentUser,
-  getUserProfile,
-} from "@/lib/actions/supabaseActions";
+import { signOut } from "@/lib/actions/supabaseActions";
 import dynamic from 'next/dynamic';
 import Loader from '@/components/Loader';
+import { useAuth } from "@/contexts/AuthContext";
 
 // Dynamically import heavy components
 const Layout = dynamic(() => import("@/components/Sidebar"), {
@@ -21,7 +18,6 @@ const Navbar = dynamic(() => import("@/components/Navbar"), {
   loading: () => <Loader />
 });
 
-// Fix the dynamic import for AIChatAssistant
 const AIChatAssistant = dynamic(() => 
   import("@/components/AIChatAssistant").then(mod => mod.AIChatAssistant), {
   ssr: false,
@@ -35,9 +31,7 @@ const PUBLIC_ROUTES = ["/", "/signin", "/signup", "/deactivated"];
 const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, userRole, isLoading, isAuthenticated } = useAuth();
   const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
 
   // Helper function to check if current route is public
@@ -47,53 +41,27 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
 
   // Main authentication and authorization check
   useEffect(() => {
-    const checkUserAndAccess = async () => {
-      try {
-        setIsLoading(true);
-        const currentUser = await getCurrentUser();
+    const checkAccess = async () => {
+      // Allow access to public routes
+      if (isPublicRoute(pathname)) {
+        return;
+      }
 
-        // Redirect to signin if no user on protected route
-        if (!currentUser && !isPublicRoute(pathname)) {
-          setShouldRedirect("/signin");
-          return;
-        }
+      // Redirect to signin if not authenticated
+      if (!isAuthenticated && !isLoading) {
+        setShouldRedirect("/signin");
+        return;
+      }
 
-        if (currentUser) {
-          const profile = await getUserProfile(currentUser.id);
-
-          // Handle deactivated accounts
-          if (!profile || !profile.is_active) {
-            await signOut();
-            setShouldRedirect("/deactivated");
-            return;
-          }
-
-          // Set user data and check role-based access
-          setUser(currentUser);
-          setUserRole(profile.role || "");
-
-          // Redirect non-admin users from admin routes
-          if (ADMIN_ROUTES.includes(pathname) && profile.role !== "admin") {
-            setShouldRedirect("/dashboard");
-            return;
-          }
-        }
-      } catch (error: any) {
-        // Handle authentication errors
-        if (error.message === "ACCOUNT_DEACTIVATED") {
-          await signOut();
-          setShouldRedirect("/deactivated");
-        } else {
-          await signOut();
-          setShouldRedirect("/signin");
-        }
-      } finally {
-        setIsLoading(false);
+      // Check admin routes access
+      if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
+        setShouldRedirect("/dashboard");
+        return;
       }
     };
 
-    checkUserAndAccess();
-  }, [pathname]);
+    checkAccess();
+  }, [pathname, isAuthenticated, isLoading, userRole]);
 
   // Handle navigation redirects
   useEffect(() => {
@@ -111,15 +79,15 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
     return <Loader />;
   }
 
-  if (!user && !isPublicRoute(pathname)) {
+  if (!isAuthenticated && !isPublicRoute(pathname)) {
     return <Loader />;
   }
 
-  // Render authenticated layout with proper loading states
-  return user ? (
+  // Render authenticated layout
+  return isAuthenticated ? (
     <Suspense fallback={<Loader />}>
       <div className='flex h-screen'>
-        <Layout user={user}>
+        <Layout>
           <div className='flex flex-col w-full'>
             <Navbar />
             <main className='flex-grow p-4'>{children}</main>

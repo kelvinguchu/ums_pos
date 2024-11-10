@@ -51,7 +51,10 @@ export const SalesTable = memo(function SalesTable({
 }: SalesTableProps) {
   const NoDataMessage = () => (
     <div className='text-center py-8'>
-      <p className='text-muted-foreground text-lg'>No sales data available</p>
+      <p className='text-muted-foreground text-lg'>No sales recorded today</p>
+      <p className='text-sm text-muted-foreground mt-2'>
+        Sales made today will appear here
+      </p>
     </div>
   );
 
@@ -72,7 +75,13 @@ export const SalesTable = memo(function SalesTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sales.length > 0 ? (
+              {sales.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <NoDataMessage />
+                  </TableCell>
+                </TableRow>
+              ) : (
                 sales.map((sale) => (
                   <TableRow key={sale.id}>
                     <TableCell>{sale.user_name}</TableCell>
@@ -96,12 +105,6 @@ export const SalesTable = memo(function SalesTable({
                     </TableCell>
                   </TableRow>
                 ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7}>
-                    <NoDataMessage />
-                  </TableCell>
-                </TableRow>
               )}
             </TableBody>
           </Table>

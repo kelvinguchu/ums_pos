@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSaleBatches } from "@/lib/actions/supabaseActions";
+import { getSaleBatches, getAgentsList } from "@/lib/actions/supabaseActions";
 import localFont from "next/font/local";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -46,28 +46,18 @@ import TableReportPDF from "@/components/sharedcomponents/TableReportPDF";
 import { MeterSalesRow } from "./MeterSalesRow";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useMeterSalesData } from "./hooks/useMeterSalesData";
+import type { SaleBatch } from "./hooks/useMeterSalesData";
+import Loader from "@/components/Loader";
+import { RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { CUSTOMER_TYPES } from "@/lib/constants/locationData";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
 });
-
-// Update the SaleBatch interface to include new fields
-interface SaleBatch {
-  id: number;
-  user_name: string;
-  meter_type: string;
-  batch_amount: number;
-  sale_date: string;
-  destination: string;
-  recipient: string;
-  total_price: number;
-  unit_price: number;
-  customer_type: string;
-  customer_county: string;
-  customer_contact: string;
-}
 
 const EmptyState = ({ message }: { message: string }) => (
   <div className='flex flex-col items-center justify-center p-8 text-gray-500'>
@@ -78,7 +68,6 @@ const EmptyState = ({ message }: { message: string }) => (
 
 export default function MeterSales() {
   const { state } = useSidebar();
-  const [saleBatches, setSaleBatches] = useState<SaleBatch[]>([]);
   const [filteredBatches, setFilteredBatches] = useState<SaleBatch[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchUser, setSearchUser] = useState("");
@@ -87,19 +76,46 @@ export default function MeterSales() {
   const [selectedDate, setSelectedDate] = useState<any>(null);
   const itemsPerPage = 10;
   const [selectedBatch, setSelectedBatch] = useState<number | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState("");
+  const [agents, setAgents] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedCustomerType, setSelectedCustomerType] = useState("");
 
-  // Fetch data
-  useEffect(() => {
-    async function fetchSaleBatches() {
-      try {
-        const batches = await getSaleBatches();
-        setSaleBatches(batches);
-        setFilteredBatches(batches);
-      } catch (error) {
-        console.error("Error fetching sale batches:", error);
-      }
+  // Use the new hook
+  const { saleBatches, isLoading, isError, error, refetch } =
+    useMeterSalesData();
+
+  // Add toast
+  const { toast } = useToast();
+
+  // Add refresh handler
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Success",
+        description: "Sales data refreshed",
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh data",
+        variant: "destructive",
+      });
     }
-    fetchSaleBatches();
+  };
+
+  // Fetch agents
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const agentsList = await getAgentsList();
+        setAgents(agentsList.filter((agent) => agent.is_active));
+      } catch (error) {
+        console.error("Error loading agents:", error);
+      }
+    };
+    loadAgents();
   }, []);
 
   // Filter data
@@ -107,14 +123,22 @@ export default function MeterSales() {
     let filtered = [...saleBatches];
 
     if (searchUser) {
-      filtered = filtered.filter((batch) =>
-        batch.user_name.toLowerCase().includes(searchUser.toLowerCase())
+      filtered = filtered.filter(
+        (batch) =>
+          batch.user_name.toLowerCase().includes(searchUser.toLowerCase()) ||
+          batch.recipient.toLowerCase().includes(searchUser.toLowerCase())
       );
     }
 
     if (selectedType) {
       filtered = filtered.filter(
         (batch) => batch.meter_type.toLowerCase() === selectedType.toLowerCase()
+      );
+    }
+
+    if (selectedCustomerType) {
+      filtered = filtered.filter(
+        (batch) => batch.customer_type === selectedCustomerType
       );
     }
 
@@ -137,7 +161,32 @@ export default function MeterSales() {
 
     setFilteredBatches(filtered);
     setCurrentPage(1);
-  }, [saleBatches, searchUser, selectedType, dateRange, selectedDate]);
+  }, [
+    saleBatches,
+    searchUser,
+    selectedType,
+    selectedCustomerType,
+    dateRange,
+    selectedDate,
+  ]);
+
+  // Add loading state
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  // Add error state
+  if (isError) {
+    return (
+      <div className='flex flex-col items-center justify-center min-h-[60vh] gap-4'>
+        <div className='text-lg text-red-500'>Error: {error?.message}</div>
+        <Button onClick={() => refetch()} variant='outline'>
+          <RefreshCw className='mr-2 h-4 w-4' />
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredBatches.length / itemsPerPage);
@@ -161,12 +210,19 @@ export default function MeterSales() {
   };
 
   const hasActiveFilters = () => {
-    return searchUser || selectedType || dateRange || selectedDate;
+    return (
+      searchUser ||
+      selectedType ||
+      selectedCustomerType ||
+      dateRange ||
+      selectedDate
+    );
   };
 
   const clearSearch = () => {
     setSearchUser("");
     setSelectedType("");
+    setSelectedCustomerType("");
     setDateRange(null);
     setSelectedDate(null);
   };
@@ -251,30 +307,36 @@ export default function MeterSales() {
   };
 
   return (
-    <div className={cn(
-      `${geistMono.className} container transition-all duration-200 ease-linear mt-10 lg:mt-2 p-4 md:p-6 mx-auto`,
-      state === "expanded" ? "w-full md:w-[75vw]" : "w-full md:w-[95vw]"
-    )}>
-      <h1 className='text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-center drop-shadow-lg'>Sales</h1>
+    <div
+      className={cn(
+        `${geistMono.className} container transition-all duration-200 ease-linear mt-10 lg:mt-2 p-4 md:p-6 mx-auto`,
+        state === "expanded" ? "w-full md:w-[79vw]" : "w-full md:w-[95vw]"
+      )}>
+      <div className='flex flex-col items-center gap-6 mb-6'>
+        <h1 className='text-2xl md:text-3xl font-bold text-center drop-shadow-lg'>
+          Sales
+        </h1>
+      </div>
 
       {/* Search and Filter Section - Made more mobile-friendly */}
-      <div className='mb-4 md:mb-6 space-y-4'>
-        <div className='flex flex-col space-y-4'>
-          {/* Search and Type Filter */}
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:flex gap-3'>
+      <div className='mb-6 space-y-4'>
+        {/* Main filters container */}
+        <div className='bg-white p-4 rounded-lg border shadow-sm'>
+          {/* All filters in one line */}
+          <div className='flex flex-wrap items-center gap-3'>
             <Input
               type='text'
-              placeholder='Search by user...'
+              placeholder='Search by seller or recipient...'
               value={searchUser}
               onChange={(e) => setSearchUser(e.target.value)}
-              className='w-full md:max-w-xs'
+              className='w-[200px]'
             />
 
             <Select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}>
-              <SelectTrigger className='w-full md:w-[180px]'>
-                <SelectValue />
+              <SelectTrigger className='w-[140px]'>
+                <SelectValue>Meter Type</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value=''>All Types</SelectItem>
@@ -287,30 +349,44 @@ export default function MeterSales() {
               </SelectContent>
             </Select>
 
-            {/* Date Filters */}
-            <div className='flex flex-col sm:flex-row gap-3 w-full lg:w-auto'>
+            <Select
+              value={selectedCustomerType}
+              onChange={(e) => setSelectedCustomerType(e.target.value)}>
+              <SelectTrigger className='w-[140px]'>
+                <SelectValue>Customer Type</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value=''>All Customers</SelectItem>
+                {CUSTOMER_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className='w-[130px]'>
               <DatePicker
                 value={selectedDate}
                 onChange={setSelectedDate}
-                label='Search by date'
-              />
-              <span className='hidden lg:block text-sm text-muted-foreground self-center'>
-                or
-              </span>
-              <DateRangePicker
-                value={dateRange}
-                onChange={setDateRange}
-                label='Search by date range'
+                label='Single date'
               />
             </div>
 
-            {/* Export Button */}
-            <div className='w-full sm:w-auto lg:ml-auto'>
+            <div className='w-[200px]'>
+              <DateRangePicker
+                value={dateRange}
+                onChange={setDateRange}
+                label='Date range'
+              />
+            </div>
+
+            <div className='flex items-center gap-2 ml-auto'>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant='outline' className='w-full sm:w-auto'>
+                  <Button variant='outline' size="sm">
                     <Download className='mr-2 h-4 w-4' />
-                    Export Table
+                    Export
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -318,27 +394,34 @@ export default function MeterSales() {
                   <DropdownMenuItem onClick={handleExportCSV}>CSV</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {hasActiveFilters() && (
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={clearSearch}
+                  className='text-muted-foreground hover:text-foreground'>
+                  <X className='h-4 w-4' />
+                </Button>
+              )}
             </div>
           </div>
-
-          {/* Clear Filters Button */}
-          {hasActiveFilters() && (
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={clearSearch}
-              className='text-muted-foreground hover:text-foreground w-full sm:w-auto'>
-              Clear filters
-              <X className='ml-2 h-4 w-4' />
-            </Button>
-          )}
         </div>
       </div>
 
       {/* Table Card */}
       <Card className='w-full transition-all duration-200 ease-linear'>
         <CardHeader className='p-4 md:p-6'>
-          <CardTitle className='text-lg md:text-xl'>Meter Sales</CardTitle>
+          <div className='flex justify-between items-center'>
+            <CardTitle className='text-lg md:text-xl'>Meter Sales</CardTitle>
+            <Button
+              variant='outline'
+              size='icon'
+              onClick={handleRefresh}
+              className='hover:bg-gray-100'>
+              <RefreshCw className='h-4 w-4' />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className='p-0 md:p-6'>
           {currentBatches.length > 0 ? (
@@ -346,15 +429,16 @@ export default function MeterSales() {
               {/* Mobile View */}
               <div className='md:hidden space-y-4 p-4'>
                 {currentBatches.map((batch) => (
-                  <div 
-                    key={batch.id} 
+                  <div
+                    key={batch.id}
                     className='bg-white p-4 rounded-lg border shadow-sm space-y-2'
-                    onClick={() => setSelectedBatch(batch.id)}
-                  >
+                    onClick={() => setSelectedBatch(batch.id)}>
                     <div className='flex justify-between items-start'>
                       <div>
                         <p className='font-medium'>{batch.user_name}</p>
-                        <p className='text-sm text-muted-foreground'>{formatDate(batch.sale_date)}</p>
+                        <p className='text-sm text-muted-foreground'>
+                          {formatDate(batch.sale_date)}
+                        </p>
                       </div>
                       <Badge variant='outline' className='bg-blue-100'>
                         {batch.customer_type}
@@ -371,10 +455,12 @@ export default function MeterSales() {
                       </div>
                       <div>
                         <p className='text-muted-foreground'>Sale Amount</p>
-                        <p>{batch.total_price.toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "KES",
-                        })}</p>
+                        <p>
+                          {batch.total_price.toLocaleString("en-US", {
+                            style: "currency",
+                            currency: "KES",
+                          })}
+                        </p>
                       </div>
                       <div>
                         <p className='text-muted-foreground'>County</p>

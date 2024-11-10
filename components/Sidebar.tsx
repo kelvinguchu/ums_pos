@@ -1,14 +1,10 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./Appsidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
 
-const Layout = ({
-  children,
-  user,
-}: {
-  children: React.ReactNode;
-  user: any;
-}) => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
   const initialSidebarState =
     typeof window !== "undefined"
       ? localStorage.getItem("sidebarState") === "true"
@@ -18,7 +14,7 @@ const Layout = ({
 
   return (
     <SidebarProvider defaultOpen={initialSidebarState}>
-      <AppSidebar user={user} />
+      <AppSidebar />
       <div className="relative bg-background">
         {!isMobile && (
           <div className="sticky top-16 z-40 h-12 flex items-center px-4 bg-background">

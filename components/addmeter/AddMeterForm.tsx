@@ -6,6 +6,7 @@ import {
   addMeters,
   getUserProfile,
   checkMeterExists,
+  addMeterPurchaseBatch,
 } from "@/lib/actions/supabaseActions";
 import { useToast } from "@/hooks/use-toast";
 import { FileUploadHandler } from "./FileUploadHandler";
@@ -15,6 +16,9 @@ import { SubmissionHandler } from "./SubmissionHandler";
 import localFont from "next/font/local";
 import { pdf } from "@react-pdf/renderer";
 import MeterAdditionReceipt from "./MeterAdditionReceipt";
+import { Badge } from "@/components/ui/badge";
+import { Edit2, Loader2 } from "lucide-react";
+import BatchDetailsDialog from "./BatchDetailsDialog";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -37,6 +41,15 @@ interface Meter {
   adderName: string;
 }
 
+interface BatchDetails {
+  purchaseDate: string;
+  batchGroups: Array<{
+    type: string;
+    count: number;
+    totalCost: string;
+  }>;
+}
+
 export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   const [meters, setMeters] = useState<Meter[]>(() => {
     const cached = localStorage.getItem("cachedAddMeters");
@@ -52,6 +65,8 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     return localStorage.getItem("lastSubmittedMeters") !== null;
   });
   const [adderName, setAdderName] = useState("");
+  const [isBatchDetailsOpen, setIsBatchDetailsOpen] = useState(false);
+  const [batchDetails, setBatchDetails] = useState<BatchDetails | null>(null);
 
   const { toast } = useToast();
 
@@ -150,21 +165,65 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       return;
     }
 
+    // Group meters by type
+    const meterGroups = meters.reduce<{ [key: string]: number }>(
+      (acc, meter) => {
+        const type = meter.type.toLowerCase();
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
+
+    // Convert to array format for BatchDetailsDialog
+    const groupsArray = Object.entries(meterGroups).map(([type, count]) => ({
+      type,
+      count,
+    }));
+
+    // Show batch details dialog
+    setIsBatchDetailsOpen(true);
+  }, [meters, adderName, toast]);
+
+  const handleBatchDetailsSubmit = async (details: BatchDetails) => {
     setIsSubmitting(true);
     try {
+      // Create batch record first
+      const batchData = await addMeterPurchaseBatch({
+        purchaseDate: new Date(details.purchaseDate),
+        addedBy: currentUser.id,
+        batchGroups: details.batchGroups.map((group) => ({
+          type: group.type,
+          count: group.count,
+          totalCost: group.totalCost,
+        })),
+      });
+
+      // Then add meters with batch reference
       const metersToSubmit = meters.map((meter) => ({
         serial_number: meter.serialNumber,
         type: meter.type.toLowerCase(),
         added_by: meter.addedBy,
         added_at: meter.addedAt,
         adder_name: adderName,
+        batch_id: batchData.id,
       }));
 
       await addMeters(metersToSubmit);
 
-      localStorage.setItem("lastSubmittedMeters", JSON.stringify(meters));
-      setIsSubmitted(true);
+      // Store submission details for receipt
+      localStorage.setItem(
+        "lastSubmittedMeters",
+        JSON.stringify({
+          meters,
+          adderName,
+          batchDetails: details,
+        })
+      );
+
       setMeters([]);
+      setBatchDetails(null);
+      setIsSubmitted(true);
       localStorage.removeItem("cachedAddMeters");
 
       toast({
@@ -183,7 +242,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [meters, adderName, toast]);
+  };
 
   const handleDownloadReceipt = useCallback(async () => {
     try {
@@ -233,7 +292,9 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     setMeters([]);
     setSerialNumber("");
     setSelectedType("Split");
+    setBatchDetails(null);
     localStorage.removeItem("cachedAddMeters");
+    localStorage.removeItem("cachedBatchDetails");
   }, []);
 
   const generateMeterCountsFromMeters = (metersArray: any[]) => {
@@ -247,9 +308,24 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     }));
   };
 
+  // Add useEffect for caching batch details
+  useEffect(() => {
+    // Load cached batch details on mount
+    const cachedDetails = localStorage.getItem("cachedBatchDetails");
+    if (cachedDetails) {
+      setBatchDetails(JSON.parse(cachedDetails));
+    }
+  }, []);
+
+  // Update whenever batch details change
+  useEffect(() => {
+    if (batchDetails) {
+      localStorage.setItem("cachedBatchDetails", JSON.stringify(batchDetails));
+    }
+  }, [batchDetails]);
+
   return (
-    <div
-      className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
+    <div className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
       <div className='flex flex-col max-h-[100vh]'>
         <div className='flex-1'>
           <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2 sm:gap-0'>
@@ -257,26 +333,11 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
               Add Meters
             </h2>
             <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-              <Button
-                onClick={() => setIsAutoMode(!isAutoMode)}
-                variant={isAutoMode ? "default" : "outline"}
-                className={`${
-                  isAutoMode ? "bg-green-600 hover:bg-green-700" : ""
-                } w-full sm:w-auto`}>
-                {isAutoMode ? "Auto Mode Active" : "Activate Auto Mode"}
-              </Button>
-
               <FileUploadHandler
-                onMetersAdd={(newMeters) =>
-                  setMeters((prev) => [...newMeters, ...prev])
-                }
+                onMetersAdd={(newMeters) => setMeters((prev) => [...newMeters, ...prev])}
                 currentUser={currentUser}
               />
-
-              <Button
-                onClick={handleClearForm}
-                variant='outline'
-                className='w-full sm:w-auto'>
+              <Button onClick={handleClearForm} variant='outline' className='w-full sm:w-auto'>
                 Clear Form
               </Button>
             </div>
@@ -285,7 +346,6 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
           <MeterInputForm
             serialNumber={serialNumber}
             selectedType={selectedType}
-            isAutoMode={isAutoMode}
             onSerialNumberChange={setSerialNumber}
             onTypeChange={setSelectedType}
             onAddMeter={handleAddMeter}
@@ -293,16 +353,84 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
             exists={exists}
           />
 
+          {meters.length > 0 && (
+            <>
+              {batchDetails ? (
+                <div className='space-y-4 mb-6'>
+                  <div className='flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg'>
+                    <Badge variant='secondary' className='bg-gradient-to-r from-blue-500/50 to-indigo-500/50 text-black'>
+                      Purchase Date: {new Date(batchDetails.purchaseDate).toLocaleDateString()}
+                    </Badge>
+                    {batchDetails.batchGroups.map((group) => (
+                      <Badge
+                        key={group.type}
+                        variant='secondary'
+                        className='bg-gradient-to-r from-indigo-500/50 to-purple-500/50 text-black'>
+                        {group.type}: KES {group.totalCost}
+                      </Badge>
+                    ))}
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      onClick={() => setIsBatchDetailsOpen(true)}
+                      className='ml-2 bg-yellow-500/50 to-blue-500/50 text-black'>
+                      <Edit2 className='h-4 w-4 mr-1' />
+                      Edit Details
+                    </Button>
+                  </div>
+
+                  <Button
+                    onClick={() => handleBatchDetailsSubmit(batchDetails)}
+                    className='w-full bg-[#E46020] hover:bg-[#e46120] text-white'
+                    disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Adding Records To the Database...
+                      </>
+                    ) : (
+                      `Add ${meters.length} Meter${meters.length !== 1 ? "s" : ""} to Inventory`
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  onClick={() => setIsBatchDetailsOpen(true)}
+                  className='w-full bg-[#000080] hover:bg-[#000066] mb-4'>
+                  Add Purchase Details
+                </Button>
+              )}
+
+              <BatchDetailsDialog
+                isOpen={isBatchDetailsOpen}
+                onOpenChange={setIsBatchDetailsOpen}
+                onSubmit={(data) => {
+                  setBatchDetails(data);
+                  setIsBatchDetailsOpen(false);
+                }}
+                initialData={batchDetails}
+                meterGroups={Object.entries(
+                  meters.reduce<{ [key: string]: number }>((acc, meter) => {
+                    const type = meter.type.toLowerCase();
+                    acc[type] = (acc[type] || 0) + 1;
+                    return acc;
+                  }, {})
+                ).map(([type, count]) => ({ type, count }))}
+              />
+            </>
+          )}
+
           <MetersList meters={meters} onRemoveMeter={handleRemoveMeter} />
 
-          <SubmissionHandler
-            meters={meters}
-            isSubmitting={isSubmitting}
-            isSubmitted={isSubmitted}
-            onSubmit={handleSubmit}
-            userName={currentUser.name}
-            onDownloadReceipt={handleDownloadReceipt}
-          />
+          {isSubmitted && meters.length === 0 && (
+            <div className='mb-6'>
+              <Button
+                onClick={handleDownloadReceipt}
+                className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white'>
+                Download Receipt
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
