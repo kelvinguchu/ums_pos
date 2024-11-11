@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSaleBatches, getRemainingMetersByType } from "@/lib/actions/supabaseActions";
-import { supabase } from "@/lib/supabase"; // Import your Supabase client
+import { supabase } from "@/lib/supabase";
 import type { SaleBatch, RemainingMetersByType } from "../types";
 import { startOfDay, endOfDay } from "date-fns";
 
@@ -12,7 +12,7 @@ interface SalesData {
   remainingMetersByType: RemainingMetersByType[];
 }
 
-const CACHE_TIME = 1000 * 60 * 5; // 5 minutes
+const GC_TIME = 1000 * 60 * 5; // 5 minutes
 const STALE_TIME = 1000 * 30; // 30 seconds
 
 export function useSalesData() {
@@ -26,12 +26,11 @@ export function useSalesData() {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'sale_batches'
         },
         () => {
-          // Invalidate and refetch queries when data changes
           queryClient.invalidateQueries({ queryKey: ['sales'] });
           queryClient.invalidateQueries({ queryKey: ['remainingMeters'] });
         }
@@ -64,7 +63,7 @@ export function useSalesData() {
   const salesQuery = useQuery({
     queryKey: ['sales'],
     queryFn: getSaleBatches,
-    cacheTime: CACHE_TIME,
+    gcTime: GC_TIME,
     staleTime: STALE_TIME,
   });
 
@@ -72,7 +71,7 @@ export function useSalesData() {
   const remainingMetersQuery = useQuery({
     queryKey: ['remainingMeters'],
     queryFn: getRemainingMetersByType,
-    cacheTime: CACHE_TIME,
+    gcTime: GC_TIME,
     staleTime: STALE_TIME,
   });
 
