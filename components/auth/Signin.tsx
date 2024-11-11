@@ -80,7 +80,7 @@ const SignIn = () => {
       <Image
         src='/logo.png'
         alt='logo'
-        width={100}
+        width={120}
         height={100}
         className='w-auto h-auto'
         style={{ aspectRatio: "1/1" }}
