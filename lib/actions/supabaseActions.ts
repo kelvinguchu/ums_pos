@@ -6,8 +6,8 @@ import {
 } from "@/lib/constants/locationData";
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
 );
 
 async function checkUserActive(userId: string): Promise<boolean> {
@@ -1687,17 +1687,20 @@ export async function updateMeterPurchaseBatch(
 }
 
 // Toggle push notifications for a user
-export async function togglePushNotifications(userId: string, enabled: boolean) {
+export async function togglePushNotifications(
+  userId: string,
+  enabled: boolean
+) {
   try {
     const { error } = await supabase
-      .from('user_profiles')
+      .from("user_profiles")
       .update({ push_enabled: enabled })
-      .eq('id', userId);
+      .eq("id", userId);
 
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error toggling push notifications:', error);
+    console.error("Error toggling push notifications:", error);
     throw error;
   }
 }
@@ -1706,15 +1709,15 @@ export async function togglePushNotifications(userId: string, enabled: boolean) 
 export async function getPushNotificationStatus(userId: string) {
   try {
     const { data, error } = await supabase
-      .from('user_profiles')
-      .select('push_enabled')
-      .eq('id', userId)
+      .from("user_profiles")
+      .select("push_enabled")
+      .eq("id", userId)
       .single();
 
     if (error) throw error;
     return data?.push_enabled || false;
   } catch (error) {
-    console.error('Error getting push notification status:', error);
+    console.error("Error getting push notification status:", error);
     throw error;
   }
 }
