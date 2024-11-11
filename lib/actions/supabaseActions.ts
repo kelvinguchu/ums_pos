@@ -73,54 +73,36 @@ export async function signUp(email: string, password: string, role: string) {
 
 export async function signIn(email: string, password: string) {
   try {
-    const { data: authData, error: authError } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (authError) throw authError;
 
+    if (!authData.user) {
+      throw new Error("No user data returned");
+    }
+
     // Check if user is active
-    if (authData.user) {
-      const { data: profiles, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("is_active")
-        .eq("id", authData.user.id);
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("is_active")
+      .eq("id", authData.user.id)
+      .single();
 
-      if (profileError) {
-        console.error("Profile fetch error:", profileError);
-        throw new Error(`Error fetching user profile: ${profileError.message}`);
-      }
-
-      if (!profiles || profiles.length === 0) {
-        throw new Error(`User profile not found for ID: ${authData.user.id}`);
-      }
-
-      if (profiles.length > 1) {
-        console.error("Multiple profiles found for user");
-        throw new Error("Invalid user profile state");
-      }
-
-      const profile = profiles[0];
-
-      if (!profile.is_active) {
-        // Sign out the user immediately if they're deactivated
-        await supabase.auth.signOut();
-        throw new Error("ACCOUNT_DEACTIVATED");
-      }
-
-      // Return the user data if everything is okay
-      return { user: authData.user, session: authData.session, error: null };
+    if (profileError) {
+      throw new Error("Error fetching user profile");
     }
 
-    throw new Error("No user data returned");
+    if (!profile?.is_active) {
+      await supabase.auth.signOut();
+      throw new Error("ACCOUNT_DEACTIVATED");
+    }
+
+    return { user: authData.user, session: authData.session, error: null };
   } catch (error: any) {
-    console.error("SignIn error:", error); // Debug log
-    if (error.message === "ACCOUNT_DEACTIVATED") {
-      throw error;
-    }
-    throw new Error(error.message);
+    return { user: null, session: null, error };
   }
 }
 

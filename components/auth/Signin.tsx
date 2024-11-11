@@ -51,31 +51,35 @@ const SignIn = () => {
 
     try {
       const email = `${emailPrefix}@umskenya.com`;
-      const response = await signIn(email, password) as SignInResponse;
+      const response = await signIn(email, password);
 
       if (response.error) {
-        const errorMessage = response.error.message;
-        if (errorMessage === "ACCOUNT_DEACTIVATED") {
-          router.push("/deactivated");
-          return;
-        }
-        throw new Error(errorMessage);
+        throw new Error(response.error.message);
       }
 
       if (!response.session) {
         throw new Error("No session established");
       }
 
-      await new Promise(resolve => setTimeout(resolve, 100));
       router.push("/dashboard");
       
     } catch (error: any) {
-      setError(error.message || "Failed to sign in. Please try again.");
-      setIsLoading(false);
+      const errorMessage = error.message === "ACCOUNT_DEACTIVATED" 
+        ? "Account is deactivated" 
+        : error.message || "Failed to sign in";
+        
+      setError(errorMessage);
       
+      if (errorMessage === "ACCOUNT_DEACTIVATED") {
+        router.push("/deactivated");
+        return;
+      }
+
       if (error.message.includes("Invalid login credentials")) {
         setPassword("");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
