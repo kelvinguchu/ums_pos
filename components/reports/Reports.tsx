@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Import all card components
+// Import all card components (removed TopSellersCard)
 import { MeterInventoryCard } from "./cards/MeterInventoryCard";
-import { TopSellersCard } from "./cards/TopSellersCard";
 import { BestSellerCard } from "./cards/BestSellerCard";
 import { EarningsByTypeCard } from "./cards/EarningsByTypeCard";
 import { TotalEarningsCard } from "./cards/TotalEarningsCard";
@@ -40,7 +39,6 @@ export default function Reports() {
   const { 
     data: {
       remainingMetersByType,
-      topSellers,
       mostSellingProduct,
       earningsByMeterType,
       totalEarnings,
@@ -99,23 +97,26 @@ export default function Reports() {
       
       <div className={cn(
         'grid gap-4',
-        'grid-cols-1 sm:grid-cols-2',
+        'grid-cols-1',
         state === "expanded" 
           ? 'lg:grid-cols-2 xl:grid-cols-3' 
-          : 'lg:grid-cols-3 xl:grid-cols-4'
+          : 'lg:grid-cols-2 xl:grid-cols-3'
       )}>
-        <LazyCard>
-          <MeterInventoryCard 
-            remainingMetersByType={remainingMetersByType}
-            agentInventory={agentInventory}
-            sidebarState={state}
-          />
-        </LazyCard>
+        {/* MeterInventoryCard now spans full width on mobile and 3 columns on larger screens */}
+        <div className={cn(
+          'col-span-1',
+          'lg:col-span-2',
+          'xl:col-span-3'
+        )}>
+          <LazyCard>
+            <MeterInventoryCard 
+              remainingMetersByType={remainingMetersByType}
+              agentInventory={agentInventory}
+              sidebarState={state}
+            />
+          </LazyCard>
+        </div>
 
-        <LazyCard>
-          <TopSellersCard topSellers={topSellers} />
-        </LazyCard>
-        
         <LazyCard>
           <BestSellerCard product={mostSellingProduct} />
         </LazyCard>

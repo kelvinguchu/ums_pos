@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Package, History } from "lucide-react";
+import { Package, History, AlertTriangle, RefreshCw } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { cn } from "@/lib/utils";
 import { getMeterTypeBadgeClass } from "../utils/meterTypeConfig";
@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/sheet";
 import PurchaseBatchesView from "./PurchaseBatchesView";
 import localFont from "next/font/local";
+import FaultyMetersView from "./FaultyMetersView";
+import ReplacementsView from "./ReplacementsView";
 
 const geistMono = localFont({
   src: "../../../public/fonts/GeistMonoVF.woff",
@@ -77,12 +79,42 @@ export function MeterInventoryCard({
               <Badge
                 variant='outline'
                 className='hover:bg-gray-100 cursor-pointer flex items-center gap-1'>
+                <AlertTriangle className='h-3 w-3' />
+                Faulty Meters
+              </Badge>
+            </SheetTrigger>
+            <SheetContent
+              className={`${geistMono.className} min-w-[90vw] md:min-w-[70vw]`}>
+              <FaultyMetersView />
+            </SheetContent>
+          </Sheet>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Badge
+                variant='outline'
+                className='hover:bg-gray-100 cursor-pointer flex items-center gap-1'>
+                <RefreshCw className='h-3 w-3' />
+                Replacements
+              </Badge>
+            </SheetTrigger>
+            <SheetContent
+              className={`${geistMono.className} min-w-[90vw] md:min-w-[70vw]`}>
+              <ReplacementsView />
+            </SheetContent>
+          </Sheet>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Badge
+                variant='outline'
+                className='hover:bg-gray-100 cursor-pointer flex items-center gap-1'>
                 <History className='h-3 w-3' />
                 Purchase History
               </Badge>
             </SheetTrigger>
             <SheetContent
-              className={`${geistMono.className} min-w-[90vw] lg:min-w-[70vw]`}>
+              className={`${geistMono.className} min-w-[90vw] md:min-w-[70vw]`}>
               <PurchaseBatchesView />
             </SheetContent>
           </Sheet>

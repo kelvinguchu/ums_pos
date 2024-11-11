@@ -45,44 +45,44 @@ export default function BatchDetailsDialog({
   meterGroups,
   trigger,
 }: BatchDetailsDialogProps) {
-  const [formData, setFormData] = useState<BatchDetails>(
-    initialData || {
-      purchaseDate: new Date().toISOString(),
-      batchGroups: meterGroups.map(group => ({
-        type: group.type,
-        count: group.count,
-        totalCost: ""
-      }))
-    }
-  );
+  const [formData, setFormData] = useState<BatchDetails>(() => ({
+    purchaseDate: new Date().toISOString(),
+    batchGroups: []
+  }));
 
-  // Only open dialog if there's no initial data
-  const handleOpenChange = (open: boolean) => {
-    if (initialData && !open) {
-      onOpenChange(false);
-    } else if (!initialData) {
-      onOpenChange(open);
-    }
-  };
-
-  // Modified useEffect to only set initial data when dialog first opens
+  // Update formData when meterGroups changes or dialog opens
   useEffect(() => {
-    if (isOpen && !formData.batchGroups.length) {
+    if (isOpen) {
+      if (initialData) {
+        setFormData(initialData);
+      } else {
+        setFormData({
+          purchaseDate: new Date().toISOString(),
+          batchGroups: meterGroups.map(group => ({
+            type: group.type,
+            count: group.count,
+            totalCost: ""
+          }))
+        });
+      }
+    }
+  }, [isOpen, initialData, meterGroups]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // Reset form when closing
       setFormData({
         purchaseDate: new Date().toISOString(),
-        batchGroups: meterGroups.map(group => ({
-          type: group.type,
-          count: group.count,
-          totalCost: ""
-        }))
+        batchGroups: []
       });
     }
-  }, [isOpen, meterGroups]); // Remove formData from dependencies
+    onOpenChange(open);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   return (
@@ -111,7 +111,7 @@ export default function BatchDetailsDialog({
             <div className="space-y-4">
               <label className="text-sm font-medium">Batch Costs</label>
               {formData.batchGroups.map((group, index) => (
-                <div key={group.type} className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                <div key={`${group.type}-${index}`} className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
                   <span className="text-sm font-medium">{group.type}</span>
                   <span className="text-sm text-muted-foreground">×{group.count}</span>
                   <Input
@@ -137,4 +137,4 @@ export default function BatchDetailsDialog({
       </DialogContent>
     </Dialog>
   );
-} 
+}

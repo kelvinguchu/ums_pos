@@ -38,35 +38,19 @@ async function withActiveUserCheck<T>(
 
 export async function checkMeterExists(serialNumber: string): Promise<boolean> {
   try {
-    // First check in meters table
-    const { data: metersData, error: metersError } = await supabase
+    const normalizedSerial = serialNumber.toUpperCase();
+
+    // Only check in meters table
+    const { data, error } = await supabase
       .from("meters")
       .select("serial_number")
-      .eq("serial_number", serialNumber.toUpperCase())
+      .eq("serial_number", normalizedSerial)
       .maybeSingle();
 
-    if (metersError) throw metersError;
+    if (error) throw error;
 
-    // Then check in sold_meters table
-    const { data: soldData, error: soldError } = await supabase
-      .from("sold_meters")
-      .select("serial_number")
-      .eq("serial_number", serialNumber.toUpperCase())
-      .maybeSingle();
-
-    if (soldError) throw soldError;
-
-    // Finally check in agent_inventory table
-    const { data: agentData, error: agentError } = await supabase
-      .from("agent_inventory")
-      .select("serial_number")
-      .eq("serial_number", serialNumber.toUpperCase())
-      .maybeSingle();
-
-    if (agentError) throw agentError;
-
-    // Return true if meter exists in any of these tables
-    return !!(metersData || soldData || agentData);
+    // Return true if meter exists, false if it doesn't
+    return !!data;
   } catch (error) {
     console.error("Error checking meter existence:", error);
     throw error;
@@ -1718,6 +1702,144 @@ export async function getPushNotificationStatus(userId: string) {
     return data?.push_enabled || false;
   } catch (error) {
     console.error("Error getting push notification status:", error);
+    throw error;
+  }
+}
+
+// Function to get faulty meters
+export async function getFaultyMeters() {
+  try {
+    const { data, error } = await supabase
+      .from("faulty_returns")
+      .select(
+        `
+        id,
+        serial_number,
+        type,
+        returned_by,
+        returned_at,
+        returner_name,
+        fault_description,
+        status,
+        original_sale_id
+      `
+      )
+      .order("returned_at", { ascending: false });
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error fetching faulty meters:", error);
+    throw error;
+  }
+}
+
+// Function to get meter replacements
+export async function getMeterReplacements() {
+  try {
+    // First get the replacements data
+    const { data: replacementsData, error: replacementsError } = await supabase
+      .from("sold_meters")
+      .select(`
+        id,
+        serial_number,
+        recipient,
+        customer_contact,
+        replacement_serial,
+        replacement_date,
+        replacement_by
+      `)
+      .not('replacement_serial', 'is', null)
+      .order('replacement_date', { ascending: false });
+
+    if (replacementsError) throw replacementsError;
+
+    if (!replacementsData) return [];
+
+    // Get unique user IDs
+    const userIds = [...new Set(replacementsData.map(r => r.replacement_by))];
+
+    // Fetch user profiles for these IDs
+    const { data: userProfiles, error: userError } = await supabase
+      .from("user_profiles")
+      .select("id, name")
+      .in("id", userIds);
+
+    if (userError) {
+      throw new Error(`Error fetching user profiles: ${userError.message}`);
+    }
+
+    // Create a map of user IDs to names
+    const userMap = (userProfiles || []).reduce((acc, user) => {
+      acc[user.id] = user.name;
+      return acc;
+    }, {} as { [key: string]: string });
+
+    // Map the data with user names
+    return replacementsData.map((replacement) => ({
+      id: replacement.id,
+      serial_number: replacement.serial_number,
+      recipient: replacement.recipient,
+      customer_contact: replacement.customer_contact,
+      replacement_serial: replacement.replacement_serial,
+      replacement_date: replacement.replacement_date,
+      replacement_by: userMap[replacement.replacement_by] || replacement.replacement_by
+    }));
+
+  } catch (error) {
+    console.error("Error fetching meter replacements:", error);
+    throw error;
+  }
+}
+
+// Function to update faulty meter status
+export async function updateFaultyMeterStatus(
+  meter: {
+    id: string;
+    serial_number: string;
+    type: string;
+    status: 'repaired' | 'unrepairable' | 'pending';
+  },
+  updatedBy: string,
+  updaterName: string
+) {
+  try {
+    if (meter.status === 'repaired') {
+      // 1. Add the meter back to meters table
+      const { error: restoreError } = await supabase
+        .from("meters")
+        .insert({
+          serial_number: meter.serial_number,
+          type: meter.type,
+          added_by: updatedBy,
+          added_at: new Date().toISOString(),
+          adder_name: updaterName,
+        });
+
+      if (restoreError) throw restoreError;
+
+      // 2. Delete from faulty_returns
+      const { error: deleteError } = await supabase
+        .from("faulty_returns")
+        .delete()
+        .eq("id", meter.id);
+
+      if (deleteError) throw deleteError;
+
+      return { message: "Meter restored to inventory" };
+    } else {
+      // Just update the status for pending or unrepairable
+      const { error: updateError } = await supabase
+        .from("faulty_returns")
+        .update({ status: meter.status })
+        .eq("id", meter.id);
+
+      if (updateError) throw updateError;
+
+      return { message: `Meter marked as ${meter.status}` };
+    }
+  } catch (error) {
+    console.error("Error updating faulty meter status:", error);
     throw error;
   }
 }

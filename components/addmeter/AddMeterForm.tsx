@@ -83,40 +83,86 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
 
   // Add real-time validation effect
   useEffect(() => {
+    let isSubscribed = true;
+
     const checkSerialNumber = async () => {
-      if (serialNumber.trim()) {
-        setIsChecking(true);
-        try {
-          // First check if it exists in the table
-          const existingIndex = meters.findIndex(
-            (m) => m.serialNumber.toLowerCase() === serialNumber.toLowerCase()
-          );
-          if (existingIndex !== -1) {
-            setExists(true);
-            return;
-          }
-          // Then check if it exists in the database
-          const exists = await checkMeterExists(serialNumber);
+      // Reset states if input is empty
+      if (!serialNumber.trim()) {
+        setExists(false);
+        setIsChecking(false);
+        return;
+      }
+
+      setIsChecking(true);
+      try {
+        // First check if it exists in current batch
+        const existsInBatch = meters.some(
+          (m) => m.serialNumber.toLowerCase() === serialNumber.toLowerCase()
+        );
+
+        if (existsInBatch) {
+          setExists(true);
+          setIsChecking(false);
+          toast({
+            title: "Error",
+            description: "Serial number already in current batch",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Then check database
+        const exists = await checkMeterExists(serialNumber);
+        
+        if (isSubscribed) {
           setExists(exists);
-        } catch (error) {
-          console.error("Error checking serial number:", error);
-        } finally {
+          if (exists) {
+            toast({
+              title: "Error",
+              description: "Serial number already exists in database",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        if (isSubscribed) {
+          toast({
+            title: "Error",
+            description: "Failed to check serial number",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        if (isSubscribed) {
           setIsChecking(false);
         }
-      } else {
-        setExists(false);
       }
     };
 
-    const timeoutId = setTimeout(checkSerialNumber, 300);
-    return () => clearTimeout(timeoutId);
-  }, [serialNumber, meters]);
+    const timeoutId = setTimeout(checkSerialNumber, 500);
+
+    return () => {
+      isSubscribed = false;
+      clearTimeout(timeoutId);
+    };
+  }, [serialNumber, meters, toast]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const profile = await getUserProfile(currentUser.id);
-      setAdderName(profile?.name || currentUser.name || "");
+      try {
+        const profile = await getUserProfile(currentUser.id);
+        // Set adderName from profile, fallback to currentUser.name, or use empty string as last resort
+        setAdderName(profile?.name || currentUser.name || "");
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        // Fallback to currentUser.name if profile fetch fails
+        setAdderName(currentUser.name || "");
+      }
     };
+
+    // Set initial adderName from currentUser prop
+    setAdderName(currentUser.name || "");
+    // Then try to fetch the profile
     fetchUserProfile();
   }, [currentUser.id, currentUser.name]);
 
@@ -312,21 +358,24 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       }
 
       // Generate meter counts from the stored data
-      const meterCounts = lastSubmittedData.meters.reduce((acc: any[], meter: Meter) => {
-        const existingType = acc.find(item => item.type === meter.type);
-        if (existingType) {
-          existingType.count += 1;
-        } else {
-          acc.push({ type: meter.type, count: 1 });
-        }
-        return acc;
-      }, []);
+      const meterCounts = lastSubmittedData.meters.reduce(
+        (acc: any[], meter: Meter) => {
+          const existingType = acc.find((item) => item.type === meter.type);
+          if (existingType) {
+            existingType.count += 1;
+          } else {
+            acc.push({ type: meter.type, count: 1 });
+          }
+          return acc;
+        },
+        []
+      );
 
       const blob = await pdf(
         <MeterAdditionReceipt
           meterCounts={meterCounts}
           adderName={lastSubmittedData.adderName}
-          batchDetails={lastSubmittedData.batchDetails} 
+          batchDetails={lastSubmittedData.batchDetails}
         />
       ).toBlob();
 
@@ -407,9 +456,9 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     };
   }, []);
 
-  const handleTemplateDownload = (type: 'csv' | 'xlsx') => {
-    const filename = type === 'csv' ? 'ctemplate.csv' : 'xtemplate.xlsx';
-    const link = document.createElement('a');
+  const handleTemplateDownload = (type: "csv" | "xlsx") => {
+    const filename = type === "csv" ? "ctemplate.csv" : "xtemplate.xlsx";
+    const link = document.createElement("a");
     link.href = `/exceltemplates/${filename}`;
     link.download = filename;
     document.body.appendChild(link);
@@ -418,7 +467,8 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   };
 
   return (
-    <div className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
+    <div
+      className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
       <div className='flex flex-col max-h-[100vh]'>
         <div className='flex-1'>
           <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2 sm:gap-0'>
@@ -426,40 +476,42 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
               Add Meters
             </h2>
             <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-              <div className="flex items-center gap-2">
+              <div className='flex items-center gap-2'>
                 <FileUploadHandler
-                  onMetersAdd={(newMeters) => setMeters((prev) => [...newMeters, ...prev])}
+                  onMetersAdd={(newMeters) =>
+                    setMeters((prev) => [...newMeters, ...prev])
+                  }
                   currentUser={currentUser}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger>
-                    <div className="cursor-pointer">
-                      <Badge 
-                        variant="outline" 
-                        className="hover:bg-gray-100 flex items-center gap-1 cursor-pointer"
-                      >
-                        <FileDown className="h-3 w-3" />
+                    <div className='cursor-pointer'>
+                      <Badge
+                        variant='outline'
+                        className='hover:bg-gray-100 flex items-center gap-1 cursor-pointer'>
+                        <FileDown className='h-3 w-3' />
                         Templates
                       </Badge>
                     </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem 
-                      onClick={() => handleTemplateDownload('csv')}
-                      className="cursor-pointer"
-                    >
+                  <DropdownMenuContent align='end' className='w-56'>
+                    <DropdownMenuItem
+                      onClick={() => handleTemplateDownload("csv")}
+                      className='cursor-pointer'>
                       Download CSV Template
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => handleTemplateDownload('xlsx')}
-                      className="cursor-pointer"
-                    >
+                    <DropdownMenuItem
+                      onClick={() => handleTemplateDownload("xlsx")}
+                      className='cursor-pointer'>
                       Download Excel Template
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <Button onClick={handleClearForm} variant='outline' className='w-full sm:w-auto'>
+              <Button
+                onClick={handleClearForm}
+                variant='outline'
+                className='w-full sm:w-auto'>
                 Clear Form
               </Button>
             </div>
@@ -480,8 +532,11 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
               {batchDetails ? (
                 <div className='space-y-4 mb-6'>
                   <div className='flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg'>
-                    <Badge variant='secondary' className='bg-gradient-to-r from-blue-500/50 to-indigo-500/50 text-black'>
-                      Purchase Date: {new Date(batchDetails.purchaseDate).toLocaleDateString()}
+                    <Badge
+                      variant='secondary'
+                      className='bg-gradient-to-r from-blue-500/50 to-indigo-500/50 text-black'>
+                      Purchase Date:{" "}
+                      {new Date(batchDetails.purchaseDate).toLocaleDateString()}
                     </Badge>
                     {batchDetails.batchGroups.map((group) => (
                       <Badge
@@ -511,12 +566,14 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                         Adding Records To the Database...
                       </>
                     ) : (
-                      `Submit ${meters.length} Meter${meters.length !== 1 ? "s" : ""}`
+                      `Submit ${meters.length} Meter${
+                        meters.length !== 1 ? "s" : ""
+                      }`
                     )}
                   </Button>
                 </div>
               ) : (
-                <Button 
+                <Button
                   onClick={() => setIsBatchDetailsOpen(true)}
                   className='w-full bg-[#000080] hover:bg-[#000066] mb-4'>
                   Add Purchase Details
@@ -556,11 +613,11 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                   setIsSubmitted(false);
                   localStorage.removeItem("lastSubmittedMeters");
                 }}
-                variant="ghost"
-                size="icon"
+                variant='ghost'
+                size='icon'
                 className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
-                aria-label="Dismiss">
-                <X className="h-4 w-4" />
+                aria-label='Dismiss'>
+                <X className='h-4 w-4' />
               </Button>
             </div>
           )}

@@ -28,6 +28,12 @@ interface AuthError {
   status?: number;
 }
 
+interface SignInResponse {
+  user: any | null;
+  session: any | null;
+  error: AuthError | null;
+}
+
 const SignIn = () => {
   const [emailPrefix, setEmailPrefix] = useState("");
   const [password, setPassword] = useState("");
@@ -40,37 +46,36 @@ const SignIn = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
-
-    const email = `${emailPrefix}@umskenya.com`;
+    setIsLoading(true);
 
     try {
-      const response = await signIn(email, password);
+      const email = `${emailPrefix}@umskenya.com`;
+      const response = await signIn(email, password) as SignInResponse;
 
       if (response.error) {
-        const errorMessage = (response.error as AuthError).message;
+        const errorMessage = response.error.message;
         if (errorMessage === "ACCOUNT_DEACTIVATED") {
           router.push("/deactivated");
-        } else {
-          setError(errorMessage);
+          return;
         }
-        return;
+        throw new Error(errorMessage);
       }
 
-      if (response.session) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        router.push("/dashboard");
-        router.refresh();
-      } else {
-        setError("Authentication successful but no session established");
+      if (!response.session) {
+        throw new Error("No session established");
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "An unexpected error occurred";
-      setError(errorMessage);
-    } finally {
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      router.push("/dashboard");
+      
+    } catch (error: any) {
+      setError(error.message || "Failed to sign in. Please try again.");
       setIsLoading(false);
+      
+      if (error.message.includes("Invalid login credentials")) {
+        setPassword("");
+      }
     }
   };
 
