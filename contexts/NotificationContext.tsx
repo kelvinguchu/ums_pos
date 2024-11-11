@@ -56,6 +56,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null);
   const { toast } = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Check if we're on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const refreshNotifications = async (userId: string) => {
     try {
@@ -119,7 +125,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   };
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !isClient) return;
 
     const subscription = subscribeToNotifications((notification) => {
       setNotifications(prev => {
@@ -134,7 +140,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         duration: 5000,
       });
 
-      if (pushEnabled && pushSubscription) {
+      if (pushEnabled && pushSubscription && isClient) {
         const subscriptionObject = {
           endpoint: pushSubscription.endpoint,
           keys: {
@@ -155,7 +161,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser, pushEnabled, pushSubscription, toast]);
+  }, [currentUser, pushEnabled, pushSubscription, toast, isClient]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -175,6 +181,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [currentUser]);
 
   const subscribeToPushNotifications = async () => {
+    if (!isClient) return;
     try {
       if (!currentUser) throw new Error('No user logged in');
 
@@ -186,10 +193,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       });
 
-      // Store the subscription
       setPushSubscription(subscription);
-
-      // Update user profile
       await togglePushNotifications(currentUser.id, true);
       setPushEnabled(true);
       
@@ -209,6 +213,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   };
 
   const unsubscribeFromPushNotifications = async () => {
+    if (!isClient) return;
     try {
       if (!currentUser) throw new Error('No user logged in');
 
@@ -220,9 +225,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         }
       }
 
-      // Update user profile
       await togglePushNotifications(currentUser.id, false);
       setPushEnabled(false);
+      setPushSubscription(null);
       
       toast({
         title: "Success",
@@ -239,6 +244,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  const pushNotificationSupported = isClient && 'serviceWorker' in window && 'PushManager' in window;
+
   return (
     <NotificationContext.Provider value={{
       notifications,
@@ -248,7 +255,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       refreshNotifications,
       subscribeToPushNotifications,
       unsubscribeFromPushNotifications,
-      pushNotificationSupported: 'serviceWorker' in navigator && 'PushManager' in window,
+      pushNotificationSupported,
       pushNotificationSubscribed: pushEnabled,
       pushSubscription,
     }}>
