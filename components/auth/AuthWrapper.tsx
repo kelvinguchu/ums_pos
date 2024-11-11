@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ReactNode, Suspense } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
@@ -19,8 +19,7 @@ const Navbar = dynamic(() => import("@/components/Navbar"), {
 });
 
 const AIChatAssistant = dynamic(
-  () =>
-    import("@/components/AIChatAssistant").then((mod) => mod.AIChatAssistant),
+  () => import("@/components/AIChatAssistant").then((mod) => mod.AIChatAssistant),
   {
     ssr: false,
     loading: () => null,
@@ -35,7 +34,6 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname() || "/";
   const { user, userRole, isLoading, isAuthenticated } = useAuth();
-  const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Helper function to check if current route is public
@@ -52,27 +50,35 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
 
   // Handle access control
   useEffect(() => {
-    // Skip checks for public routes
-    if (isPublicRoute(pathname)) {
-      return;
-    }
+    let timeoutId: NodeJS.Timeout;
 
-    // Wait for auth to initialize
-    if (isLoading) {
-      return;
-    }
+    const checkAccess = () => {
+      // Skip checks for public routes
+      if (isPublicRoute(pathname)) {
+        return;
+      }
 
-    // Handle unauthenticated users
-    if (!isAuthenticated) {
-      router.replace("/signin");
-      return;
-    }
+      // Handle unauthenticated users after loading
+      if (!isLoading && !isAuthenticated) {
+        timeoutId = setTimeout(() => {
+          router.replace("/signin");
+        }, 100);
+        return;
+      }
 
-    // Handle admin routes
-    if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
-      router.replace("/dashboard");
-      return;
-    }
+      // Handle admin routes
+      if (!isLoading && isAuthenticated && ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
+        timeoutId = setTimeout(() => {
+          router.replace("/dashboard");
+        }, 100);
+      }
+    };
+
+    checkAccess();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [pathname, isAuthenticated, isLoading, userRole, router]);
 
   // Render logic
@@ -80,11 +86,13 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
     return <>{children}</>;
   }
 
+  // Show loader only during initial auth check
   if (isLoading) {
     return <Loader />;
   }
 
-  if (!isAuthenticated) {
+  // Redirect to signin if not authenticated
+  if (!isAuthenticated && !isPublicRoute(pathname)) {
     return <Loader />;
   }
 

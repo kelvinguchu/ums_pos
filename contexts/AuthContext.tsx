@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState(prev => ({ ...prev, ...updates }));
   };
 
+  // Initialize auth state
   useEffect(() => {
     let mounted = true;
 
@@ -96,16 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Initialize immediately
     initializeAuth();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
         if (!mounted) return;
@@ -128,6 +123,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 userRole: profile?.role || "",
                 isLoading: false,
                 isAuthenticated: true,
+              });
+            } else {
+              setAuthState({
+                user: null,
+                userRole: "",
+                isLoading: false,
+                isAuthenticated: false,
               });
             }
           } catch (error) {

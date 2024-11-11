@@ -46,6 +46,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import ReturnSoldMeters from "@/components/returns/ReturnSoldMeters";
+import { useQueryClient } from '@tanstack/react-query';
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -68,7 +69,7 @@ const items = [
 ];
 
 export function AppSidebar() {
-  const { user, userRole } = useAuth();
+  const { user, userRole, updateAuthState } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const isMobile = useIsMobile();
@@ -85,6 +86,7 @@ export function AppSidebar() {
     return localStorage.getItem("assignMetersSheetOpen") === "true";
   });
   const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // Save sheet states to localStorage
   useEffect(() => {
@@ -114,8 +116,36 @@ export function AppSidebar() {
   const isAdmin = userRole === "admin";
 
   const handleLogout = async () => {
-    await signOut();
-    router.push("/signin");
+    try {
+      // Immediately navigate to signin to prevent any further actions
+      router.push("/signin");
+
+      // Immediately update auth context to prevent any authenticated actions
+      updateAuthState({
+        user: null,
+        userRole: "",
+        isAuthenticated: false,
+        isLoading: false
+      });
+
+      // Clear all caches and storage in parallel
+      await Promise.all([
+        // Clear React Query cache
+        queryClient.clear(),
+        
+        // Sign out from supabase
+        signOut(),
+        
+        // Clear all storages
+        Promise.resolve(localStorage.clear()),
+        Promise.resolve(sessionStorage.clear())
+      ]);
+
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if there's an error, ensure the user is logged out locally
+      router.push("/signin");
+    }
   };
 
   // Ensure user is properly typed and available before rendering sensitive components
@@ -331,8 +361,11 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={handleLogout}>
-                    <LogOut className='mr-2 h-4 w-4 text-red-600' />
+                  <SidebarMenuButton 
+                    onClick={handleLogout}
+                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
                     <span>Logout</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

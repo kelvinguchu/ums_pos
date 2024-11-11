@@ -88,22 +88,10 @@ const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      // Clear React Query cache
-      queryClient.clear();
-      
-      // Clear search cache
-      Object.keys(searchCache).forEach(key => delete searchCache[key]);
-      
-      // Clear local storage items
-      localStorage.clear();
-      
-      // Clear session storage
-      sessionStorage.clear();
+      // Immediately navigate to signin to prevent any further actions
+      router.push("/signin");
 
-      // Sign out from supabase
-      await signOut();
-      
-      // Update auth context with proper typing
+      // Immediately update auth context to prevent any authenticated actions
       updateAuthState({
         user: null,
         userRole: "",
@@ -111,10 +99,26 @@ const Navbar: React.FC = () => {
         isLoading: false
       });
 
-      // Navigate to signin
-      router.push("/signin");
+      // Clear all caches and storage in parallel
+      await Promise.all([
+        // Clear React Query cache
+        queryClient.clear(),
+        
+        // Sign out from supabase
+        signOut(),
+        
+        // Clear all storages
+        Promise.resolve(localStorage.clear()),
+        Promise.resolve(sessionStorage.clear()),
+        
+        // Clear search cache
+        Promise.resolve(Object.keys(searchCache).forEach(key => delete searchCache[key]))
+      ]);
+
     } catch (error) {
       console.error("Logout error:", error);
+      // Even if there's an error, ensure the user is logged out locally
+      router.push("/signin");
     }
   };
 
