@@ -73,6 +73,8 @@ export async function signUp(email: string, password: string, role: string) {
 
 export async function signIn(email: string, password: string) {
   try {
+    await signOut();
+
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -84,7 +86,6 @@ export async function signIn(email: string, password: string) {
       throw new Error("No user data returned");
     }
 
-    // Check if user is active
     const { data: profile, error: profileError } = await supabase
       .from("user_profiles")
       .select("is_active")
@@ -96,7 +97,7 @@ export async function signIn(email: string, password: string) {
     }
 
     if (!profile?.is_active) {
-      await supabase.auth.signOut();
+      await signOut();
       throw new Error("ACCOUNT_DEACTIVATED");
     }
 
@@ -107,8 +108,23 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  try {
+    // Clear any cached auth state first
+    localStorage.removeItem("pos-auth-token");
+    sessionStorage.clear();
+
+    // Sign out from supabase
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+
+    // Clear any remaining supabase storage
+    localStorage.removeItem("supabase.auth.token");
+
+    return { error: null };
+  } catch (error) {
+    console.error("Error during sign out:", error);
+    return { error };
+  }
 }
 
 export async function getCurrentUser() {
@@ -1722,7 +1738,8 @@ export async function getMeterReplacements() {
     // First get the replacements data
     const { data: replacementsData, error: replacementsError } = await supabase
       .from("sold_meters")
-      .select(`
+      .select(
+        `
         id,
         serial_number,
         recipient,
@@ -1730,16 +1747,17 @@ export async function getMeterReplacements() {
         replacement_serial,
         replacement_date,
         replacement_by
-      `)
-      .not('replacement_serial', 'is', null)
-      .order('replacement_date', { ascending: false });
+      `
+      )
+      .not("replacement_serial", "is", null)
+      .order("replacement_date", { ascending: false });
 
     if (replacementsError) throw replacementsError;
 
     if (!replacementsData) return [];
 
     // Get unique user IDs
-    const userIds = [...new Set(replacementsData.map(r => r.replacement_by))];
+    const userIds = [...new Set(replacementsData.map((r) => r.replacement_by))];
 
     // Fetch user profiles for these IDs
     const { data: userProfiles, error: userError } = await supabase
@@ -1765,9 +1783,9 @@ export async function getMeterReplacements() {
       customer_contact: replacement.customer_contact,
       replacement_serial: replacement.replacement_serial,
       replacement_date: replacement.replacement_date,
-      replacement_by: userMap[replacement.replacement_by] || replacement.replacement_by
+      replacement_by:
+        userMap[replacement.replacement_by] || replacement.replacement_by,
     }));
-
   } catch (error) {
     console.error("Error fetching meter replacements:", error);
     throw error;
@@ -1780,23 +1798,21 @@ export async function updateFaultyMeterStatus(
     id: string;
     serial_number: string;
     type: string;
-    status: 'repaired' | 'unrepairable' | 'pending';
+    status: "repaired" | "unrepairable" | "pending";
   },
   updatedBy: string,
   updaterName: string
 ) {
   try {
-    if (meter.status === 'repaired') {
+    if (meter.status === "repaired") {
       // 1. Add the meter back to meters table
-      const { error: restoreError } = await supabase
-        .from("meters")
-        .insert({
-          serial_number: meter.serial_number,
-          type: meter.type,
-          added_by: updatedBy,
-          added_at: new Date().toISOString(),
-          adder_name: updaterName,
-        });
+      const { error: restoreError } = await supabase.from("meters").insert({
+        serial_number: meter.serial_number,
+        type: meter.type,
+        added_by: updatedBy,
+        added_at: new Date().toISOString(),
+        adder_name: updaterName,
+      });
 
       if (restoreError) throw restoreError;
 

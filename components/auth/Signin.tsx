@@ -60,8 +60,8 @@ const SignIn = () => {
       if (!response.session) {
         throw new Error("No session established");
       }
-
-      router.push("/dashboard");
+      
+      window.location.href = '/dashboard';
       
     } catch (error: any) {
       const errorMessage = error.message === "ACCOUNT_DEACTIVATED" 
@@ -69,17 +69,16 @@ const SignIn = () => {
         : error.message || "Failed to sign in";
         
       setError(errorMessage);
+      setIsLoading(false);
       
       if (errorMessage === "ACCOUNT_DEACTIVATED") {
-        router.push("/deactivated");
+        window.location.href = '/deactivated';
         return;
       }
 
       if (error.message.includes("Invalid login credentials")) {
         setPassword("");
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 

@@ -39,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState(prev => ({ ...prev, ...updates }));
   };
 
-  // Initialize auth state
   useEffect(() => {
     let mounted = true;
 
@@ -97,62 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Initialize immediately
     initializeAuth();
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        if (!mounted) return;
-
-        if (session?.user) {
-          try {
-            const profile = await getUserProfile(session.user.id);
-
-            if (profile?.is_active) {
-              const userProfile: UserProfile = {
-                id: session.user.id,
-                email: session.user.email || "",
-                name: profile.name,
-                role: profile.role,
-                is_active: profile.is_active,
-              };
-
-              setAuthState({
-                user: userProfile,
-                userRole: profile?.role || "",
-                isLoading: false,
-                isAuthenticated: true,
-              });
-            } else {
-              setAuthState({
-                user: null,
-                userRole: "",
-                isLoading: false,
-                isAuthenticated: false,
-              });
-            }
-          } catch (error) {
-            setAuthState({
-              user: null,
-              userRole: "",
-              isLoading: false,
-              isAuthenticated: false,
-            });
-          }
-        } else {
-          setAuthState({
-            user: null,
-            userRole: "",
-            isLoading: false,
-            isAuthenticated: false,
-          });
-        }
-      }
-    );
-
     return () => {
-      subscription.unsubscribe();
       mounted = false;
     };
   }, []);

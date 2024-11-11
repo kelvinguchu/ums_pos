@@ -34,9 +34,9 @@ import localFont from "next/font/local";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
-import { StockAlert } from '@/components/stock/StockAlert';
+import { StockAlert } from "@/components/stock/StockAlert";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from "@tanstack/react-query";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -88,37 +88,33 @@ const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      // Immediately navigate to signin to prevent any further actions
-      router.push("/signin");
+      setIsLoading(true);
 
-      // Immediately update auth context to prevent any authenticated actions
+      // Clear all caches and storage first
+      queryClient.clear();
+      localStorage.clear();
+      sessionStorage.clear();
+      Object.keys(searchCache).forEach((key) => delete searchCache[key]);
+
+      // Update auth context to prevent any authenticated actions
       updateAuthState({
         user: null,
         userRole: "",
         isAuthenticated: false,
-        isLoading: false
+        isLoading: false,
       });
 
-      // Clear all caches and storage in parallel
-      await Promise.all([
-        // Clear React Query cache
-        queryClient.clear(),
-        
-        // Sign out from supabase
-        signOut(),
-        
-        // Clear all storages
-        Promise.resolve(localStorage.clear()),
-        Promise.resolve(sessionStorage.clear()),
-        
-        // Clear search cache
-        Promise.resolve(Object.keys(searchCache).forEach(key => delete searchCache[key]))
-      ]);
+      // Sign out from supabase
+      await signOut();
 
+      // Force a hard redirect to signin page
+      window.location.href = "/signin";
     } catch (error) {
       console.error("Logout error:", error);
-      // Even if there's an error, ensure the user is logged out locally
-      router.push("/signin");
+      // Even if there's an error, force redirect
+      window.location.href = "/signin";
+    } finally {
+      setIsLoading(false);
     }
   };
 

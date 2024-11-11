@@ -53,12 +53,10 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
     let timeoutId: NodeJS.Timeout;
 
     const checkAccess = () => {
-      // Skip checks for public routes
       if (isPublicRoute(pathname)) {
         return;
       }
 
-      // Handle unauthenticated users after loading
       if (!isLoading && !isAuthenticated) {
         timeoutId = setTimeout(() => {
           router.replace("/signin");
@@ -66,7 +64,6 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Handle admin routes
       if (!isLoading && isAuthenticated && ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
         timeoutId = setTimeout(() => {
           router.replace("/dashboard");
@@ -77,7 +74,9 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
     checkAccess();
 
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [pathname, isAuthenticated, isLoading, userRole, router]);
 
