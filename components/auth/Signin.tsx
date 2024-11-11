@@ -24,8 +24,6 @@ const geistMono = localFont({
 });
 
 const SignIn = () => {
-
-
   const [emailPrefix, setEmailPrefix] = useState("");
   const [password, setPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);

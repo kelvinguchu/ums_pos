@@ -3,27 +3,30 @@
 import { useEffect, useState, ReactNode, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "@/lib/actions/supabaseActions";
-import dynamic from 'next/dynamic';
-import Loader from '@/components/Loader';
+import dynamic from "next/dynamic";
+import Loader from "@/components/Loader";
 import { useAuth } from "@/contexts/AuthContext";
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from "@tanstack/react-query";
 
 // Dynamically import heavy components
 const Layout = dynamic(() => import("@/components/Sidebar"), {
   ssr: false,
-  loading: () => <Loader />
+  loading: () => <Loader />,
 });
 
 const Navbar = dynamic(() => import("@/components/Navbar"), {
   ssr: false,
-  loading: () => <Loader />
+  loading: () => <Loader />,
 });
 
-const AIChatAssistant = dynamic(() => 
-  import("@/components/AIChatAssistant").then(mod => mod.AIChatAssistant), {
-  ssr: false,
-  loading: () => null
-});
+const AIChatAssistant = dynamic(
+  () =>
+    import("@/components/AIChatAssistant").then((mod) => mod.AIChatAssistant),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 // Routes configuration
 const ADMIN_ROUTES = ["/daily-reports"];
@@ -32,7 +35,8 @@ const PUBLIC_ROUTES = ["/", "/signin", "/signup", "/deactivated"];
 const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname() || "/";
-  const { user, userRole, isLoading, isAuthenticated, updateAuthState } = useAuth();
+  const { user, userRole, isLoading, isAuthenticated, updateAuthState } =
+    useAuth();
   const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
   const queryClient = useQueryClient();
 

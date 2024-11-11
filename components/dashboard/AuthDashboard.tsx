@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Dashboard from "./Dashboard";
-import { getCurrentUser } from "@/lib/actions/supabaseActions";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/Loader";
 import localFont from "next/font/local";
+import { useAuth } from "@/contexts/AuthContext";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -14,29 +14,16 @@ const geistMono = localFont({
 });
 
 const AuthDashboard = () => {
-  const [user, setUser] = useState<any | null>(null);
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-        } else {
-          // Redirect to login if no user is found
-          router.push("/signin");
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        router.push("/signin");
-      }
-    };
+    if (!isLoading && !user) {
+      router.push("/signin");
+    }
+  }, [user, isLoading, router]);
 
-    fetchUser();
-  }, [router]);
-
-  if (!user) {
+  if (isLoading || !user) {
     return <Loader />;
   }
 
