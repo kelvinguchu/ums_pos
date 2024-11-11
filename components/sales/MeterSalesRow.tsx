@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +13,15 @@ import { format } from "date-fns";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import localFont from "next/font/local";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -51,6 +60,8 @@ export function MeterSalesRow({
   const [meters, setMeters] = useState<SoldMeter[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20; // Show 20 serial numbers per page
 
   // Add useEffect to fetch data when sheet opens
   useEffect(() => {
@@ -71,10 +82,20 @@ export function MeterSalesRow({
     fetchData();
   }, [isOpen, batch.id]);
 
-  // Filter meters based on search term
+  // Filter and paginate meters
   const filteredMeters = meters.filter((meter) =>
     meter.serial_number.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredMeters.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentMeters = filteredMeters.slice(startIndex, endIndex);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -86,7 +107,7 @@ export function MeterSalesRow({
           </SheetDescription>
         </SheetHeader>
 
-        <div className='mt-6 space-y-6'>
+        <div className='mt-6 space-y-6 max-h-[80vh] overflow-y-auto'>
           {/* Batch Summary */}
           <div className='grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg'>
             <div>
@@ -132,7 +153,7 @@ export function MeterSalesRow({
           </div>
 
           {/* Search Input */}
-          <div className='relative'>
+          <div className='relative sticky top-0 bg-white z-10 pb-4'>
             <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
             <Input
               className='pl-9'
@@ -157,7 +178,7 @@ export function MeterSalesRow({
                   </span>
                 </h3>
                 <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
-                  {filteredMeters.map((meter, index) => (
+                  {currentMeters.map((meter, index) => (
                     <div
                       key={index}
                       className='p-2 bg-muted rounded-md text-center font-mono'>
@@ -165,6 +186,54 @@ export function MeterSalesRow({
                     </div>
                   ))}
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter(page => 
+                            page === 1 || 
+                            page === totalPages || 
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          )
+                          .map((page, i, arr) => (
+                            <Fragment key={page}>
+                              {i > 0 && arr[i - 1] !== page - 1 && (
+                                <PaginationItem>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              )}
+                              <PaginationItem>
+                                <PaginationLink
+                                  onClick={() => setCurrentPage(page)}
+                                  isActive={currentPage === page}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            </Fragment>
+                          ))}
+
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+
                 {filteredMeters.length === 0 && searchTerm && (
                   <p className='text-center text-muted-foreground py-4'>
                     No serial numbers match your search

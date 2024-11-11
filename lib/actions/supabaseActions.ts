@@ -946,60 +946,85 @@ export async function deleteAgent(
 export async function superSearchMeter(searchTerm: string) {
   if (!searchTerm || searchTerm.length < 0) return [];
 
-  const { data: results, error } = await supabase
-    .from("meters")
-    .select("serial_number, type")
-    .ilike("serial_number", `%${searchTerm}%`)
-    .limit(5);
+  // Run all queries in parallel using Promise.all
+  const [
+    { data: results, error },
+    { data: agentMeters },
+    { data: soldMeters },
+    { data: faultyMeters }
+  ] = await Promise.all([
+    // Get meters in stock
+    supabase
+      .from("meters")
+      .select("serial_number, type")
+      .ilike("serial_number", `%${searchTerm}%`)
+      .limit(5),
 
-  const { data: agentMeters } = await supabase
-    .from("agent_inventory")
-    .select(
-      `
-      serial_number,
-      type,
-      agents (
-        id,
-        name,
-        location
-      )
-    `
-    )
-    .ilike("serial_number", `%${searchTerm}%`)
-    .limit(5);
+    // Get meters with agents
+    supabase
+      .from("agent_inventory")
+      .select(`
+        serial_number,
+        type,
+        agents (
+          id,
+          name,
+          location
+        )
+      `)
+      .ilike("serial_number", `%${searchTerm}%`)
+      .limit(5),
 
-  // Update the sold meters query with proper joins
-  const { data: soldMeters } = await supabase
-    .from("sold_meters")
-    .select(
-      `
-      serial_number,
-      sold_at,
-      sold_by,
-      destination,
-      recipient,
-      unit_price,
-      batch_id,
-      sale_batches!inner (
+    // Get sold meters with replacements
+    supabase
+      .from("sold_meters")
+      .select(`
         id,
-        user_name,
-        meter_type,
-        batch_amount,
-        total_price,
-        sale_date
-      ),
-      seller:user_profiles!sold_by (
-        name,
-        role
-      )
-    `
-    )
-    .ilike("serial_number", `%${searchTerm}%`)
-    .limit(5);
+        serial_number,
+        sold_at,
+        sold_by,
+        destination,
+        recipient,
+        unit_price,
+        batch_id,
+        replacement_serial,
+        replacement_date,
+        replacement_by,
+        customer_contact
+      `)
+      .ilike("serial_number", `%${searchTerm}%`)
+      .limit(5),
+
+    // Get faulty meters
+    supabase
+      .from("faulty_returns")
+      .select(`
+        id,
+        serial_number,
+        type,
+        returned_by,
+        returned_at,
+        returner_name,
+        fault_description,
+        status,
+        original_sale_id
+      `)
+      .ilike("serial_number", `%${searchTerm}%`)
+      .limit(5)
+  ]);
 
   if (error) throw error;
 
-  const formattedResults = [
+  // Get user profiles for sold meters in parallel with data transformation
+  const userProfilesPromise = soldMeters?.length ? 
+    supabase
+      .from("user_profiles")
+      .select("id, name")
+      .in("id", [...new Set(soldMeters.map(m => m.sold_by))])
+    : Promise.resolve({ data: [] });
+
+  // Start transforming the data while waiting for user profiles
+  const transformedResults = [
     ...(results?.map((meter) => ({
       serial_number: meter.serial_number,
       type: meter.type,
@@ -1010,27 +1035,49 @@ export async function superSearchMeter(searchTerm: string) {
       type: meter.type,
       status: "with_agent",
       agent: meter.agents,
-    })) || []),
-    ...(soldMeters?.map((meter: any) => ({
-      serial_number: meter.serial_number,
-      status: "sold",
-      sale_details: {
-        sold_at: meter.sale_batches[0]?.sale_date || meter.sold_at,
-        sold_by: meter.sale_batches[0]?.user_name,
-        seller_name: meter.seller?.name,
-        seller_role: meter.seller?.role,
-        destination: meter.destination,
-        recipient: meter.recipient,
-        unit_price: meter.unit_price,
-        batch_id: meter.batch_id,
-        meter_type: meter.sale_batches[0]?.meter_type,
-        batch_amount: meter.sale_batches[0]?.batch_amount,
-        total_price: meter.sale_batches[0]?.total_price,
-      },
-    })) || []),
+    })) || [])
   ];
 
-  return formattedResults;
+  // Wait for user profiles and complete the transformation
+  const { data: userProfiles } = await userProfilesPromise;
+  
+  const userMap = (userProfiles || []).reduce((acc, user) => {
+    acc[user.id] = user.name;
+    return acc;
+  }, {} as { [key: string]: string });
+
+  return [
+    ...transformedResults,
+    ...(soldMeters?.map((meter) => ({
+      serial_number: meter.serial_number,
+      status: meter.replacement_serial ? "replaced" : "sold",
+      sale_details: {
+        sold_at: meter.sold_at,
+        sold_by: userMap[meter.sold_by] || meter.sold_by,
+        destination: meter.destination,
+        recipient: meter.recipient,
+        customer_contact: meter.customer_contact,
+        unit_price: meter.unit_price,
+        batch_id: meter.batch_id,
+      },
+      replacement_details: meter.replacement_serial ? {
+        replacement_serial: meter.replacement_serial,
+        replacement_date: meter.replacement_date,
+        replacement_by: meter.replacement_by
+      } : null
+    })) || []),
+    ...(faultyMeters?.map((meter) => ({
+      serial_number: meter.serial_number,
+      type: meter.type,
+      status: "faulty",
+      fault_details: {
+        returned_at: meter.returned_at,
+        returner_name: meter.returner_name,
+        fault_description: meter.fault_description,
+        fault_status: meter.status
+      }
+    })) || [])
+  ];
 }
 
 // Create a new notification
