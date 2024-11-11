@@ -31,7 +31,7 @@ const PUBLIC_ROUTES = ["/", "/signin", "/signup", "/deactivated"];
 
 const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const { user, userRole, isLoading, isAuthenticated, updateAuthState } = useAuth();
   const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -46,7 +46,7 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, isLoading, queryClient]);
 
   // Helper function to check if current route is public
-  const isPublicRoute = (path: string) => {
+  const isPublicRoute = (path: string): boolean => {
     return PUBLIC_ROUTES.includes(path);
   };
 
