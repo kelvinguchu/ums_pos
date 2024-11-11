@@ -329,11 +329,19 @@ export default function AssignMetersToAgent({
           </div>
 
           {isSubmitted && meters.length === 0 && (
-            <div className='mb-6'>
+            <div className='mb-6 relative'>
               <Button
                 onClick={handleDownloadReceipt}
                 className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white'>
                 Download Assignment Receipt
+              </Button>
+              <Button
+                onClick={() => setIsSubmitted(false)}
+                variant="ghost"
+                size="icon"
+                className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
+                aria-label="Dismiss">
+                <X className="h-4 w-4" />
               </Button>
             </div>
           )}

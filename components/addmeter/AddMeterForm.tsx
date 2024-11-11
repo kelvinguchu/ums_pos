@@ -12,13 +12,19 @@ import { useToast } from "@/hooks/use-toast";
 import { FileUploadHandler } from "./FileUploadHandler";
 import { MeterInputForm } from "./MeterInputForm";
 import { MetersList } from "./MetersList";
-import { SubmissionHandler } from "./SubmissionHandler";
+// import { SubmissionHandler } from "./SubmissionHandler";
 import localFont from "next/font/local";
 import { pdf } from "@react-pdf/renderer";
 import MeterAdditionReceipt from "./MeterAdditionReceipt";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Loader2 } from "lucide-react";
+import { Edit2, Loader2, X, FileDown } from "lucide-react";
 import BatchDetailsDialog from "./BatchDetailsDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -165,25 +171,75 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       return;
     }
 
-    // Group meters by type
-    const meterGroups = meters.reduce<{ [key: string]: number }>(
-      (acc, meter) => {
-        const type = meter.type.toLowerCase();
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      },
-      {}
-    );
+    if (!batchDetails) {
+      toast({
+        title: "Error",
+        description: "Please add purchase details first",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Convert to array format for BatchDetailsDialog
-    const groupsArray = Object.entries(meterGroups).map(([type, count]) => ({
-      type,
-      count,
-    }));
+    setIsSubmitting(true);
+    try {
+      // Create batch record first
+      const batchData = await addMeterPurchaseBatch({
+        purchaseDate: new Date(batchDetails.purchaseDate),
+        addedBy: currentUser.id,
+        batchGroups: batchDetails.batchGroups.map((group) => ({
+          type: group.type,
+          count: group.count,
+          totalCost: group.totalCost,
+        })),
+      });
 
-    // Show batch details dialog
-    setIsBatchDetailsOpen(true);
-  }, [meters, adderName, toast]);
+      // Then add meters with batch reference
+      const metersToSubmit = meters.map((meter) => ({
+        serial_number: meter.serialNumber,
+        type: meter.type.toLowerCase(),
+        added_by: meter.addedBy,
+        added_at: meter.addedAt,
+        adder_name: adderName,
+        batch_id: batchData.id,
+      }));
+
+      await addMeters(metersToSubmit);
+
+      // Store submission details for receipt
+      localStorage.setItem(
+        "lastSubmittedMeters",
+        JSON.stringify({
+          meters,
+          adderName,
+          batchDetails: batchDetails,
+        })
+      );
+
+      // Clear all cached data
+      setMeters([]);
+      setBatchDetails(null);
+      setIsSubmitted(true);
+      localStorage.removeItem("cachedAddMeters");
+      localStorage.removeItem("cachedBatchDetails");
+
+      toast({
+        title: "Success",
+        description:
+          "Meters added successfully! You can now download the receipt.",
+        style: { backgroundColor: "#0074D9", color: "white" },
+      });
+    } catch (error: any) {
+      console.error("Error adding meters:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add meters. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+      setIsBatchDetailsOpen(false); // Ensure dialog is closed
+    }
+  }, [adderName, batchDetails, currentUser.id, meters, toast]);
 
   const handleBatchDetailsSubmit = async (details: BatchDetails) => {
     setIsSubmitting(true);
@@ -246,14 +302,31 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
 
   const handleDownloadReceipt = useCallback(async () => {
     try {
-      const lastSubmittedMeters = JSON.parse(
-        localStorage.getItem("lastSubmittedMeters") || "[]"
+      const lastSubmittedData = JSON.parse(
+        localStorage.getItem("lastSubmittedMeters") || "{}"
       );
+
+      // Ensure we have the required data
+      if (!lastSubmittedData.meters || !lastSubmittedData.adderName) {
+        throw new Error("Receipt data not found");
+      }
+
+      // Generate meter counts from the stored data
+      const meterCounts = lastSubmittedData.meters.reduce((acc: any[], meter: Meter) => {
+        const existingType = acc.find(item => item.type === meter.type);
+        if (existingType) {
+          existingType.count += 1;
+        } else {
+          acc.push({ type: meter.type, count: 1 });
+        }
+        return acc;
+      }, []);
 
       const blob = await pdf(
         <MeterAdditionReceipt
-          meterCounts={generateMeterCountsFromMeters(lastSubmittedMeters)}
-          adderName={adderName}
+          meterCounts={meterCounts}
+          adderName={lastSubmittedData.adderName}
+          batchDetails={lastSubmittedData.batchDetails} 
         />
       ).toBlob();
 
@@ -286,7 +359,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
         style: { backgroundColor: "#FF4136", color: "white" },
       });
     }
-  }, [adderName]);
+  }, [toast]);
 
   const handleClearForm = useCallback(() => {
     setMeters([]);
@@ -308,7 +381,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     }));
   };
 
-  // Add useEffect for caching batch details
+  // useEffect for caching batch details
   useEffect(() => {
     // Load cached batch details on mount
     const cachedDetails = localStorage.getItem("cachedBatchDetails");
@@ -324,6 +397,26 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     }
   }, [batchDetails]);
 
+  // Add a cleanup effect when the component unmounts or sheet closes
+  useEffect(() => {
+    return () => {
+      setBatchDetails(null);
+      setMeters([]);
+      localStorage.removeItem("cachedAddMeters");
+      localStorage.removeItem("cachedBatchDetails");
+    };
+  }, []);
+
+  const handleTemplateDownload = (type: 'csv' | 'xlsx') => {
+    const filename = type === 'csv' ? 'ctemplate.csv' : 'xtemplate.xlsx';
+    const link = document.createElement('a');
+    link.href = `/exceltemplates/${filename}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
       <div className='flex flex-col max-h-[100vh]'>
@@ -333,10 +426,39 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
               Add Meters
             </h2>
             <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-              <FileUploadHandler
-                onMetersAdd={(newMeters) => setMeters((prev) => [...newMeters, ...prev])}
-                currentUser={currentUser}
-              />
+              <div className="flex items-center gap-2">
+                <FileUploadHandler
+                  onMetersAdd={(newMeters) => setMeters((prev) => [...newMeters, ...prev])}
+                  currentUser={currentUser}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <div className="cursor-pointer">
+                      <Badge 
+                        variant="outline" 
+                        className="hover:bg-gray-100 flex items-center gap-1 cursor-pointer"
+                      >
+                        <FileDown className="h-3 w-3" />
+                        Templates
+                      </Badge>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem 
+                      onClick={() => handleTemplateDownload('csv')}
+                      className="cursor-pointer"
+                    >
+                      Download CSV Template
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleTemplateDownload('xlsx')}
+                      className="cursor-pointer"
+                    >
+                      Download Excel Template
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <Button onClick={handleClearForm} variant='outline' className='w-full sm:w-auto'>
                 Clear Form
               </Button>
@@ -380,7 +502,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                   </div>
 
                   <Button
-                    onClick={() => handleBatchDetailsSubmit(batchDetails)}
+                    onClick={handleSubmit}
                     className='w-full bg-[#E46020] hover:bg-[#e46120] text-white'
                     disabled={isSubmitting}>
                     {isSubmitting ? (
@@ -389,7 +511,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                         Adding Records To the Database...
                       </>
                     ) : (
-                      `Add ${meters.length} Meter${meters.length !== 1 ? "s" : ""} to Inventory`
+                      `Submit ${meters.length} Meter${meters.length !== 1 ? "s" : ""}`
                     )}
                   </Button>
                 </div>
@@ -423,11 +545,22 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
           <MetersList meters={meters} onRemoveMeter={handleRemoveMeter} />
 
           {isSubmitted && meters.length === 0 && (
-            <div className='mb-6'>
+            <div className='mt-6 relative'>
               <Button
                 onClick={handleDownloadReceipt}
                 className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white'>
                 Download Receipt
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsSubmitted(false);
+                  localStorage.removeItem("lastSubmittedMeters");
+                }}
+                variant="ghost"
+                size="icon"
+                className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
+                aria-label="Dismiss">
+                <X className="h-4 w-4" />
               </Button>
             </div>
           )}

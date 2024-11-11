@@ -8,11 +8,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Package } from "lucide-react";
+import { Package, History } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { cn } from "@/lib/utils";
 import { getMeterTypeBadgeClass } from "../utils/meterTypeConfig";
 import type { RemainingMetersByType, AgentInventory } from "../types";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import PurchaseBatchesView from "./PurchaseBatchesView";
+import localFont from "next/font/local";
+
+const geistMono = localFont({
+  src: "../../../public/fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+});
 
 const METER_TYPES = [
   "integrated",
@@ -57,7 +71,23 @@ export function MeterInventoryCard({
       )}>
       <CardHeader className='flex flex-row items-center justify-between p-4 md:p-6'>
         <CardTitle className='text-lg md:text-xl'>Meters Remaining</CardTitle>
-        <Package className='w-5 h-5 text-[#E46020]' />
+        <div className='flex items-center gap-2'>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Badge
+                variant='outline'
+                className='hover:bg-gray-100 cursor-pointer flex items-center gap-1'>
+                <History className='h-3 w-3' />
+                Purchase History
+              </Badge>
+            </SheetTrigger>
+            <SheetContent
+              className={`${geistMono.className} min-w-[90vw] lg:min-w-[70vw]`}>
+              <PurchaseBatchesView />
+            </SheetContent>
+          </Sheet>
+          <Package className='w-5 h-5 text-[#E46020]' />
+        </div>
       </CardHeader>
       <CardContent className='p-4 md:p-6'>
         {remainingMetersByType.length > 0 ? (

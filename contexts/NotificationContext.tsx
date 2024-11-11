@@ -6,7 +6,9 @@ import {
   getNotifications, 
   markNotificationAsRead, 
   markAllNotificationsAsRead,
-  getCurrentUser 
+  getCurrentUser,
+  togglePushNotifications,
+  getPushNotificationStatus
 } from '@/lib/actions/supabaseActions';
 import { useToast } from '@/hooks/use-toast';
 import { sendPushNotification } from '@/app/actions/pushNotifications';
@@ -52,8 +54,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const { toast } = useToast();
-  const [pushSupported, setPushSupported] = useState(false);
-  const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
 
   const refreshNotifications = async (userId: string) => {
     try {
@@ -132,7 +133,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         duration: 5000,
       });
 
-      if (pushSubscription) {
+      if (pushEnabled) {
         const subscriptionObject = {
           endpoint: pushSubscription.endpoint,
           keys: {
@@ -153,46 +154,40 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser, pushSubscription, toast]);
+  }, [currentUser, pushEnabled, toast]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
+  // Load initial push notification status
   useEffect(() => {
-    const checkPushSupport = async () => {
-      const supported = 'serviceWorker' in navigator && 'PushManager' in window;
-      setPushSupported(supported);
-
-      if (supported) {
+    const loadPushStatus = async () => {
+      if (currentUser) {
         try {
-          const registration = await navigator.serviceWorker.register('/custom-sw.js');
-          const subscription = await registration.pushManager.getSubscription();
-          setPushSubscription(subscription);
+          const status = await getPushNotificationStatus(currentUser.id);
+          setPushEnabled(status);
         } catch (error) {
-          console.error('Service Worker registration failed:', error);
+          console.error('Error loading push notification status:', error);
         }
       }
     };
-
-    checkPushSupport();
-  }, []);
+    loadPushStatus();
+  }, [currentUser]);
 
   const subscribeToPushNotifications = async () => {
     try {
-      const registration = await navigator.serviceWorker.getRegistration('/custom-sw.js');
-      if (!registration) {
-        throw new Error('Service Worker not found');
-      }
+      if (!currentUser) throw new Error('No user logged in');
 
-      if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-        throw new Error('VAPID public key not found');
-      }
+      const registration = await navigator.serviceWorker.getRegistration('/custom-sw.js');
+      if (!registration) throw new Error('Service Worker not found');
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       });
 
-      setPushSubscription(subscription);
+      // Update user profile
+      await togglePushNotifications(currentUser.id, true);
+      setPushEnabled(true);
       
       toast({
         title: "Success",
@@ -211,8 +206,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const unsubscribeFromPushNotifications = async () => {
     try {
-      await pushSubscription?.unsubscribe();
-      setPushSubscription(null);
+      if (!currentUser) throw new Error('No user logged in');
+
+      const registration = await navigator.serviceWorker.getRegistration('/custom-sw.js');
+      if (registration) {
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+        }
+      }
+
+      // Update user profile
+      await togglePushNotifications(currentUser.id, false);
+      setPushEnabled(false);
       
       toast({
         title: "Success",
@@ -238,9 +244,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       refreshNotifications,
       subscribeToPushNotifications,
       unsubscribeFromPushNotifications,
-      pushNotificationSupported: pushSupported,
-      pushNotificationSubscribed: !!pushSubscription,
-      pushSubscription,
+      pushNotificationSupported: 'serviceWorker' in navigator && 'PushManager' in window,
+      pushNotificationSubscribed: pushEnabled,
     }}>
       {children}
     </NotificationContext.Provider>

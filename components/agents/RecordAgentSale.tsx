@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, X } from "lucide-react";
 import localFont from "next/font/local";
 import {
   getAgentInventory,
@@ -429,11 +429,21 @@ export default function RecordAgentSale({
           </Button>
 
           {isSubmitted && selectedMeters.length === 0 && (
-            <Button
-              onClick={handleDownloadReceipt}
-              className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white mt-4 text-sm md:text-base'>
-              Download Sales Receipt
-            </Button>
+            <div className='relative'>
+              <Button
+                onClick={handleDownloadReceipt}
+                className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white mt-4 text-sm md:text-base'>
+                Download Sales Receipt
+              </Button>
+              <Button
+                onClick={() => setIsSubmitted(false)}
+                variant="ghost"
+                size="icon"
+                className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
+                aria-label="Dismiss">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
       </div>

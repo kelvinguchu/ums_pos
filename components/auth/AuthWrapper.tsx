@@ -6,6 +6,7 @@ import { signOut } from "@/lib/actions/supabaseActions";
 import dynamic from 'next/dynamic';
 import Loader from '@/components/Loader';
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from '@tanstack/react-query';
 
 // Dynamically import heavy components
 const Layout = dynamic(() => import("@/components/Sidebar"), {
@@ -31,8 +32,18 @@ const PUBLIC_ROUTES = ["/", "/signin", "/signup", "/deactivated"];
 const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, userRole, isLoading, isAuthenticated } = useAuth();
+  const { user, userRole, isLoading, isAuthenticated, updateAuthState } = useAuth();
   const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // Clear all caches when auth state changes
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      queryClient.clear();
+      localStorage.clear();
+      sessionStorage.clear();
+    }
+  }, [isAuthenticated, isLoading, queryClient]);
 
   // Helper function to check if current route is public
   const isPublicRoute = (path: string) => {

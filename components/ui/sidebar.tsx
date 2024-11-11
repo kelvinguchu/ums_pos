@@ -70,11 +70,12 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // Initialize state from localStorage or default
+    // Initialize state based on device size and localStorage
     const initialState = React.useMemo(() => {
+      if (typeof window === 'undefined') return !isMobile;
       const saved = localStorage.getItem('sidebarState');
-      return saved ? saved === 'true' : defaultOpen;
-    }, [defaultOpen]);
+      return saved ? saved === 'true' : !isMobile;
+    }, [isMobile]);
 
     const [_open, _setOpen] = React.useState(initialState);
     const open = openProp ?? _open;
@@ -89,8 +90,9 @@ const SidebarProvider = React.forwardRef<
           _setOpen(newValue);
         }
 
-        // Save to localStorage
-        localStorage.setItem('sidebarState', newValue.toString());
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sidebarState', newValue.toString());
+        }
       },
       [setOpenProp, open]
     );

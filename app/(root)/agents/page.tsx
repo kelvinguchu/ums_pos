@@ -11,7 +11,7 @@ const AgentsPage = () => {
   return (
     <div
       className={`${geistMono.className} container mx-auto px-2 sm:px-4 mt-20 sm:mt-8`}>
-      <h1 className='text-3xl font-bold mb-6 text-center drop-shadow-lg'>UMS Kenya Agents</h1>
+      <h1 className='text-3xl font-bold text-center drop-shadow-lg'>UMS Kenya Agents</h1>
       <Agents />
     </div>
   );

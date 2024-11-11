@@ -26,45 +26,67 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'left',
-    color: '#000080', // Navy blue brand color
+    color: '#000080',
   },
   dateTime: {
     fontSize: 12,
     marginBottom: 20,
-    color: '#000080', // Navy blue for dates
+    color: '#000080',
+  },
+  purchaseInfo: {
+    marginBottom: 20,
+    fontSize: 12,
+    color: '#000080',
   },
   table: {
     width: '100%',
     borderStyle: 'solid',
     borderWidth: 1,
-    borderColor: '#000080', // Navy blue for borders
+    borderColor: '#000080',
     marginBottom: 20,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#000080', // Navy blue for row borders
+    borderBottomColor: '#000080',
   },
   tableHeader: {
-    backgroundColor: '#000080', // Navy blue background for header
+    backgroundColor: '#000080',
   },
   tableHeaderCell: {
     padding: 8,
-    flex: 1,
     fontSize: 12,
-    color: 'white', // White text for header
+    color: 'white',
   },
   tableCell: {
     padding: 8,
-    flex: 1,
     fontSize: 12,
-    color: '#000080', // Navy blue for cell text
+    color: '#000080',
   },
-  total: {
+  // Add specific widths for each column
+  typeColumn: {
+    width: '25%',
+    borderRightWidth: 1,
+    borderRightColor: '#000080',
+  },
+  quantityColumn: {
+    width: '25%',
+    borderRightWidth: 1,
+    borderRightColor: '#000080',
+  },
+  unitCostColumn: {
+    width: '25%',
+    borderRightWidth: 1,
+    borderRightColor: '#000080',
+  },
+  totalCostColumn: {
+    width: '25%',
+  },
+  totals: {
     marginTop: 20,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#E46020', // Orange brand color for total
+    color: '#E46020',
   },
   footer: {
     position: 'absolute',
@@ -73,7 +95,7 @@ const styles = StyleSheet.create({
     right: 30,
     textAlign: 'center',
     fontSize: 10,
-    color: '#E46020', // Orange for footer
+    color: '#E46020',
   },
 });
 
@@ -82,14 +104,29 @@ interface MeterCount {
   count: number;
 }
 
+interface BatchGroup {
+  type: string;
+  count: number;
+  totalCost: string;
+}
+
+interface BatchDetails {
+  purchaseDate: string;
+  batchGroups: BatchGroup[];
+}
+
 interface MeterAdditionReceiptProps {
   meterCounts: MeterCount[];
   adderName: string;
+  batchDetails: BatchDetails;
 }
 
-const MeterAdditionReceipt = ({ meterCounts, adderName }: MeterAdditionReceiptProps) => {
+const MeterAdditionReceipt = ({ meterCounts, adderName, batchDetails }: MeterAdditionReceiptProps) => {
   const totalMeters = meterCounts.reduce((acc, curr) => acc + curr.count, 0);
   const currentDateTime = format(new Date(), "dd/MM/yyyy HH:mm:ss");
+  const totalCost = batchDetails.batchGroups.reduce((acc, group) => 
+    acc + parseFloat(group.totalCost || '0'), 0
+  );
 
   return (
     <Document>
@@ -104,22 +141,49 @@ const MeterAdditionReceipt = ({ meterCounts, adderName }: MeterAdditionReceiptPr
 
         <Text style={styles.title}>Meter Addition Receipt</Text>
 
+        <Text style={styles.purchaseInfo}>
+          Purchase Date: {format(new Date(batchDetails.purchaseDate), "dd/MM/yyyy")}
+        </Text>
+
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
-            <Text style={styles.tableHeaderCell}>Meter Type</Text>
-            <Text style={styles.tableHeaderCell}>Quantity</Text>
-          </View>
-          {meterCounts.map((meter, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={styles.tableCell}>
-                {meter.type.charAt(0).toUpperCase() + meter.type.slice(1)}
-              </Text>
-              <Text style={styles.tableCell}>{meter.count}</Text>
+            <View style={[styles.tableHeaderCell, styles.typeColumn]}>
+              <Text>Meter Type</Text>
             </View>
-          ))}
+            <View style={[styles.tableHeaderCell, styles.quantityColumn]}>
+              <Text>Quantity</Text>
+            </View>
+            <View style={[styles.tableHeaderCell, styles.unitCostColumn]}>
+              <Text>Unit Cost (KES)</Text>
+            </View>
+            <View style={[styles.tableHeaderCell, styles.totalCostColumn]}>
+              <Text>Total Cost (KES)</Text>
+            </View>
+          </View>
+
+          {batchDetails.batchGroups.map((group, index) => {
+            const unitCost = parseFloat(group.totalCost) / group.count;
+            return (
+              <View key={index} style={styles.tableRow}>
+                <View style={[styles.tableCell, styles.typeColumn]}>
+                  <Text>{group.type.charAt(0).toUpperCase() + group.type.slice(1)}</Text>
+                </View>
+                <View style={[styles.tableCell, styles.quantityColumn]}>
+                  <Text>{group.count}</Text>
+                </View>
+                <View style={[styles.tableCell, styles.unitCostColumn]}>
+                  <Text>{unitCost.toLocaleString()}</Text>
+                </View>
+                <View style={[styles.tableCell, styles.totalCostColumn]}>
+                  <Text>{parseFloat(group.totalCost).toLocaleString()}</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
 
-        <Text style={styles.total}>Total Meters Added: {totalMeters}</Text>
+        <Text style={styles.totals}>Total Meters Added: {totalMeters}</Text>
+        <Text style={styles.totals}>Total Cost: KES {totalCost.toLocaleString()}</Text>
         <Text style={styles.dateTime}>Added By: {adderName}</Text>
 
         <Text style={styles.footer}>

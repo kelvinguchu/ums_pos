@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import MeterAdditionReceipt from "@/components/addmeter/MeterAdditionReceipt";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,23 @@ interface SubmissionHandlerProps {
   onSubmit: () => Promise<void>;
   userName: string;
   onDownloadReceipt?: () => Promise<void>;
+  onDismissReceipt?: () => void;
+  batchDetails: any | null;
+}
+
+interface LastSubmittedData {
+  meters: Meter[];
+  adderName: string;
+  batchDetails: BatchDetails;
+}
+
+interface BatchDetails {
+  purchaseDate: string;
+  batchGroups: Array<{
+    type: string;
+    count: number;
+    totalCost: string;
+  }>;
 }
 
 export const SubmissionHandler = memo(function SubmissionHandler({
@@ -32,6 +49,8 @@ export const SubmissionHandler = memo(function SubmissionHandler({
   onSubmit,
   userName,
   onDownloadReceipt,
+  onDismissReceipt,
+  batchDetails,
 }: SubmissionHandlerProps) {
   const { toast } = useToast();
 
@@ -42,30 +61,30 @@ export const SubmissionHandler = memo(function SubmissionHandler({
     }
 
     try {
-      const lastSubmittedMeters = JSON.parse(
-        localStorage.getItem("lastSubmittedMeters") || "[]"
-      ) as Meter[];
+      const lastSubmittedData = JSON.parse(
+        localStorage.getItem("lastSubmittedMeters") || "{}"
+      ) as LastSubmittedData;
 
-      const meterCounts = lastSubmittedMeters.reduce<Record<string, number>>(
-        (acc, meter) => {
-          const type = meter.type.toLowerCase();
-          acc[type] = (acc[type] || 0) + 1;
-          return acc;
-        },
-        {}
-      );
+      // Ensure we have all required data
+      if (!lastSubmittedData.meters || !lastSubmittedData.adderName || !lastSubmittedData.batchDetails) {
+        throw new Error("Receipt data not found");
+      }
 
-      const formattedCounts: MeterCount[] = Object.entries(meterCounts).map(
-        ([type, count]) => ({
-          type,
-          count: Number(count),
-        })
-      );
+      const meterCounts = lastSubmittedData.meters.reduce((acc: { type: string; count: number }[], meter) => {
+        const existingType = acc.find(item => item.type === meter.type);
+        if (existingType) {
+          existingType.count += 1;
+        } else {
+          acc.push({ type: meter.type, count: 1 });
+        }
+        return acc;
+      }, []);
 
       const blob = await pdf(
         <MeterAdditionReceipt
-          meterCounts={formattedCounts}
-          adderName={userName}
+          meterCounts={meterCounts}
+          adderName={lastSubmittedData.adderName}
+          batchDetails={lastSubmittedData.batchDetails}
         />
       ).toBlob();
 
@@ -103,14 +122,26 @@ export const SubmissionHandler = memo(function SubmissionHandler({
 
   if (isSubmitted) {
     return (
-      <div className='mt-6'>
+      <div className='mt-6 relative'>
         <Button
           onClick={handleDownloadReceipt}
           className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white'>
           Download Receipt
         </Button>
+        <Button
+          onClick={onDismissReceipt}
+          variant='ghost'
+          size='icon'
+          className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
+          aria-label='Dismiss'>
+          <X className='h-4 w-4' />
+        </Button>
       </div>
     );
+  }
+
+  if (!batchDetails) {
+    return null;
   }
 
   return (

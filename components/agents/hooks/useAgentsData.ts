@@ -24,7 +24,9 @@ interface User {
   role: string;
   email: string;
   name?: string;
-  [key: string]: any;
+  is_active?: boolean;
+  app_metadata: any;
+  user_metadata: any;
 }
 
 interface AgentsData {
@@ -70,7 +72,19 @@ export function useAgentsData() {
         throw new Error("User not found");
       }
       const profile = await getUserProfile(current.id);
-      return { ...current, ...profile };
+      
+      // Ensure we have all required fields and handle potential undefined values
+      const userData: User = {
+        id: current.id,
+        email: current.email || '', // Provide default empty string if undefined
+        role: profile?.role || 'user', // Provide default role if undefined
+        name: profile?.name,
+        is_active: profile?.is_active,
+        app_metadata: current.app_metadata,
+        user_metadata: current.user_metadata
+      };
+      
+      return userData;
     },
     gcTime: CACHE_TIME,
     staleTime: STALE_TIME,

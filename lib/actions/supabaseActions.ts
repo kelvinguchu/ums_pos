@@ -1586,7 +1586,7 @@ export async function addMeterPurchaseBatch({
     // Create a batch record for each meter type
     const batchPromises = batchGroups.map(async (group) => {
       const { data, error } = await supabase
-        .from('meter_purchase_batches')
+        .from("meter_purchase_batches")
         .insert({
           meter_type: group.type.toLowerCase(),
           quantity: group.count,
@@ -1594,7 +1594,9 @@ export async function addMeterPurchaseBatch({
           purchase_date: purchaseDate.toISOString(),
           added_by: addedBy,
           created_at: new Date().toISOString(),
-          batch_number: `PB-${Date.now()}-${group.type.substring(0, 3).toUpperCase()}`
+          batch_number: `PB-${Date.now()}-${group.type
+            .substring(0, 3)
+            .toUpperCase()}`,
         })
         .select()
         .single();
@@ -1606,7 +1608,7 @@ export async function addMeterPurchaseBatch({
     const batches = await Promise.all(batchPromises);
     return batches[0]; // Return the first batch for reference
   } catch (error) {
-    console.error('Error adding meter purchase batch:', error);
+    console.error("Error adding meter purchase batch:", error);
     throw error;
   }
 }
@@ -1614,28 +1616,54 @@ export async function addMeterPurchaseBatch({
 // Function to get purchase batches
 export async function getPurchaseBatches() {
   try {
-    const { data, error } = await supabase
-      .from('meter_purchase_batches')
-      .select(`
-        id,
-        batch_number,
-        meter_type,
-        quantity,
-        total_cost,
-        unit_cost,
-        purchase_date,
-        created_at,
-        added_by,
-        user_profiles (
-          name
+    // Get batches with their meter counts using the exact SQL approach
+    const { data: batchesWithCounts, error: batchError } = await supabase
+      .from("meter_purchase_batches")
+      .select(
+        `
+        *,
+        meters!left (
+          id
         )
-      `)
-      .order('created_at', { ascending: false });
+      `
+      )
+      .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    return data;
+    if (batchError) {
+      throw new Error(`Error fetching purchase batches: ${batchError.message}`);
+    }
+
+    if (!batchesWithCounts) return [];
+
+    // Get user profiles
+    const userIds = [
+      ...new Set(batchesWithCounts.map((batch) => batch.added_by)),
+    ];
+    const { data: userProfiles, error: userError } = await supabase
+      .from("user_profiles")
+      .select("id, name")
+      .in("id", userIds);
+
+    if (userError) {
+      throw new Error(`Error fetching user profiles: ${userError.message}`);
+    }
+
+    // Create user map
+    const userMap = (userProfiles || []).reduce((acc, user) => {
+      acc[user.id] = user.name;
+      return acc;
+    }, {} as { [key: string]: string });
+
+    // Transform the data to match our needs
+    return batchesWithCounts.map((batch) => ({
+      ...batch,
+      remaining_meters: batch.meters?.length || 0,
+      user_profiles: {
+        name: userMap[batch.added_by] || null,
+      },
+    }));
   } catch (error) {
-    console.error('Error fetching purchase batches:', error);
+    console.error("Error fetching purchase batches:", error);
     throw error;
   }
 }
@@ -1647,13 +1675,46 @@ export async function updateMeterPurchaseBatch(
 ) {
   try {
     const { error } = await supabase
-      .from('meters')
+      .from("meters")
       .update({ batch_id: batchId })
-      .in('serial_number', serialNumbers);
+      .in("serial_number", serialNumbers);
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error updating meter batch IDs:', error);
+    console.error("Error updating meter batch IDs:", error);
+    throw error;
+  }
+}
+
+// Toggle push notifications for a user
+export async function togglePushNotifications(userId: string, enabled: boolean) {
+  try {
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ push_enabled: enabled })
+      .eq('id', userId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error toggling push notifications:', error);
+    throw error;
+  }
+}
+
+// Get user's push notification status
+export async function getPushNotificationStatus(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('push_enabled')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+    return data?.push_enabled || false;
+  } catch (error) {
+    console.error('Error getting push notification status:', error);
     throw error;
   }
 }

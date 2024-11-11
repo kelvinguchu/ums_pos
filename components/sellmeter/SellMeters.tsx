@@ -21,18 +21,10 @@ import {
   getUserProfile,
 } from "@/lib/actions/supabaseActions";
 import localFont from "next/font/local";
-import { X } from "lucide-react";
+import { X, Edit2, Loader2 } from "lucide-react";
 import { pdf, PDFDownloadLink } from "@react-pdf/renderer";
 import MeterSalesReceipt from "../sharedcomponents/MeterSalesReceipt";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Edit2 } from "lucide-react"; // For edit icon
 import SaleDetailsDialog from "./SaleDetailsDialog";
 import { KenyaCounty, CustomerType } from "@/lib/constants/locationData";
 
@@ -436,13 +428,21 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
             {errorMessage && <p className='text-red-500'>{errorMessage}</p>}
           </div>
 
-          {/* Add the download receipt button here, right after input */}
+          {/* Update the download receipt button section */}
           {isSubmitted && meters.length === 0 && (
-            <div className='mb-6'>
+            <div className='mb-6 relative'>
               <Button
                 onClick={handleDownloadReceipt}
                 className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white'>
                 Download Sales Receipt
+              </Button>
+              <Button
+                onClick={() => setIsSubmitted(false)}
+                variant="ghost"
+                size="icon"
+                className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
+                aria-label="Dismiss">
+                <X className="h-4 w-4" />
               </Button>
             </div>
           )}
@@ -550,11 +550,19 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
               ) : (
                 // Show download button when meters are empty (after submission)
                 isSubmitted && (
-                  <div className='space-y-4 mb-6'>
+                  <div className='space-y-4 mb-6 relative'>
                     <Button
                       onClick={handleDownloadReceipt}
                       className='w-full bg-[#2ECC40] hover:bg-[#28a035] text-white'>
                       Download Receipt
+                    </Button>
+                    <Button
+                      onClick={() => setIsSubmitted(false)}
+                      variant="ghost"
+                      size="icon"
+                      className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
+                      aria-label="Dismiss">
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 )

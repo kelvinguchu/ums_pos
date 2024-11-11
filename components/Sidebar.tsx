@@ -5,15 +5,14 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
-  const initialSidebarState =
-    typeof window !== "undefined"
-      ? localStorage.getItem("sidebarState") === "true"
-      : true;
+  const initialSidebarState = typeof window !== 'undefined'
+    ? localStorage.getItem('sidebarState') === 'true'
+    : window.innerWidth >= 768; // Default to expanded for large screens
   
   const isMobile = useIsMobile();
 
   return (
-    <SidebarProvider defaultOpen={initialSidebarState}>
+    <SidebarProvider defaultOpen={!isMobile && initialSidebarState}>
       <AppSidebar />
       <div className="relative bg-background">
         {!isMobile && (

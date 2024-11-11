@@ -234,7 +234,9 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <Sheet
                       open={isAddMetersOpen}
-                      onOpenChange={setIsAddMetersOpen}>
+                      onOpenChange={(open) => {
+                        setIsAddMetersOpen(open);
+                      }}>
                       <SheetTrigger asChild>
                         <SidebarMenuButton>
                           <PlusCircle className='mr-2 h-4 w-4 text-green-600' />

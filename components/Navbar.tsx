@@ -24,14 +24,6 @@ import { signOut, superSearchMeter } from "@/lib/actions/supabaseActions";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -42,6 +34,9 @@ import localFont from "next/font/local";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
+import { StockAlert } from '@/components/stock/StockAlert';
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from '@tanstack/react-query';
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -75,6 +70,9 @@ const Navbar: React.FC = () => {
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { userRole, updateAuthState } = useAuth();
+  const isAdmin = userRole === "admin";
+  const queryClient = useQueryClient();
 
   // Add function to check and clean cache
   const cleanCache = useMemo(() => {
@@ -89,8 +87,35 @@ const Navbar: React.FC = () => {
   }, []);
 
   const handleLogout = async () => {
-    await signOut();
-    router.push("/signin");
+    try {
+      // Clear React Query cache
+      queryClient.clear();
+      
+      // Clear search cache
+      Object.keys(searchCache).forEach(key => delete searchCache[key]);
+      
+      // Clear local storage items
+      localStorage.clear();
+      
+      // Clear session storage
+      sessionStorage.clear();
+
+      // Sign out from supabase
+      await signOut();
+      
+      // Update auth context with proper typing
+      updateAuthState({
+        user: null,
+        userRole: "",
+        isAuthenticated: false,
+        isLoading: false
+      });
+
+      // Navigate to signin
+      router.push("/signin");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Update the search function to use cache
@@ -312,7 +337,12 @@ const Navbar: React.FC = () => {
         </div>
 
         <div className='flex items-center gap-4'>
-          {!isMobile && <NotificationBell />}
+          {!isMobile && (
+            <>
+              {isAdmin && <StockAlert />}
+              <NotificationBell />
+            </>
+          )}
           {isMobile && <SidebarTrigger />}
           {!isMobile && (
             <div className='flex-shrink-0'>

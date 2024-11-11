@@ -56,22 +56,28 @@ export default function BatchDetailsDialog({
     }
   );
 
-  useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        setFormData(initialData);
-      } else {
-        setFormData({
-          purchaseDate: new Date().toISOString(),
-          batchGroups: meterGroups.map(group => ({
-            type: group.type,
-            count: group.count,
-            totalCost: ""
-          }))
-        });
-      }
+  // Only open dialog if there's no initial data
+  const handleOpenChange = (open: boolean) => {
+    if (initialData && !open) {
+      onOpenChange(false);
+    } else if (!initialData) {
+      onOpenChange(open);
     }
-  }, [isOpen, initialData, meterGroups]);
+  };
+
+  // Modified useEffect to only set initial data when dialog first opens
+  useEffect(() => {
+    if (isOpen && !formData.batchGroups.length) {
+      setFormData({
+        purchaseDate: new Date().toISOString(),
+        batchGroups: meterGroups.map(group => ({
+          type: group.type,
+          count: group.count,
+          totalCost: ""
+        }))
+      });
+    }
+  }, [isOpen, meterGroups]); // Remove formData from dependencies
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +86,7 @@ export default function BatchDetailsDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className={`${geistMono.className} sm:max-w-[500px]`}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-center pb-4 border-b">
