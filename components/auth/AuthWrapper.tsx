@@ -35,48 +35,48 @@ const PUBLIC_ROUTES = ["/", "/signin", "/signup", "/deactivated"];
 const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname() || "/";
-  const { user, userRole, isLoading, isAuthenticated, updateAuthState } =
-    useAuth();
+  const { user, userRole, isLoading, isAuthenticated } = useAuth();
   const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Clear all caches when auth state changes
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
+    const checkAccess = async () => {
+      if (isLoading) return;
+
+      if (isPublicRoute(pathname)) {
+        setShouldRedirect(null);
+        return;
+      }
+
+      if (!isAuthenticated) {
+        setShouldRedirect("/signin");
+        return;
+      }
+
+      if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
+        setShouldRedirect("/dashboard");
+        return;
+      }
+
+      setShouldRedirect(null);
+    };
+
+    checkAccess();
+  }, [pathname, isAuthenticated, isLoading, userRole]);
+
+  // Modify the cache clearing effect
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading && !isPublicRoute(pathname)) {
       queryClient.clear();
       localStorage.clear();
       sessionStorage.clear();
     }
-  }, [isAuthenticated, isLoading, queryClient]);
+  }, [isAuthenticated, isLoading, pathname, queryClient]);
 
   // Helper function to check if current route is public
   const isPublicRoute = (path: string): boolean => {
     return PUBLIC_ROUTES.includes(path);
   };
-
-  // Main authentication and authorization check
-  useEffect(() => {
-    const checkAccess = async () => {
-      // Allow access to public routes
-      if (isPublicRoute(pathname)) {
-        return;
-      }
-
-      // Redirect to signin if not authenticated
-      if (!isAuthenticated && !isLoading) {
-        setShouldRedirect("/signin");
-        return;
-      }
-
-      // Check admin routes access
-      if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
-        setShouldRedirect("/dashboard");
-        return;
-      }
-    };
-
-    checkAccess();
-  }, [pathname, isAuthenticated, isLoading, userRole]);
 
   // Handle navigation redirects
   useEffect(() => {
@@ -85,21 +85,21 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
     }
   }, [shouldRedirect, router]);
 
-  // Render logic for different states
-  if (isPublicRoute(pathname)) {
-    return <>{children}</>;
-  }
-
+  // Simplify the render logic
   if (isLoading) {
     return <Loader />;
   }
 
-  if (!isAuthenticated && !isPublicRoute(pathname)) {
+  if (isPublicRoute(pathname)) {
+    return <>{children}</>;
+  }
+
+  if (!isAuthenticated) {
     return <Loader />;
   }
 
   // Render authenticated layout
-  return isAuthenticated ? (
+  return (
     <Suspense fallback={<Loader />}>
       <div className='flex h-screen'>
         <Layout>
@@ -111,8 +111,6 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
         <AIChatAssistant />
       </div>
     </Suspense>
-  ) : (
-    <Loader />
   );
 };
 

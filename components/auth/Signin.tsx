@@ -23,6 +23,11 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+interface AuthError {
+  message: string;
+  status?: number;
+}
+
 const SignIn = () => {
   const [emailPrefix, setEmailPrefix] = useState("");
   const [password, setPassword] = useState("");
@@ -39,18 +44,31 @@ const SignIn = () => {
     setError(null);
 
     const email = `${emailPrefix}@umskenya.com`;
+
     try {
-      const { user, session, error } = await signIn(email, password);
-      if (error) throw error;
-      if (session) {
+      const response = await signIn(email, password);
+
+      if (response.error) {
+        const errorMessage = (response.error as AuthError).message;
+        if (errorMessage === "ACCOUNT_DEACTIVATED") {
+          router.push("/deactivated");
+        } else {
+          setError(errorMessage);
+        }
+        return;
+      }
+
+      if (response.session) {
+        await new Promise(resolve => setTimeout(resolve, 500));
         router.push("/dashboard");
-      }
-    } catch (error: any) {
-      if (error.message === "ACCOUNT_DEACTIVATED") {
-        router.push("/deactivated");
+        router.refresh();
       } else {
-        setError(error.message);
+        setError("Authentication successful but no session established");
       }
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +77,14 @@ const SignIn = () => {
   return (
     <div
       className={`${geistMono.className} flex flex-col items-center justify-center space-y-4 min-h-screen bg-background`}>
-      <Image src='/logo.png' alt='logo' width={100} height={100} className='' />
+      <Image 
+        src='/logo.png' 
+        alt='logo' 
+        width={100} 
+        height={100} 
+        className='w-auto h-auto'
+        style={{ aspectRatio: '1/1' }}
+      />
       <h1 className='uppercase text-4xl font-bold'>POS System</h1>
       <Card className='w-[350px]'>
         <CardHeader>

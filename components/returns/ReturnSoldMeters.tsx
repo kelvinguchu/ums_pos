@@ -24,7 +24,7 @@ import localFont from "next/font/local";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from '@/lib/supabase';
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -48,11 +48,6 @@ interface MeterToReturn {
   faultDescription?: string;
   replacementSerial?: string;
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function ReturnSoldMeters({
   currentUser,

@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { getCurrentUser, getUserProfile } from "@/lib/actions/supabaseActions";
+import { supabase } from "@/lib/supabase";
+import { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
-// Define a more specific type for the user from Supabase
 interface UserProfile {
   id: string;
   name?: string;
@@ -38,16 +39,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const initializeAuth = async () => {
       try {
         const currentUser = await getCurrentUser();
+        
+        if (!mounted) return;
+
         if (currentUser) {
           const profile = await getUserProfile(currentUser.id);
+          
+          if (!mounted) return;
+
           if (profile?.is_active) {
-            // Create a properly typed user object
             const userProfile: UserProfile = {
               id: currentUser.id,
-              email: currentUser.email || "", 
+              email: currentUser.email || "",
               name: profile.name,
               role: profile.role,
               is_active: profile.is_active,
@@ -60,7 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               isAuthenticated: true,
             });
           } else {
-            // Handle deactivated user
             setAuthState({
               user: null,
               userRole: "",
@@ -77,17 +84,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
-        setAuthState({
-          user: null,
-          userRole: "",
-          isLoading: false,
-          isAuthenticated: false,
-        });
+        if (mounted) {
+          setAuthState({
+            user: null,
+            userRole: "",
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        }
       }
     };
 
     initializeAuth();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
+        if (!mounted) return;
+
+        if (session?.user) {
+          try {
+            const profile = await getUserProfile(session.user.id);
+
+            if (profile?.is_active) {
+              const userProfile: UserProfile = {
+                id: session.user.id,
+                email: session.user.email || "",
+                name: profile.name,
+                role: profile.role,
+                is_active: profile.is_active,
+              };
+
+              setAuthState({
+                user: userProfile,
+                userRole: profile?.role || "",
+                isLoading: false,
+                isAuthenticated: true,
+              });
+            }
+          } catch (error) {
+            setAuthState({
+              user: null,
+              userRole: "",
+              isLoading: false,
+              isAuthenticated: false,
+            });
+          }
+        } else {
+          setAuthState({
+            user: null,
+            userRole: "",
+            isLoading: false,
+            isAuthenticated: false,
+          });
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+      mounted = false;
+    };
   }, []);
 
   return (
