@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/actions/supabaseActions";
 import { Button } from "@/components/ui/button";
@@ -59,15 +59,15 @@ const SignIn = () => {
       }
 
       if (response.session) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         router.push("/dashboard");
         router.refresh();
       } else {
         setError("Authentication successful but no session established");
       }
-      
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -77,13 +77,13 @@ const SignIn = () => {
   return (
     <div
       className={`${geistMono.className} flex flex-col items-center justify-center space-y-4 min-h-screen bg-background`}>
-      <Image 
-        src='/logo.png' 
-        alt='logo' 
-        width={100} 
-        height={100} 
+      <Image
+        src='/logo.png'
+        alt='logo'
+        width={100}
+        height={100}
         className='w-auto h-auto'
-        style={{ aspectRatio: '1/1' }}
+        style={{ aspectRatio: "1/1" }}
       />
       <h1 className='uppercase text-4xl font-bold'>POS System</h1>
       <Card className='w-[350px]'>

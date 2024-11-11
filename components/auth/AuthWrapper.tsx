@@ -39,44 +39,34 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const [shouldRedirect, setShouldRedirect] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (isLoading) return;
-
-      if (isPublicRoute(pathname)) {
-        setShouldRedirect(null);
-        return;
-      }
-
-      if (!isAuthenticated) {
-        setShouldRedirect("/signin");
-        return;
-      }
-
-      if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
-        setShouldRedirect("/dashboard");
-        return;
-      }
-
-      setShouldRedirect(null);
-    };
-
-    checkAccess();
-  }, [pathname, isAuthenticated, isLoading, userRole]);
-
-  // Modify the cache clearing effect
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading && !isPublicRoute(pathname)) {
-      queryClient.clear();
-      localStorage.clear();
-      sessionStorage.clear();
-    }
-  }, [isAuthenticated, isLoading, pathname, queryClient]);
-
   // Helper function to check if current route is public
   const isPublicRoute = (path: string): boolean => {
     return PUBLIC_ROUTES.includes(path);
   };
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      // If it's a public route, don't show loader
+      if (isPublicRoute(pathname)) {
+        return;
+      }
+
+      // Only check protected routes after initial auth check
+      if (!isLoading) {
+        if (!isAuthenticated) {
+          setShouldRedirect("/signin");
+          return;
+        }
+
+        if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
+          setShouldRedirect("/dashboard");
+          return;
+        }
+      }
+    };
+
+    checkAccess();
+  }, [pathname, isAuthenticated, isLoading, userRole]);
 
   // Handle navigation redirects
   useEffect(() => {
@@ -85,20 +75,21 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
     }
   }, [shouldRedirect, router]);
 
-  // Simplify the render logic
-  if (isLoading) {
-    return <Loader />;
-  }
-
+  // Simplified render logic
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
   }
 
-  if (!isAuthenticated) {
+  // Only show loader for protected routes during auth check
+  if (isLoading && !isPublicRoute(pathname)) {
     return <Loader />;
   }
 
-  // Render authenticated layout
+  // For authenticated routes
+  if (!isAuthenticated && !isPublicRoute(pathname)) {
+    return <Loader />;
+  }
+
   return (
     <Suspense fallback={<Loader />}>
       <div className='flex h-screen'>

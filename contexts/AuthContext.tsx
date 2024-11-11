@@ -5,6 +5,7 @@ import { getCurrentUser, getUserProfile } from "@/lib/actions/supabaseActions";
 import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
+// Define a more specific type for the user from Supabase
 interface UserProfile {
   id: string;
   name?: string;
