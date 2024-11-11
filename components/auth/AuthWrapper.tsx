@@ -2,7 +2,6 @@
 
 import { useEffect, useState, ReactNode, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { signOut } from "@/lib/actions/supabaseActions";
 import dynamic from "next/dynamic";
 import Loader from "@/components/Loader";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,64 +43,62 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
     return PUBLIC_ROUTES.includes(path);
   };
 
+  // Clear query cache when auth state changes
   useEffect(() => {
-    const checkAccess = async () => {
-      // If it's a public route, don't show loader
-      if (isPublicRoute(pathname)) {
-        return;
-      }
-
-      // Only check protected routes after initial auth check
-      if (!isLoading) {
-        if (!isAuthenticated) {
-          setShouldRedirect("/signin");
-          return;
-        }
-
-        if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
-          setShouldRedirect("/dashboard");
-          return;
-        }
-      }
-    };
-
-    checkAccess();
-  }, [pathname, isAuthenticated, isLoading, userRole]);
-
-  // Handle navigation redirects
-  useEffect(() => {
-    if (shouldRedirect) {
-      router.push(shouldRedirect);
+    if (!isAuthenticated && !isLoading) {
+      queryClient.clear();
     }
-  }, [shouldRedirect, router]);
+  }, [isAuthenticated, isLoading, queryClient]);
 
-  // Simplified render logic
+  // Handle access control
+  useEffect(() => {
+    // Skip checks for public routes
+    if (isPublicRoute(pathname)) {
+      return;
+    }
+
+    // Wait for auth to initialize
+    if (isLoading) {
+      return;
+    }
+
+    // Handle unauthenticated users
+    if (!isAuthenticated) {
+      router.replace("/signin");
+      return;
+    }
+
+    // Handle admin routes
+    if (ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
+      router.replace("/dashboard");
+      return;
+    }
+  }, [pathname, isAuthenticated, isLoading, userRole, router]);
+
+  // Render logic
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
   }
 
-  // Only show loader for protected routes during auth check
-  if (isLoading && !isPublicRoute(pathname)) {
+  if (isLoading) {
     return <Loader />;
   }
 
-  // For authenticated routes
-  if (!isAuthenticated && !isPublicRoute(pathname)) {
+  if (!isAuthenticated) {
     return <Loader />;
   }
 
+  // Render authenticated layout
   return (
-    <Suspense fallback={<Loader />}>
-      <div className='flex h-screen'>
-        <Layout>
-          <div className='flex flex-col w-full'>
-            <Navbar />
-            <main className='flex-grow p-4'>{children}</main>
-          </div>
-        </Layout>
-        <AIChatAssistant />
-      </div>
-    </Suspense>
+    <div className='flex h-screen'>
+      <Layout>
+        <div className='flex flex-col w-full'>
+          <Navbar />
+          <main className='flex-grow p-4'>{children}</main>
+        </div>
+      </Layout>
+      <AIChatAssistant />
+    </div>
   );
 };
 
