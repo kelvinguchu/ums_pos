@@ -53,6 +53,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null);
   const { toast } = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
 
@@ -133,7 +134,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         duration: 5000,
       });
 
-      if (pushEnabled) {
+      if (pushEnabled && pushSubscription) {
         const subscriptionObject = {
           endpoint: pushSubscription.endpoint,
           keys: {
@@ -154,7 +155,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentUser, pushEnabled, toast]);
+  }, [currentUser, pushEnabled, pushSubscription, toast]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -184,6 +185,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         userVisibleOnly: true,
         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       });
+
+      // Store the subscription
+      setPushSubscription(subscription);
 
       // Update user profile
       await togglePushNotifications(currentUser.id, true);
@@ -246,6 +250,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       unsubscribeFromPushNotifications,
       pushNotificationSupported: 'serviceWorker' in navigator && 'PushManager' in window,
       pushNotificationSubscribed: pushEnabled,
+      pushSubscription,
     }}>
       {children}
     </NotificationContext.Provider>
