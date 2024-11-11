@@ -45,6 +45,13 @@ export function StockAlert() {
   const { userRole } = useAuth();
   const { toast } = useToast();
   
+  // Move useQuery hook before the conditional return
+  const { data: stockLevels = [] } = useQuery({
+    queryKey: ['remainingMetersByType'],
+    queryFn: getRemainingMetersByType,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+  
   // Local state for form values
   const [formValues, setFormValues] = React.useState<{ [key: string]: string }>(
     METER_TYPES.reduce((acc, type) => ({
@@ -68,11 +75,23 @@ export function StockAlert() {
     return null;
   }
 
-  const { data: stockLevels = [] } = useQuery({
-    queryKey: ['remainingMetersByType'],
-    queryFn: getRemainingMetersByType,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  // Create a map of current stock levels
+  const stockMap = stockLevels.reduce((acc, item) => {
+    acc[item.type] = item.remaining_meters;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Create alerts for all meter types
+  const allStockItems = METER_TYPES.map(type => ({
+    type,
+    remaining_meters: stockMap[type] || 0
+  }));
+
+  const lowStockItems = allStockItems.filter(
+    (item) => item.remaining_meters <= (minimumLevels[item.type] || 10)
+  );
+
+  const hasLowStock = lowStockItems.length > 0;
 
   const validateAndSaveSettings = () => {
     let hasError = false;
@@ -128,24 +147,6 @@ export function StockAlert() {
       });
     }
   };
-
-  // Create a map of current stock levels
-  const stockMap = stockLevels.reduce((acc, item) => {
-    acc[item.type] = item.remaining_meters;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Create alerts for all meter types
-  const allStockItems = METER_TYPES.map(type => ({
-    type,
-    remaining_meters: stockMap[type] || 0
-  }));
-
-  const lowStockItems = allStockItems.filter(
-    (item) => item.remaining_meters <= (minimumLevels[item.type] || 10)
-  );
-
-  const hasLowStock = lowStockItems.length > 0;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
