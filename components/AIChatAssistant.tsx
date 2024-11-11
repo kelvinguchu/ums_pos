@@ -197,7 +197,7 @@ export function AIChatAssistant() {
           setContext((prev) => ({
             ...prev,
             role: user.role || "user",
-            currentPage: pathname,
+            currentPage: pathname || "",
           }));
         }
       } catch (error) {
