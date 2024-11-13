@@ -1,7 +1,6 @@
 "use client";
 
-import { memo } from 'react';
-import { Button } from "@/components/ui/button";
+import { memo } from "react";
 import { Upload } from "lucide-react";
 import { 
   DropdownMenu,
@@ -13,6 +12,15 @@ import { useToast } from "@/hooks/use-toast";
 import { checkMultipleSerialNumbers } from "@/lib/actions/supabaseActions";
 import { processCSV, processExcel } from "@/lib/utils/fileProcessors";
 import { Badge } from "@/components/ui/badge";
+import localFont from "next/font/local";
+
+
+const geistMono = localFont({
+  src: "../../public/fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
+
 interface FileUploadHandlerProps {
   onMetersAdd: (meters: Array<{
     serialNumber: string;
@@ -32,9 +40,8 @@ export const FileUploadHandler = memo(function FileUploadHandler({
   currentUser
 }: FileUploadHandlerProps) {
   const { toast } = useToast();
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  
+  const handleFileUpload = async (file: File) => {
     if (!file) return;
 
     try {
@@ -98,49 +105,43 @@ export const FileUploadHandler = memo(function FileUploadHandler({
         variant: "destructive",
       });
     }
+  };
+
+  const handleFileSelect = (type: 'csv' | 'xlsx') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = type === 'csv' ? '.csv' : '.xlsx';
     
-    event.target.value = '';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        handleFileUpload(file);
+      }
+    };
+    
+    input.click();
   };
 
   return (
-    <div className="relative">
-      <input
-        type="file"
-        accept=".csv,.xlsx"
-        onChange={handleFileUpload}
-        className="hidden"
-        id="fileUpload"
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <div className='cursor-pointer'>
           <Badge
             variant='outline'
             className='hover:bg-gray-100 flex items-center gap-1 cursor-pointer w-[100px] justify-center'>
             <Upload className='h-3 w-3' />
             Upload
           </Badge>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem onClick={() => {
-            const input = document.getElementById('fileUpload') as HTMLInputElement;
-            if (input) {
-              input.accept = ".csv";
-              input.click();
-            }
-          }}>
-            CSV File
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => {
-            const input = document.getElementById('fileUpload') as HTMLInputElement;
-            if (input) {
-              input.accept = ".xlsx";
-              input.click();
-            }
-          }}>
-            Excel File
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end' className={geistMono.className}>
+        <DropdownMenuItem onClick={() => handleFileSelect('csv')}>
+          CSV File
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleFileSelect('xlsx')}>
+          Excel File
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
-}); 
+});

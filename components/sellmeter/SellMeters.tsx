@@ -49,6 +49,9 @@ interface SaleDetails {
   customerContact: string;
 }
 
+// Add this constant at the top
+const MAX_SERIAL_LENGTH = 12;
+
 export default function SellMeters({ currentUser }: { currentUser: any }) {
   const [serialNumber, setSerialNumber] = useState("");
   const [meters, setMeters] = useState<
@@ -79,9 +82,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
   });
   const [saleDetails, setSaleDetails] = useState<SaleDetails | null>(() => {
     const cached = localStorage.getItem("cachedSaleDetails");
-    return cached
-      ? JSON.parse(cached)
-      : null;
+    return cached ? JSON.parse(cached) : null;
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSellingMeters, setIsSellingMeters] = useState(false);
@@ -335,6 +336,14 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
 
   const handleSerialNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    if (value.length > MAX_SERIAL_LENGTH) {
+      toast({
+        title: "Error",
+        description: "Serial number cannot be more than 12 digits",
+        variant: "destructive",
+      });
+      return;
+    }
     setSerialNumber(value);
   };
 
@@ -423,6 +432,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
               onChange={handleSerialNumberChange}
               onKeyPress={handleKeyPress}
               required
+              maxLength={12}
               className='w-full'
             />
             {errorMessage && <p className='text-red-500'>{errorMessage}</p>}
@@ -438,11 +448,11 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
               </Button>
               <Button
                 onClick={() => setIsSubmitted(false)}
-                variant="ghost"
-                size="icon"
+                variant='ghost'
+                size='icon'
                 className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
-                aria-label="Dismiss">
-                <X className="h-4 w-4" />
+                aria-label='Dismiss'>
+                <X className='h-4 w-4' />
               </Button>
             </div>
           )}
@@ -558,11 +568,11 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
                     </Button>
                     <Button
                       onClick={() => setIsSubmitted(false)}
-                      variant="ghost"
-                      size="icon"
+                      variant='ghost'
+                      size='icon'
                       className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
-                      aria-label="Dismiss">
-                      <X className="h-4 w-4" />
+                      aria-label='Dismiss'>
+                      <X className='h-4 w-4' />
                     </Button>
                   </div>
                 )

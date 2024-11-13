@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { 
   subscribeToNotifications, 
   getNotifications, 
@@ -35,6 +35,12 @@ interface Notification {
   is_read: boolean;
 }
 
+interface NotificationCache {
+  notifications: Notification[];
+  hasMore: boolean;
+  lastFetched: number;
+}
+
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
@@ -46,6 +52,8 @@ interface NotificationContextType {
   pushNotificationSupported: boolean;
   pushNotificationSubscribed: boolean;
   pushSubscription: PushSubscription | null;
+  loadMore: () => Promise<void>;
+  hasMore: boolean;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -57,20 +65,65 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { toast } = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastFetchedId, setLastFetchedId] = useState<string | null>(null);
+  const NOTIFICATIONS_PER_PAGE = 5;
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   // Check if we're on the client side
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  const getCachedNotifications = (): NotificationCache | null => {
+    const cached = localStorage.getItem('notificationsCache');
+    if (!cached) return null;
+    
+    const parsedCache = JSON.parse(cached);
+    const now = Date.now();
+    
+    // Check if cache is still valid
+    if (now - parsedCache.lastFetched > CACHE_DURATION) {
+      localStorage.removeItem('notificationsCache');
+      return null;
+    }
+    
+    return parsedCache;
+  };
+
+  const updateCache = (newData: NotificationCache) => {
+    localStorage.setItem('notificationsCache', JSON.stringify({
+      ...newData,
+      lastFetched: Date.now()
+    }));
+  };
+
   const refreshNotifications = async (userId: string) => {
     try {
-      const data = await getNotifications(userId);
+      // First check cache
+      const cache = getCachedNotifications();
+      if (cache) {
+        setNotifications(cache.notifications);
+        setHasMore(cache.hasMore);
+        return;
+      }
+
+      const data = await getNotifications(userId, NOTIFICATIONS_PER_PAGE);
       const processedData = data.map(notification => ({
         ...notification,
         is_read: notification.read_by?.includes(userId) || false
       }));
+
       setNotifications(processedData);
+      setHasMore(data.length === NOTIFICATIONS_PER_PAGE);
+      setLastFetchedId(data[data.length - 1]?.id || null);
+
+      // Update cache
+      updateCache({
+        notifications: processedData,
+        hasMore: data.length === NOTIFICATIONS_PER_PAGE,
+        lastFetched: Date.now()
+      });
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -246,6 +299,36 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const pushNotificationSupported = isClient && 'serviceWorker' in window && 'PushManager' in window;
 
+  const loadMore = useCallback(async () => {
+    if (!currentUser || !lastFetchedId) return;
+
+    try {
+      const data = await getNotifications(
+        currentUser.id,
+        NOTIFICATIONS_PER_PAGE,
+        lastFetchedId
+      );
+
+      const processedData = data.map(notification => ({
+        ...notification,
+        is_read: notification.read_by?.includes(currentUser.id) || false
+      }));
+
+      setNotifications(prev => [...prev, ...processedData]);
+      setHasMore(data.length === NOTIFICATIONS_PER_PAGE);
+      setLastFetchedId(data[data.length - 1]?.id || null);
+
+      // Update cache with new data
+      updateCache({
+        notifications: [...notifications, ...processedData],
+        hasMore: data.length === NOTIFICATIONS_PER_PAGE,
+        lastFetched: Date.now()
+      });
+    } catch (error) {
+      console.error('Error loading more notifications:', error);
+    }
+  }, [currentUser, lastFetchedId, notifications]);
+
   return (
     <NotificationContext.Provider value={{
       notifications,
@@ -258,6 +341,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       pushNotificationSupported,
       pushNotificationSubscribed: pushEnabled,
       pushSubscription,
+      loadMore,
+      hasMore,
     }}>
       {children}
     </NotificationContext.Provider>

@@ -356,7 +356,7 @@ export default function Agents() {
                                   Agent Inventory - {agent.name}
                                 </SheetTitle>
                               </SheetHeader>
-                              <div className="mt-4 h-[calc(100vh-120px)] overflow-y-auto">
+                              <div className='mt-4 h-[calc(100vh-120px)] overflow-y-auto'>
                                 <AgentInventory agentId={agent.id} />
                               </div>
                             </SheetContent>
@@ -687,7 +687,7 @@ export default function Agents() {
                                   Agent Inventory - {agent.name}
                                 </SheetTitle>
                               </SheetHeader>
-                              <div className="mt-4 h-[calc(100vh-120px)] overflow-y-auto">
+                              <div className='mt-4 h-[calc(100vh-120px)] overflow-y-auto'>
                                 <AgentInventory agentId={agent.id} />
                               </div>
                             </SheetContent>

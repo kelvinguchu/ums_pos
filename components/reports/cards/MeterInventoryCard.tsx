@@ -60,7 +60,7 @@ export function MeterInventoryCard({
 
   const getTotal = (meterType: string, remaining: number) => {
     const withAgents = getAgentCount(meterType);
-    return remaining + withAgents;
+    return Number(remaining) + Number(withAgents);
   };
 
   return (
@@ -168,22 +168,13 @@ export function MeterInventoryCard({
                 <div className='grid grid-cols-3 gap-4 text-sm font-bold'>
                   <span>
                     {remainingMetersByType.reduce(
-                      (sum, item) => sum + item.remaining_meters,
+                      (sum, item) => sum + Number(item.remaining_meters),
                       0
-                    )}
-                  </span>
-                  <span>
-                    {agentInventory.reduce(
-                      (sum, item) => sum + item.with_agents,
-                      0
-                    )}
-                  </span>
-                  <span>
-                    {remainingMetersByType.reduce(
-                      (sum, item) =>
-                        sum + getTotal(item.type, item.remaining_meters),
-                      0
-                    )}
+                    ) +
+                      agentInventory.reduce(
+                        (sum, item) => sum + Number(item.with_agents),
+                        0
+                      )}
                   </span>
                 </div>
               </div>
@@ -243,22 +234,13 @@ export function MeterInventoryCard({
                     </TableCell>
                     <TableCell className='text-right font-bold'>
                       {remainingMetersByType.reduce(
-                        (sum, item) => sum + item.remaining_meters,
+                        (sum, item) => sum + Number(item.remaining_meters),
                         0
-                      )}
-                    </TableCell>
-                    <TableCell className='text-right font-bold'>
-                      {agentInventory.reduce(
-                        (sum, item) => sum + item.with_agents,
-                        0
-                      )}
-                    </TableCell>
-                    <TableCell className='text-right font-bold'>
-                      {remainingMetersByType.reduce(
-                        (sum, item) =>
-                          sum + getTotal(item.type, item.remaining_meters),
-                        0
-                      )}
+                      ) +
+                        agentInventory.reduce(
+                          (sum, item) => sum + Number(item.with_agents),
+                          0
+                        )}
                     </TableCell>
                   </TableRow>
                 </TableBody>

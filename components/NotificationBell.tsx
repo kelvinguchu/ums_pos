@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getCurrentUser } from '@/lib/actions/supabaseActions';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import localFont from 'next/font/local';
 import { useToast } from '@/hooks/use-toast';
@@ -41,11 +41,14 @@ export function NotificationBell() {
     pushNotificationSubscribed,
     subscribeToPushNotifications,
     unsubscribeFromPushNotifications,
-    pushSubscription
+    pushSubscription,
+    loadMore,
+    hasMore,
   } = useNotifications();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -61,7 +64,10 @@ export function NotificationBell() {
   if (!currentUser) return null;
 
   const NotificationList = () => (
-    <ScrollArea className={`${isMobile ? "h-[calc(100vh-8rem)]" : "h-[300px]"} ${geistMono.className}`}>
+    <ScrollArea 
+      ref={scrollContainerRef}
+      className={`${isMobile ? "h-[calc(100vh-8rem)]" : "h-[300px]"} ${geistMono.className}`}
+    >
       {notifications.length === 0 ? (
         <div className="text-center text-muted-foreground py-8">
           No notifications
@@ -106,6 +112,28 @@ export function NotificationBell() {
               </div>
             </div>
           ))}
+          
+          {hasMore && (
+            <div className="p-2 text-center">
+              <Button 
+                variant="ghost" 
+                onClick={async () => {
+                  const currentScroll = scrollContainerRef.current?.scrollTop || 0;
+                  
+                  await loadMore();
+                  
+                  setTimeout(() => {
+                    if (scrollContainerRef.current) {
+                      scrollContainerRef.current.scrollTop = currentScroll;
+                    }
+                  }, 100);
+                }}
+                className="w-full text-sm text-muted-foreground hover:text-foreground"
+              >
+                Load More
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </ScrollArea>

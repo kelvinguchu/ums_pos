@@ -38,12 +38,10 @@ async function withActiveUserCheck<T>(
 
 // Add this new function
 export async function getAllMeters() {
-  const { data, error } = await supabase
-    .from("meters")
-    .select("serial_number");
+  const { data, error } = await supabase.from("meters").select("serial_number");
 
   if (error) throw error;
-  return data?.map(m => m.serial_number) || [];
+  return data?.map((m) => m.serial_number) || [];
 }
 
 // Update the checkMeterExists function to use cache
@@ -51,7 +49,7 @@ let metersCache: string[] | null = null;
 
 export async function checkMeterExists(serialNumber: string): Promise<boolean> {
   try {
-    const normalizedSerial = serialNumber.replace(/^0+/, '').toUpperCase();
+    const normalizedSerial = serialNumber.replace(/^0+/, "").toUpperCase();
 
     // If cache doesn't exist, fetch and store
     if (!metersCache) {
@@ -59,8 +57,8 @@ export async function checkMeterExists(serialNumber: string): Promise<boolean> {
     }
 
     // Check in cache
-    return metersCache.some(m => 
-      m.replace(/^0+/, '').toUpperCase() === normalizedSerial
+    return metersCache.some(
+      (m) => m.replace(/^0+/, "").toUpperCase() === normalizedSerial
     );
   } catch (error) {
     console.error("Error checking meter existence:", error);
@@ -74,14 +72,16 @@ export function clearMetersCache() {
 }
 
 // Combined addMeters function
-export async function addMeters(meters: Array<{
-  serial_number: string;
-  type: string;
-  added_by: string;
-  added_at: string;
-  adder_name: string;
-  batch_id?: string;
-}>) {
+export async function addMeters(
+  meters: Array<{
+    serial_number: string;
+    type: string;
+    added_by: string;
+    added_at: string;
+    adder_name: string;
+    batch_id?: string;
+  }>
+) {
   return withActiveUserCheck(meters[0].added_by, async () => {
     const { data, error } = await supabase.from("meters").insert(meters);
     if (error) throw error;
@@ -108,10 +108,11 @@ export async function signIn(email: string, password: string) {
   try {
     await signOut();
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (authError) throw authError;
 
@@ -968,7 +969,7 @@ export async function superSearchMeter(searchTerm: string) {
     { data: results, error },
     { data: agentMeters },
     { data: soldMeters },
-    { data: faultyMeters }
+    { data: faultyMeters },
   ] = await Promise.all([
     // Get meters in stock
     supabase
@@ -980,7 +981,8 @@ export async function superSearchMeter(searchTerm: string) {
     // Get meters with agents
     supabase
       .from("agent_inventory")
-      .select(`
+      .select(
+        `
         serial_number,
         type,
         agents (
@@ -988,14 +990,16 @@ export async function superSearchMeter(searchTerm: string) {
           name,
           location
         )
-      `)
+      `
+      )
       .ilike("serial_number", `%${searchTerm}%`)
       .limit(5),
 
     // Get sold meters with replacements
     supabase
       .from("sold_meters")
-      .select(`
+      .select(
+        `
         id,
         serial_number,
         sold_at,
@@ -1008,14 +1012,16 @@ export async function superSearchMeter(searchTerm: string) {
         replacement_date,
         replacement_by,
         customer_contact
-      `)
+      `
+      )
       .ilike("serial_number", `%${searchTerm}%`)
       .limit(5),
 
     // Get faulty meters
     supabase
       .from("faulty_returns")
-      .select(`
+      .select(
+        `
         id,
         serial_number,
         type,
@@ -1025,19 +1031,20 @@ export async function superSearchMeter(searchTerm: string) {
         fault_description,
         status,
         original_sale_id
-      `)
+      `
+      )
       .ilike("serial_number", `%${searchTerm}%`)
-      .limit(5)
+      .limit(5),
   ]);
 
   if (error) throw error;
 
   // Get user profiles for sold meters in parallel with data transformation
-  const userProfilesPromise = soldMeters?.length ? 
-    supabase
-      .from("user_profiles")
-      .select("id, name")
-      .in("id", [...new Set(soldMeters.map(m => m.sold_by))])
+  const userProfilesPromise = soldMeters?.length
+    ? supabase
+        .from("user_profiles")
+        .select("id, name")
+        .in("id", [...new Set(soldMeters.map((m) => m.sold_by))])
     : Promise.resolve({ data: [] });
 
   // Start transforming the data while waiting for user profiles
@@ -1052,12 +1059,12 @@ export async function superSearchMeter(searchTerm: string) {
       type: meter.type,
       status: "with_agent",
       agent: meter.agents,
-    })) || [])
+    })) || []),
   ];
 
   // Wait for user profiles and complete the transformation
   const { data: userProfiles } = await userProfilesPromise;
-  
+
   const userMap = (userProfiles || []).reduce((acc, user) => {
     acc[user.id] = user.name;
     return acc;
@@ -1077,11 +1084,13 @@ export async function superSearchMeter(searchTerm: string) {
         unit_price: meter.unit_price,
         batch_id: meter.batch_id,
       },
-      replacement_details: meter.replacement_serial ? {
-        replacement_serial: meter.replacement_serial,
-        replacement_date: meter.replacement_date,
-        replacement_by: meter.replacement_by
-      } : null
+      replacement_details: meter.replacement_serial
+        ? {
+            replacement_serial: meter.replacement_serial,
+            replacement_date: meter.replacement_date,
+            replacement_by: meter.replacement_by,
+          }
+        : null,
     })) || []),
     ...(faultyMeters?.map((meter) => ({
       serial_number: meter.serial_number,
@@ -1091,9 +1100,9 @@ export async function superSearchMeter(searchTerm: string) {
         returned_at: meter.returned_at,
         returner_name: meter.returner_name,
         fault_description: meter.fault_description,
-        fault_status: meter.status
-      }
-    })) || [])
+        fault_status: meter.status,
+      },
+    })) || []),
   ];
 }
 
@@ -1130,23 +1139,25 @@ export async function createNotification({
 }
 
 // Fetch notifications for a user
-export async function getNotifications(userId: string, limit = 20) {
-  const { data, error } = await supabase
+export async function getNotifications(
+  userId: string,
+  limit: number = 5,
+  lastId?: string | null
+) {
+  let query = supabase
     .from("notifications")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) {
-    console.error("Error fetching notifications:", error);
-    throw error;
+  if (lastId) {
+    query = query.lt("id", lastId); // Get notifications with ID less than lastId
   }
 
-  // Process notifications to determine read status for this specific user
-  return data.map((notification) => ({
-    ...notification,
-    is_read: notification.read_by?.includes(userId) || false,
-  }));
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return data || [];
 }
 
 // Mark a notification as read
@@ -1909,14 +1920,14 @@ export async function updateFaultyMeterStatus(
 export async function changePassword(userId: string, newPassword: string) {
   try {
     const { error } = await supabase.auth.updateUser({
-      password: newPassword
+      password: newPassword,
     });
 
     if (error) throw error;
 
     // Force sign out after password change
     await signOut();
-    
+
     return { success: true };
   } catch (error) {
     console.error("Error changing password:", error);

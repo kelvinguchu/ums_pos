@@ -46,7 +46,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import ReturnSoldMeters from "@/components/returns/ReturnSoldMeters";
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from "@tanstack/react-query";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -125,22 +125,21 @@ export function AppSidebar() {
         user: null,
         userRole: "",
         isAuthenticated: false,
-        isLoading: false
+        isLoading: false,
       });
 
       // Clear all caches and storage in parallel
       await Promise.all([
         // Clear React Query cache
         queryClient.clear(),
-        
+
         // Sign out from supabase
         signOut(),
-        
+
         // Clear all storages
         Promise.resolve(localStorage.clear()),
-        Promise.resolve(sessionStorage.clear())
+        Promise.resolve(sessionStorage.clear()),
       ]);
-
     } catch (error) {
       console.error("Logout error:", error);
       // Even if there's an error, ensure the user is logged out locally
@@ -267,22 +266,40 @@ export function AppSidebar() {
                       onOpenChange={(open) => {
                         setIsAddMetersOpen(open);
                         if (!open) {
-                          const currentMeters = localStorage.getItem("cachedMetersTable");
-                          const currentDetails = localStorage.getItem("cachedBatchDetails");
+                          const currentMeters =
+                            localStorage.getItem("cachedMetersTable");
+                          const currentDetails =
+                            localStorage.getItem("cachedBatchDetails");
                           if (currentMeters) {
-                            localStorage.setItem("cachedAddMetersBackup", currentMeters);
+                            localStorage.setItem(
+                              "cachedAddMetersBackup",
+                              currentMeters
+                            );
                           }
                           if (currentDetails) {
-                            localStorage.setItem("cachedBatchDetailsBackup", currentDetails);
+                            localStorage.setItem(
+                              "cachedBatchDetailsBackup",
+                              currentDetails
+                            );
                           }
                         } else {
-                          const backedUpMeters = localStorage.getItem("cachedAddMetersBackup");
-                          const backedUpDetails = localStorage.getItem("cachedBatchDetailsBackup");
+                          const backedUpMeters = localStorage.getItem(
+                            "cachedAddMetersBackup"
+                          );
+                          const backedUpDetails = localStorage.getItem(
+                            "cachedBatchDetailsBackup"
+                          );
                           if (backedUpMeters) {
-                            localStorage.setItem("cachedMetersTable", backedUpMeters);
+                            localStorage.setItem(
+                              "cachedMetersTable",
+                              backedUpMeters
+                            );
                           }
                           if (backedUpDetails) {
-                            localStorage.setItem("cachedBatchDetails", backedUpDetails);
+                            localStorage.setItem(
+                              "cachedBatchDetails",
+                              backedUpDetails
+                            );
                           }
                         }
                       }}>
@@ -380,11 +397,10 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     onClick={handleLogout}
-                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
+                    className='w-full text-red-600 hover:text-red-700 hover:bg-red-50'>
+                    <LogOut className='mr-2 h-4 w-4' />
                     <span>Logout</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

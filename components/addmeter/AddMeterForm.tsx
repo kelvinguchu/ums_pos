@@ -74,6 +74,8 @@ const findExistingMeter = (serialNumber: string, meters: Meter[]) => {
   );
 };
 
+const MAX_SERIAL_LENGTH = 12;
+
 export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   const [meters, setMeters] = useState<Meter[]>(() => {
     const cached = localStorage.getItem("cachedAddMeters");
@@ -703,6 +705,14 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
             serialNumber={serialNumber}
             selectedType={selectedType}
             onSerialNumberChange={(value) => {
+              if (value.length > MAX_SERIAL_LENGTH) {
+                toast({
+                  title: "Error",
+                  description: "Serial number cannot be more than 12 digits",
+                  variant: "destructive",
+                });
+                return;
+              }
               setSerialNumber(value);
               setExists(false);
               setIsChecking(false);

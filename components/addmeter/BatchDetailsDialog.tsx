@@ -47,7 +47,7 @@ export default function BatchDetailsDialog({
 }: BatchDetailsDialogProps) {
   const [formData, setFormData] = useState<BatchDetails>(() => ({
     purchaseDate: new Date().toISOString(),
-    batchGroups: []
+    batchGroups: [],
   }));
 
   // Update formData when meterGroups changes or dialog opens
@@ -58,12 +58,12 @@ export default function BatchDetailsDialog({
       } else {
         setFormData({
           purchaseDate: new Date().toISOString(),
-          batchGroups: meterGroups.map(group => ({
+          batchGroups: meterGroups.map((group) => ({
             type: group.type,
             count: group.count,
             unitPrice: "",
-            totalCost: "0"
-          }))
+            totalCost: "0",
+          })),
         });
       }
     }
@@ -74,7 +74,7 @@ export default function BatchDetailsDialog({
       // Reset form when closing
       setFormData({
         purchaseDate: new Date().toISOString(),
-        batchGroups: []
+        batchGroups: [],
       });
     }
     onOpenChange(open);
@@ -89,26 +89,26 @@ export default function BatchDetailsDialog({
   const handleUnitPriceChange = (index: number, unitPrice: string) => {
     const newGroups = [...formData.batchGroups];
     const total = calculateTotalCost(unitPrice, newGroups[index].count);
-    
+
     newGroups[index] = {
       ...newGroups[index],
       unitPrice: unitPrice,
-      totalCost: total
+      totalCost: total,
     };
-    
-    setFormData(prev => ({ ...prev, batchGroups: newGroups }));
+
+    setFormData((prev) => ({ ...prev, batchGroups: newGroups }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submissionData = {
       ...formData,
-      batchGroups: formData.batchGroups.map(group => ({
+      batchGroups: formData.batchGroups.map((group) => ({
         type: group.type,
         count: group.count,
         unitPrice: group.unitPrice,
-        totalCost: calculateTotalCost(group.unitPrice, group.count)
-      }))
+        totalCost: calculateTotalCost(group.unitPrice, group.count),
+      })),
     };
     onSubmit(submissionData);
     handleOpenChange(false);
@@ -118,53 +118,65 @@ export default function BatchDetailsDialog({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className={`${geistMono.className} sm:max-w-[500px]`}>
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-center pb-4 border-b">
+          <DialogTitle className='text-xl font-bold text-center pb-4 border-b'>
             Purchase Batch Details
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Purchase Date</label>
+        <form onSubmit={handleSubmit} className='space-y-6 pt-4'>
+          <div className='grid gap-4'>
+            <div className='space-y-2'>
+              <label className='text-sm font-medium'>Purchase Date</label>
               <Input
-                type="date"
-                value={formData.purchaseDate.split('T')[0]}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  purchaseDate: new Date(e.target.value).toISOString()
-                }))}
-                className="w-full"
+                type='date'
+                value={formData.purchaseDate.split("T")[0]}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    purchaseDate: new Date(e.target.value).toISOString(),
+                  }))
+                }
+                className='w-full'
               />
             </div>
 
-            <div className="space-y-4">
-              <label className="text-sm font-medium">Batch Costs</label>
+            <div className='space-y-4'>
+              <label className='text-sm font-medium'>Batch Costs</label>
               {formData.batchGroups.map((group, index) => (
-                <div key={`${group.type}-${index}`} className="space-y-2 p-4 border rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{group.type}</span>
-                    <span className="text-sm text-muted-foreground">Quantity: {group.count}</span>
+                <div
+                  key={`${group.type}-${index}`}
+                  className='space-y-2 p-4 border rounded-lg'>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-sm font-medium'>{group.type}</span>
+                    <span className='text-sm text-muted-foreground'>
+                      Quantity: {group.count}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className='grid grid-cols-2 gap-4'>
                     <div>
-                      <label className="text-xs text-gray-500">Unit Price (KES)</label>
+                      <label className='text-xs text-gray-500'>
+                        Unit Price (KES)
+                      </label>
                       <Input
-                        type="number"
-                        placeholder="Unit price"
+                        type='number'
+                        placeholder='Unit price'
                         value={group.unitPrice}
-                        onChange={(e) => handleUnitPriceChange(index, e.target.value)}
+                        onChange={(e) =>
+                          handleUnitPriceChange(index, e.target.value)
+                        }
                         required
-                        min="0"
-                        step="0.01"
+                        min='0'
+                        step='0.01'
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500">Total Cost (KES)</label>
+                      <label className='text-xs text-gray-500'>
+                        Total Cost (KES)
+                      </label>
                       <Input
-                        type="text"
+                        type='text'
                         value={group.totalCost}
                         readOnly
-                        className="bg-gray-50"
+                        className='bg-gray-50'
                       />
                     </div>
                   </div>
@@ -173,7 +185,9 @@ export default function BatchDetailsDialog({
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-[#000080] hover:bg-[#000066] text-white">
+          <Button
+            type='submit'
+            className='w-full bg-[#000080] hover:bg-[#000066] text-white'>
             Save Batch Details
           </Button>
         </form>

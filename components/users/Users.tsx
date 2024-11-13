@@ -72,7 +72,8 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [newPassword, setNewPassword] = useState("");
-  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] =
+    useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const itemsPerPage = 10;
   const { toast } = useToast();
@@ -84,7 +85,7 @@ export default function UsersPage() {
     error,
     updateUser,
     isPending,
-    refetch
+    refetch,
   } = useUsersData(showDeactivated);
 
   const handleUpdateName = async () => {
@@ -98,11 +99,11 @@ export default function UsersPage() {
     }
 
     try {
-      await updateUser({ 
-        userId: editingUser.id, 
-        updates: { name: newName }
+      await updateUser({
+        userId: editingUser.id,
+        updates: { name: newName },
       });
-      
+
       toast({
         title: "Success",
         description: "User name updated successfully",
@@ -124,9 +125,9 @@ export default function UsersPage() {
       const newRole = user.role === "admin" ? "user" : "admin";
       await updateUser({
         userId: user.id,
-        updates: { role: newRole }
+        updates: { role: newRole },
       });
-      
+
       toast({
         title: "Success",
         description: `User role updated to ${newRole}`,
@@ -146,12 +147,14 @@ export default function UsersPage() {
       const newStatus = !user.isActive;
       await updateUser({
         userId: user.id,
-        updates: { isActive: newStatus }
+        updates: { isActive: newStatus },
       });
-      
+
       toast({
         title: "Success",
-        description: `User ${newStatus ? "activated" : "deactivated"} successfully`,
+        description: `User ${
+          newStatus ? "activated" : "deactivated"
+        } successfully`,
         style: { backgroundColor: "#2ECC40", color: "white" },
       });
     } catch (error) {
@@ -175,15 +178,15 @@ export default function UsersPage() {
 
     try {
       await changePassword(userId, newPassword);
-      
+
       toast({
         title: "Success",
         description: "Password changed successfully. Please sign in again.",
         style: { backgroundColor: "#2ECC40", color: "white" },
       });
-      
+
       // Redirect to signin page
-      window.location.href = '/signin';
+      window.location.href = "/signin";
     } catch (error) {
       toast({
         title: "Error",
@@ -228,10 +231,10 @@ export default function UsersPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-lg text-red-500">Error: {error.message}</div>
-        <Button onClick={() => refetch()} variant="outline">
-          <RefreshCw className="mr-2 h-4 w-4" />
+      <div className='flex flex-col items-center justify-center min-h-[60vh] gap-4'>
+        <div className='text-lg text-red-500'>Error: {error.message}</div>
+        <Button onClick={() => refetch()} variant='outline'>
+          <RefreshCw className='mr-2 h-4 w-4' />
           Retry
         </Button>
       </div>
@@ -244,7 +247,9 @@ export default function UsersPage() {
 
   return (
     <div className={`${geistMono.className} container w-full md:w-[75vw]`}>
-      <h1 className='text-3xl font-bold mb-6 text-center drop-shadow-lg'>Users</h1>
+      <h1 className='text-3xl font-bold mb-6 text-center drop-shadow-lg'>
+        Users
+      </h1>
 
       <div className='mb-6 mt-4 space-y-4'>
         <div className='flex items-center justify-between'>
@@ -292,10 +297,12 @@ export default function UsersPage() {
                 {filteredAndPaginatedUsers().paginatedUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className='font-medium'>
-                      <div className="flex items-center gap-2">
+                      <div className='flex items-center gap-2'>
                         {user.name}
                         {user.id === currentUser?.id && (
-                          <Badge variant="secondary" className="bg-[#000080] text-white">
+                          <Badge
+                            variant='secondary'
+                            className='bg-[#000080] text-white'>
                             You
                           </Badge>
                         )}
@@ -322,8 +329,9 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {currentUser && (
-                        (user.id === currentUser.id || currentUser.role === "admin") && (
+                      {currentUser &&
+                        (user.id === currentUser.id ||
+                          currentUser.role === "admin") && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant='ghost' size='sm'>
@@ -332,7 +340,9 @@ export default function UsersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align='end'>
                               {user.id === currentUser.id && (
-                                <Dialog open={showChangePasswordDialog} onOpenChange={setShowChangePasswordDialog}>
+                                <Dialog
+                                  open={showChangePasswordDialog}
+                                  onOpenChange={setShowChangePasswordDialog}>
                                   <DialogTrigger asChild>
                                     <DropdownMenuItem
                                       onSelect={(e) => {
@@ -343,7 +353,8 @@ export default function UsersPage() {
                                       Change Password
                                     </DropdownMenuItem>
                                   </DialogTrigger>
-                                  <DialogContent className={geistMono.className}>
+                                  <DialogContent
+                                    className={geistMono.className}>
                                     <DialogHeader>
                                       <DialogTitle>Change Password</DialogTitle>
                                     </DialogHeader>
@@ -354,20 +365,34 @@ export default function UsersPage() {
                                         placeholder='Enter new password'
                                         type={isVisible ? "text" : "password"}
                                         value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        onChange={(e) =>
+                                          setNewPassword(e.target.value)
+                                        }
                                         required
                                       />
                                       <button
                                         className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
                                         type='button'
                                         onClick={toggleVisibility}
-                                        aria-label={isVisible ? "Hide password" : "Show password"}
+                                        aria-label={
+                                          isVisible
+                                            ? "Hide password"
+                                            : "Show password"
+                                        }
                                         aria-pressed={isVisible}
                                         aria-controls='new-password'>
                                         {isVisible ? (
-                                          <EyeOff size={16} strokeWidth={2} aria-hidden='true' />
+                                          <EyeOff
+                                            size={16}
+                                            strokeWidth={2}
+                                            aria-hidden='true'
+                                          />
                                         ) : (
-                                          <Eye size={16} strokeWidth={2} aria-hidden='true' />
+                                          <Eye
+                                            size={16}
+                                            strokeWidth={2}
+                                            aria-hidden='true'
+                                          />
                                         )}
                                       </button>
                                     </div>
@@ -383,7 +408,7 @@ export default function UsersPage() {
                                       </DialogClose>
                                       <Button
                                         onClick={() => {
-                                            handleChangePassword(currentUser.id);
+                                          handleChangePassword(currentUser.id);
                                         }}>
                                         Change Password
                                       </Button>
@@ -392,85 +417,92 @@ export default function UsersPage() {
                                 </Dialog>
                               )}
 
-                              {currentUser.role === "admin" && user.id !== currentUser.id && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <Dialog>
-                                    <DialogTrigger asChild>
-                                      <DropdownMenuItem
-                                        onSelect={(e) => {
-                                          e.preventDefault();
-                                          setEditingUser(user);
-                                          setNewName(user.name);
-                                        }}>
-                                        <Edit2 className='mr-2 h-4 w-4' />
-                                        Edit Name
-                                      </DropdownMenuItem>
-                                    </DialogTrigger>
-                                    <DialogContent className={geistMono.className}>
-                                      <DialogHeader>
-                                        <DialogTitle>Edit User Name</DialogTitle>
-                                      </DialogHeader>
-                                      <Input
-                                        value={newName}
-                                        onChange={(e) => setNewName(e.target.value)}
-                                        placeholder='Enter new name'
-                                      />
-                                      <DialogFooter>
-                                        <DialogClose asChild>
+                              {currentUser.role === "admin" &&
+                                user.id !== currentUser.id && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <DropdownMenuItem
+                                          onSelect={(e) => {
+                                            e.preventDefault();
+                                            setEditingUser(user);
+                                            setNewName(user.name);
+                                          }}>
+                                          <Edit2 className='mr-2 h-4 w-4' />
+                                          Edit Name
+                                        </DropdownMenuItem>
+                                      </DialogTrigger>
+                                      <DialogContent
+                                        className={geistMono.className}>
+                                        <DialogHeader>
+                                          <DialogTitle>
+                                            Edit User Name
+                                          </DialogTitle>
+                                        </DialogHeader>
+                                        <Input
+                                          value={newName}
+                                          onChange={(e) =>
+                                            setNewName(e.target.value)
+                                          }
+                                          placeholder='Enter new name'
+                                        />
+                                        <DialogFooter>
+                                          <DialogClose asChild>
+                                            <Button
+                                              variant='outline'
+                                              onClick={() => {
+                                                setEditingUser(null);
+                                                setNewName("");
+                                              }}>
+                                              Cancel
+                                            </Button>
+                                          </DialogClose>
                                           <Button
-                                            variant='outline'
                                             onClick={() => {
-                                              setEditingUser(null);
+                                              handleUpdateName();
                                               setNewName("");
                                             }}>
-                                            Cancel
+                                            Save
                                           </Button>
-                                        </DialogClose>
-                                        <Button
-                                          onClick={() => {
-                                            handleUpdateName();
-                                            setNewName("");
-                                          }}>
-                                          Save
-                                        </Button>
-                                      </DialogFooter>
-                                    </DialogContent>
-                                  </Dialog>
+                                        </DialogFooter>
+                                      </DialogContent>
+                                    </Dialog>
 
-                                  <DropdownMenuItem onClick={() => handleToggleRole(user)}>
-                                    {user.role === "admin" ? (
-                                      <>
-                                        <ShieldOff className='mr-2 h-4 w-4' />
-                                        Remove Admin
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Shield className='mr-2 h-4 w-4' />
-                                        Make Admin
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleRole(user)}>
+                                      {user.role === "admin" ? (
+                                        <>
+                                          <ShieldOff className='mr-2 h-4 w-4' />
+                                          Remove Admin
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Shield className='mr-2 h-4 w-4' />
+                                          Make Admin
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
 
-                                  <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                                    {user.isActive ? (
-                                      <>
-                                        <UserMinus className='mr-2 h-4 w-4' />
-                                        Deactivate User
-                                      </>
-                                    ) : (
-                                      <>
-                                        <UserPlus className='mr-2 h-4 w-4' />
-                                        Activate User
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleStatus(user)}>
+                                      {user.isActive ? (
+                                        <>
+                                          <UserMinus className='mr-2 h-4 w-4' />
+                                          Deactivate User
+                                        </>
+                                      ) : (
+                                        <>
+                                          <UserPlus className='mr-2 h-4 w-4' />
+                                          Activate User
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        )
-                      )}
+                        )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -493,10 +525,12 @@ export default function UsersPage() {
                 {filteredAndPaginatedUsers().paginatedUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className='font-medium'>
-                      <div className="flex items-center gap-2">
+                      <div className='flex items-center gap-2'>
                         {user.name}
                         {user.id === currentUser?.id && (
-                          <Badge variant="secondary" className="bg-[#000080] text-white">
+                          <Badge
+                            variant='secondary'
+                            className='bg-[#000080] text-white'>
                             You
                           </Badge>
                         )}
@@ -523,8 +557,9 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {currentUser && (
-                        (user.id === currentUser.id || currentUser.role === "admin") && (
+                      {currentUser &&
+                        (user.id === currentUser.id ||
+                          currentUser.role === "admin") && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant='ghost' size='sm'>
@@ -533,7 +568,9 @@ export default function UsersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align='end'>
                               {user.id === currentUser.id && (
-                                <Dialog open={showChangePasswordDialog} onOpenChange={setShowChangePasswordDialog}>
+                                <Dialog
+                                  open={showChangePasswordDialog}
+                                  onOpenChange={setShowChangePasswordDialog}>
                                   <DialogTrigger asChild>
                                     <DropdownMenuItem
                                       onSelect={(e) => {
@@ -544,7 +581,8 @@ export default function UsersPage() {
                                       Change Password
                                     </DropdownMenuItem>
                                   </DialogTrigger>
-                                  <DialogContent className={geistMono.className}>
+                                  <DialogContent
+                                    className={geistMono.className}>
                                     <DialogHeader>
                                       <DialogTitle>Change Password</DialogTitle>
                                     </DialogHeader>
@@ -555,20 +593,34 @@ export default function UsersPage() {
                                         placeholder='Enter new password'
                                         type={isVisible ? "text" : "password"}
                                         value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        onChange={(e) =>
+                                          setNewPassword(e.target.value)
+                                        }
                                         required
                                       />
                                       <button
                                         className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
                                         type='button'
                                         onClick={toggleVisibility}
-                                        aria-label={isVisible ? "Hide password" : "Show password"}
+                                        aria-label={
+                                          isVisible
+                                            ? "Hide password"
+                                            : "Show password"
+                                        }
                                         aria-pressed={isVisible}
                                         aria-controls='new-password'>
                                         {isVisible ? (
-                                          <EyeOff size={16} strokeWidth={2} aria-hidden='true' />
+                                          <EyeOff
+                                            size={16}
+                                            strokeWidth={2}
+                                            aria-hidden='true'
+                                          />
                                         ) : (
-                                          <Eye size={16} strokeWidth={2} aria-hidden='true' />
+                                          <Eye
+                                            size={16}
+                                            strokeWidth={2}
+                                            aria-hidden='true'
+                                          />
                                         )}
                                       </button>
                                     </div>
@@ -584,7 +636,7 @@ export default function UsersPage() {
                                       </DialogClose>
                                       <Button
                                         onClick={() => {
-                                            handleChangePassword(currentUser.id);
+                                          handleChangePassword(currentUser.id);
                                         }}>
                                         Change Password
                                       </Button>
@@ -593,85 +645,92 @@ export default function UsersPage() {
                                 </Dialog>
                               )}
 
-                              {currentUser.role === "admin" && user.id !== currentUser.id && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <Dialog>
-                                    <DialogTrigger asChild>
-                                      <DropdownMenuItem
-                                        onSelect={(e) => {
-                                          e.preventDefault();
-                                          setEditingUser(user);
-                                          setNewName(user.name);
-                                        }}>
-                                        <Edit2 className='mr-2 h-4 w-4' />
-                                        Edit Name
-                                      </DropdownMenuItem>
-                                    </DialogTrigger>
-                                    <DialogContent className={geistMono.className}>
-                                      <DialogHeader>
-                                        <DialogTitle>Edit User Name</DialogTitle>
-                                      </DialogHeader>
-                                      <Input
-                                        value={newName}
-                                        onChange={(e) => setNewName(e.target.value)}
-                                        placeholder='Enter new name'
-                                      />
-                                      <DialogFooter>
-                                        <DialogClose asChild>
+                              {currentUser.role === "admin" &&
+                                user.id !== currentUser.id && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <DropdownMenuItem
+                                          onSelect={(e) => {
+                                            e.preventDefault();
+                                            setEditingUser(user);
+                                            setNewName(user.name);
+                                          }}>
+                                          <Edit2 className='mr-2 h-4 w-4' />
+                                          Edit Name
+                                        </DropdownMenuItem>
+                                      </DialogTrigger>
+                                      <DialogContent
+                                        className={geistMono.className}>
+                                        <DialogHeader>
+                                          <DialogTitle>
+                                            Edit User Name
+                                          </DialogTitle>
+                                        </DialogHeader>
+                                        <Input
+                                          value={newName}
+                                          onChange={(e) =>
+                                            setNewName(e.target.value)
+                                          }
+                                          placeholder='Enter new name'
+                                        />
+                                        <DialogFooter>
+                                          <DialogClose asChild>
+                                            <Button
+                                              variant='outline'
+                                              onClick={() => {
+                                                setEditingUser(null);
+                                                setNewName("");
+                                              }}>
+                                              Cancel
+                                            </Button>
+                                          </DialogClose>
                                           <Button
-                                            variant='outline'
                                             onClick={() => {
-                                              setEditingUser(null);
+                                              handleUpdateName();
                                               setNewName("");
                                             }}>
-                                            Cancel
+                                            Save
                                           </Button>
-                                        </DialogClose>
-                                        <Button
-                                          onClick={() => {
-                                            handleUpdateName();
-                                            setNewName("");
-                                          }}>
-                                          Save
-                                        </Button>
-                                      </DialogFooter>
-                                    </DialogContent>
-                                  </Dialog>
+                                        </DialogFooter>
+                                      </DialogContent>
+                                    </Dialog>
 
-                                  <DropdownMenuItem onClick={() => handleToggleRole(user)}>
-                                    {user.role === "admin" ? (
-                                      <>
-                                        <ShieldOff className='mr-2 h-4 w-4' />
-                                        Remove Admin
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Shield className='mr-2 h-4 w-4' />
-                                        Make Admin
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleRole(user)}>
+                                      {user.role === "admin" ? (
+                                        <>
+                                          <ShieldOff className='mr-2 h-4 w-4' />
+                                          Remove Admin
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Shield className='mr-2 h-4 w-4' />
+                                          Make Admin
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
 
-                                  <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                                    {user.isActive ? (
-                                      <>
-                                        <UserMinus className='mr-2 h-4 w-4' />
-                                        Deactivate User
-                                      </>
-                                    ) : (
-                                      <>
-                                        <UserPlus className='mr-2 h-4 w-4' />
-                                        Activate User
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                                    <DropdownMenuItem
+                                      onClick={() => handleToggleStatus(user)}>
+                                      {user.isActive ? (
+                                        <>
+                                          <UserMinus className='mr-2 h-4 w-4' />
+                                          Deactivate User
+                                        </>
+                                      ) : (
+                                        <>
+                                          <UserPlus className='mr-2 h-4 w-4' />
+                                          Activate User
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        )
-                      )}
+                        )}
                     </TableCell>
                   </TableRow>
                 ))}

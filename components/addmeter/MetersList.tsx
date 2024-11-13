@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from 'react';
+import { memo } from "react";
 import {
   Table,
   TableBody,
@@ -28,7 +28,7 @@ interface MetersListProps {
 
 export const MetersList = memo(function MetersList({
   meters,
-  onRemoveMeter
+  onRemoveMeter,
 }: MetersListProps) {
   if (meters.length === 0) {
     return null;
@@ -37,11 +37,9 @@ export const MetersList = memo(function MetersList({
   return (
     <div className='mt-6'>
       <div className='flex justify-between items-center mb-2'>
-        <h3 className='text-lg font-semibold text-gray-700'>
-          Added Meters
-        </h3>
-        <span className="text-sm text-gray-500">
-          Total: {meters.length} meter{meters.length !== 1 ? 's' : ''}
+        <h3 className='text-lg font-semibold text-gray-700'>Added Meters</h3>
+        <span className='text-sm text-gray-500'>
+          Total: {meters.length} meter{meters.length !== 1 ? "s" : ""}
         </span>
       </div>
       <div className='max-h-[400px] overflow-y-auto border border-gray-200 rounded-md'>
@@ -68,7 +66,7 @@ export const MetersList = memo(function MetersList({
                     onClick={() => onRemoveMeter(index)}
                     variant='ghost'
                     size='sm'
-                    className="hover:bg-red-100 hover:text-red-600 transition-colors">
+                    className='hover:bg-red-100 hover:text-red-600 transition-colors'>
                     <X className='h-4 w-4' />
                   </Button>
                 </TableCell>
@@ -79,4 +77,4 @@ export const MetersList = memo(function MetersList({
       </div>
     </div>
   );
-}); 
+});

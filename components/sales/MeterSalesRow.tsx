@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { getMetersByBatchId } from "@/lib/actions/supabaseActions";
 import { format } from "date-fns";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Download, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import localFont from "next/font/local";
 import {
@@ -22,6 +22,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { generateCSV } from "@/lib/utils/csvGenerator";
+import { Button } from "@/components/ui/button";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -62,6 +64,8 @@ export function MeterSalesRow({
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // Show 20 serial numbers per page
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Add useEffect to fetch data when sheet opens
   useEffect(() => {
@@ -97,21 +101,50 @@ export function MeterSalesRow({
     setCurrentPage(1);
   }, [searchTerm]);
 
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      setShowScrollTop(container.scrollTop > 200);
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    scrollContainerRef.current?.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const handleDownloadSerials = () => {
+    const headers = ["SN#"];
+    const data = meters.map((meter) => [meter.serial_number]);
+
+    generateCSV(`meter_serials_batch_${batch.id}`, headers, data);
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className={`min-w-[50vw] ${geistMono.className}`}>
         <SheetHeader>
           <SheetTitle>Sale Batch Details</SheetTitle>
           <SheetDescription>
-            Batch #{batch.id} - {new Date(batch.sale_date).toLocaleDateString("en-GB", {
+            Batch #{batch.id} -{" "}
+            {new Date(batch.sale_date).toLocaleDateString("en-GB", {
               day: "2-digit",
               month: "2-digit",
-              year: "numeric"
+              year: "numeric",
             })}
           </SheetDescription>
         </SheetHeader>
 
-        <div className='mt-6 space-y-6 max-h-[80vh] overflow-y-auto'>
+        <div
+          ref={scrollContainerRef}
+          className='mt-6 space-y-6 max-h-[80vh] overflow-y-auto relative'>
           {/* Batch Summary */}
           <div className='grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg'>
             <div>
@@ -156,15 +189,27 @@ export function MeterSalesRow({
             </div>
           </div>
 
-          {/* Search Input */}
+          {/* Search Input and Download Button */}
           <div className='sticky top-0 bg-white z-10 pb-4'>
-            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-            <Input
-              className='pl-9'
-              placeholder='Search serial numbers...'
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <div className='flex justify-between items-center gap-4'>
+              <div className='relative flex-1'>
+                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                <Input
+                  className='pl-9'
+                  placeholder='Search serial numbers...'
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={handleDownloadSerials}
+                className='whitespace-nowrap'>
+                <Download className='h-4 w-4 mr-2' />
+                Download Serials
+              </Button>
+            </div>
           </div>
 
           {/* Meters Display */}
@@ -193,21 +238,38 @@ export function MeterSalesRow({
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="mt-6">
+                  <div className='mt-6'>
                     <Pagination>
                       <PaginationContent>
                         <PaginationItem>
-                          <PaginationPrevious 
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                          <PaginationPrevious
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const currentScroll =
+                                scrollContainerRef.current?.scrollTop || 0;
+                              setCurrentPage((p) => Math.max(1, p - 1));
+                              setTimeout(() => {
+                                if (scrollContainerRef.current) {
+                                  scrollContainerRef.current.scrollTop =
+                                    currentScroll;
+                                }
+                              }, 0);
+                            }}
+                            className={
+                              currentPage === 1
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
-                        
+
                         {Array.from({ length: totalPages }, (_, i) => i + 1)
-                          .filter(page => 
-                            page === 1 || 
-                            page === totalPages || 
-                            (page >= currentPage - 1 && page <= currentPage + 1)
+                          .filter(
+                            (page) =>
+                              page === 1 ||
+                              page === totalPages ||
+                              (page >= currentPage - 1 &&
+                                page <= currentPage + 1)
                           )
                           .map((page, i, arr) => (
                             <Fragment key={page}>
@@ -219,8 +281,7 @@ export function MeterSalesRow({
                               <PaginationItem>
                                 <PaginationLink
                                   onClick={() => setCurrentPage(page)}
-                                  isActive={currentPage === page}
-                                >
+                                  isActive={currentPage === page}>
                                   {page}
                                 </PaginationLink>
                               </PaginationItem>
@@ -228,9 +289,26 @@ export function MeterSalesRow({
                           ))}
 
                         <PaginationItem>
-                          <PaginationNext 
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                          <PaginationNext
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const currentScroll =
+                                scrollContainerRef.current?.scrollTop || 0;
+                              setCurrentPage((p) =>
+                                Math.min(totalPages, p + 1)
+                              );
+                              setTimeout(() => {
+                                if (scrollContainerRef.current) {
+                                  scrollContainerRef.current.scrollTop =
+                                    currentScroll;
+                                }
+                              }, 0);
+                            }}
+                            className={
+                              currentPage === totalPages
+                                ? "pointer-events-none opacity-50"
+                                : ""
+                            }
                           />
                         </PaginationItem>
                       </PaginationContent>
@@ -246,6 +324,16 @@ export function MeterSalesRow({
               </div>
             )}
           </div>
+
+          {showScrollTop && (
+            <Button
+              variant='outline'
+              size='icon'
+              className='fixed bottom-4 right-4 rounded-full shadow-lg'
+              onClick={scrollToTop}>
+              <ArrowUp className='h-4 w-4' />
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>
