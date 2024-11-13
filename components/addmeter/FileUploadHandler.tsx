@@ -12,7 +12,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { checkMultipleSerialNumbers } from "@/lib/actions/supabaseActions";
 import { processCSV, processExcel } from "@/lib/utils/fileProcessors";
-
+import { Badge } from "@/components/ui/badge";
 interface FileUploadHandlerProps {
   onMetersAdd: (meters: Array<{
     serialNumber: string;
@@ -113,10 +113,12 @@ export const FileUploadHandler = memo(function FileUploadHandler({
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-full sm:w-auto">
-            <Upload className="mr-2 h-4 w-4" />
+          <Badge
+            variant='outline'
+            className='hover:bg-gray-100 flex items-center gap-1 cursor-pointer w-[100px] justify-center'>
+            <Upload className='h-3 w-3' />
             Upload
-          </Button>
+          </Badge>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuItem onClick={() => {

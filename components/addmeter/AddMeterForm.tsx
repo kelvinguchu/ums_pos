@@ -7,6 +7,8 @@ import {
   getUserProfile,
   checkMeterExists,
   addMeterPurchaseBatch,
+  getAllMeters,
+  clearMetersCache,
 } from "@/lib/actions/supabaseActions";
 import { useToast } from "@/hooks/use-toast";
 import { FileUploadHandler } from "./FileUploadHandler";
@@ -64,10 +66,11 @@ const normalizeSerialNumber = (serial: string) => {
   return serial.replace(/^0+/, "").toUpperCase();
 };
 
-const checkDuplicateInTable = (serialNumber: string, meters: Meter[]) => {
-  const normalizedSerial = normalizeSerialNumber(serialNumber);
-  return meters.some(
-    (meter) => normalizeSerialNumber(meter.serialNumber) === normalizedSerial
+const findExistingMeter = (serialNumber: string, meters: Meter[]) => {
+  return meters.findIndex(
+    (m) =>
+      normalizeSerialNumber(m.serialNumber) ===
+      normalizeSerialNumber(serialNumber)
   );
 };
 
@@ -88,6 +91,9 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   const [adderName, setAdderName] = useState("");
   const [isBatchDetailsOpen, setIsBatchDetailsOpen] = useState(false);
   const [batchDetails, setBatchDetails] = useState<BatchDetails | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | React.ReactNode>(
+    "Input Serial Number"
+  );
 
   const { toast } = useToast();
 
@@ -101,10 +107,10 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     let isSubscribed = true;
 
     const checkSerialNumber = async () => {
-      // Reset states if input is empty
       if (!serialNumber.trim()) {
         setExists(false);
         setIsChecking(false);
+        setErrorMessage("Input Serial Number");
         return;
       }
 
@@ -112,35 +118,56 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       try {
         const normalizedSerial = normalizeSerialNumber(serialNumber);
 
-        // First check if it exists in current batch (strict check)
-        const existsInBatch = checkDuplicateInTable(normalizedSerial, meters);
-
-        if (existsInBatch) {
+        // First check if it exists in current batch
+        const existingIndex = findExistingMeter(normalizedSerial, meters);
+        if (existingIndex !== -1) {
           setExists(true);
           setIsChecking(false);
-          toast({
-            title: "Error",
-            description: "Serial number already in current batch",
-            variant: "destructive",
-          });
+          setErrorMessage(
+            <div className='flex items-center gap-2'>
+              <span>Serial Number Already in the Table</span>
+              <button
+                className='text-blue-500 hover:underline'
+                onClick={() => {
+                  const element = document.querySelector(
+                    `[data-row-index="${existingIndex}"]`
+                  );
+                  element?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                  });
+                  element?.classList.add("bg-yellow-100");
+                  setTimeout(
+                    () => element?.classList.remove("bg-yellow-100"),
+                    2000
+                  );
+                }}>
+                View Entry
+              </button>
+            </div>
+          );
           return;
         }
 
-        // Then check database with normalized serial
+        // Then check database
         const exists = await checkMeterExists(normalizedSerial);
 
         if (isSubscribed) {
           setExists(exists);
           if (exists) {
+            setErrorMessage("Serial Number Already Exists in Database");
             toast({
               title: "Error",
-              description: "Serial number already exists in database",
+              description: "Serial Number Already Exists in Database",
               variant: "destructive",
             });
+          } else {
+            setErrorMessage("");
           }
         }
       } catch (error) {
         if (isSubscribed) {
+          setErrorMessage("Failed to check serial number");
           toast({
             title: "Error",
             description: "Failed to check serial number",
@@ -181,7 +208,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     fetchUserProfile();
   }, [currentUser.id, currentUser.name]);
 
-  const handleAddMeter = useCallback(() => {
+  const handleAddMeter = useCallback(async () => {
     if (!serialNumber.trim()) {
       toast({
         title: "Error",
@@ -203,31 +230,72 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     const normalizedSerial = normalizeSerialNumber(serialNumber);
 
     // Double check for duplicates before adding
-    if (checkDuplicateInTable(normalizedSerial, meters)) {
-      toast({
-        title: "Error",
-        description: "Serial number already in current batch",
-        variant: "destructive",
-      });
+    const existingIndex = findExistingMeter(normalizedSerial, meters);
+    if (existingIndex !== -1) {
+      setErrorMessage(
+        <div className='flex items-center gap-2'>
+          <span>Serial Number Already in the Table</span>
+          <button
+            className='text-blue-500 hover:underline'
+            onClick={() => {
+              const element = document.querySelector(
+                `[data-row-index="${existingIndex}"]`
+              );
+              element?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+              element?.classList.add("bg-yellow-100");
+              setTimeout(
+                () => element?.classList.remove("bg-yellow-100"),
+                2000
+              );
+            }}>
+            View Entry
+          </button>
+        </div>
+      );
       return;
     }
 
-    const newMeter = {
-      serialNumber: normalizedSerial,
-      type: selectedType,
-      addedBy: currentUser.id,
-      addedAt: new Date().toISOString(),
-      adderName: adderName,
-    };
+    // Check database before adding
+    try {
+      const exists = await checkMeterExists(normalizedSerial);
+      if (exists) {
+        setErrorMessage("Serial Number Already Exists in Database");
+        toast({
+          title: "Error",
+          description: "Serial Number Already Exists in Database",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    setMeters((prev) => [newMeter, ...prev]);
-    setSerialNumber("");
+      const newMeter = {
+        serialNumber: normalizedSerial,
+        type: selectedType,
+        addedBy: currentUser.id,
+        addedAt: new Date().toISOString(),
+        adderName: adderName,
+      };
 
-    toast({
-      title: "Success",
-      description: "Meter added to the list",
-      style: { backgroundColor: "#2ECC40", color: "white" },
-    });
+      setMeters((prev) => [newMeter, ...prev]);
+      setSerialNumber("");
+      setErrorMessage("");
+
+      toast({
+        title: "Success",
+        description: "Meter added to the list",
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+    } catch (error) {
+      setErrorMessage("Failed to check serial number");
+      toast({
+        title: "Error",
+        description: "Failed to check serial number",
+        variant: "destructive",
+      });
+    }
   }, [serialNumber, selectedType, currentUser.id, adderName, meters, toast]);
 
   const handleRemoveMeter = useCallback((index: number) => {
@@ -299,7 +367,8 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
 
       toast({
         title: "Success",
-        description: "Meters added successfully! You can now download the receipt.",
+        description:
+          "Meters added successfully! You can now download the receipt.",
         style: { backgroundColor: "#0074D9", color: "white" },
       });
     } catch (error: any) {
@@ -444,9 +513,15 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     setSerialNumber("");
     setSelectedType("Split");
     setBatchDetails(null);
+    setErrorMessage("Input Serial Number");
+    // Clear all caches
     localStorage.removeItem("cachedAddMeters");
     localStorage.removeItem("cachedBatchDetails");
     localStorage.removeItem("cachedMetersTable");
+    localStorage.removeItem("cachedAddMetersBackup");
+    localStorage.removeItem("cachedBatchDetailsBackup");
+    // Clear the meters existence cache
+    clearMetersCache();
   }, []);
 
   const generateMeterCountsFromMeters = (metersArray: any[]) => {
@@ -544,6 +619,24 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     }
   }, [isAutoMode, serialNumber, isChecking, exists, handleAddMeter]);
 
+  // Add this effect to initialize cache when component mounts
+  useEffect(() => {
+    const initializeCache = async () => {
+      try {
+        await getAllMeters(); // This will populate the cache
+      } catch (error) {
+        console.error("Error initializing meters cache:", error);
+      }
+    };
+
+    initializeCache();
+
+    // Clear cache when component unmounts
+    return () => {
+      clearMetersCache();
+    };
+  }, []);
+
   return (
     <div
       className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
@@ -566,15 +659,13 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                     <div className='cursor-pointer'>
                       <Badge
                         variant='outline'
-                        className='hover:bg-gray-100 flex items-center gap-1 cursor-pointer'>
+                        className='hover:bg-gray-100 flex items-center gap-1 cursor-pointer w-[100px] justify-center'>
                         <FileDown className='h-3 w-3' />
                         Templates
                       </Badge>
                     </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align='end'
-                    className={`${geistMono.className} w-56`}>
+                  <DropdownMenuContent align='end' className='w-56'>
                     <DropdownMenuItem
                       onClick={() => handleTemplateDownload("csv")}
                       className='cursor-pointer'>
@@ -587,13 +678,14 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Badge
+                  onClick={handleClearForm}
+                  variant='outline'
+                  className='hover:bg-gray-100 flex items-center gap-1 cursor-pointer w-[100px] justify-center whitespace-nowrap'>
+                  <X className='h-3 w-3' />
+                  Clear
+                </Badge>
               </div>
-              <Button
-                onClick={handleClearForm}
-                variant='outline'
-                className='w-full sm:w-auto'>
-                Clear Form
-              </Button>
             </div>
             <div className='flex items-center gap-2'>
               <Switch
@@ -612,15 +704,16 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
             selectedType={selectedType}
             onSerialNumberChange={(value) => {
               setSerialNumber(value);
-              // Clear any previous validation states when input changes
               setExists(false);
               setIsChecking(false);
+              setErrorMessage("");
             }}
             onTypeChange={setSelectedType}
             onAddMeter={handleAddMeter}
             isChecking={isChecking}
             exists={exists}
             isAutoMode={isAutoMode}
+            errorMessage={errorMessage}
           />
 
           {meters.length > 0 && (

@@ -350,13 +350,15 @@ export default function Agents() {
                               </DropdownMenuItem>
                             </SheetTrigger>
                             <SheetContent
-                              className={`${geistMono.className} min-w-[50vw]`}>
+                              className={`${geistMono.className} w-full sm:min-w-[50vw] overflow-y-auto`}>
                               <SheetHeader>
                                 <SheetTitle className='text-center'>
                                   Agent Inventory - {agent.name}
                                 </SheetTitle>
                               </SheetHeader>
-                              <AgentInventory agentId={agent.id} />
+                              <div className="mt-4 h-[calc(100vh-120px)] overflow-y-auto">
+                                <AgentInventory agentId={agent.id} />
+                              </div>
                             </SheetContent>
                           </Sheet>
 
@@ -679,13 +681,15 @@ export default function Agents() {
                               </DropdownMenuItem>
                             </SheetTrigger>
                             <SheetContent
-                              className={`${geistMono.className} min-w-[50vw]`}>
+                              className={`${geistMono.className} w-full sm:min-w-[50vw] overflow-y-auto`}>
                               <SheetHeader>
                                 <SheetTitle className='text-center'>
                                   Agent Inventory - {agent.name}
                                 </SheetTitle>
                               </SheetHeader>
-                              <AgentInventory agentId={agent.id} />
+                              <div className="mt-4 h-[calc(100vh-120px)] overflow-y-auto">
+                                <AgentInventory agentId={agent.id} />
+                              </div>
                             </SheetContent>
                           </Sheet>
 

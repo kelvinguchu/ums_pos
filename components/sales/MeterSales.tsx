@@ -379,14 +379,18 @@ export default function MeterSales() {
             <div className='flex items-center gap-2 ml-auto'>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant='outline' size="sm">
+                  <Button variant='outline' size='sm'>
                     <Download className='mr-2 h-4 w-4' />
                     Export
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportPDF}>PDF</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportCSV}>CSV</DropdownMenuItem>
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuItem onClick={handleExportPDF}>
+                    PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    CSV
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -418,7 +422,7 @@ export default function MeterSales() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className='p-0 md:p-6'>
+        <CardContent className='p-0 md:p-6 -mt-0 md:-mt-8'>
           {currentBatches.length > 0 ? (
             <div className='overflow-x-auto'>
               {/* Mobile View */}

@@ -22,6 +22,7 @@ interface MeterInputFormProps {
   isChecking: boolean;
   exists: boolean;
   isAutoMode: boolean;
+  errorMessage: string | React.ReactNode;
 }
 
 export const MeterInputForm = memo(function MeterInputForm({
@@ -33,6 +34,7 @@ export const MeterInputForm = memo(function MeterInputForm({
   isChecking,
   exists,
   isAutoMode,
+  errorMessage,
 }: MeterInputFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,8 +52,8 @@ export const MeterInputForm = memo(function MeterInputForm({
   };
 
   return (
-    <div className='space-y-4 mb-6'>
-      <div className='flex flex-col sm:flex-row gap-2 sm:gap-4'>
+    <div className='space-y-4'>
+      <div className='flex items-center gap-2'>
         <div className="flex-1">
           <Input
             type='text'
@@ -60,23 +62,10 @@ export const MeterInputForm = memo(function MeterInputForm({
             onChange={(e) => onSerialNumberChange(e.target.value)}
             onKeyPress={handleKeyPress}
             required
-            className={`min-w-1/2 ${exists ? 'border-red-500 focus:ring-red-500' : ''}`}
+            className={`${exists ? 'border-red-500 focus:ring-red-500' : ''}`}
             ref={inputRef}
             autoFocus
           />
-          {serialNumber.trim() && (
-            <div className="mt-1">
-              {isChecking ? (
-                <p className="text-sm text-gray-500">Checking serial number...</p>
-              ) : exists ? (
-                <p className="text-sm text-red-500 font-medium">
-                  Serial Number Already Exists
-                </p>
-              ) : (
-                <p className="text-sm text-green-500">Serial number is available</p>
-              )}
-            </div>
-          )}
         </div>
         <Select 
           value={selectedType}
@@ -100,6 +89,17 @@ export const MeterInputForm = memo(function MeterInputForm({
             disabled={!serialNumber || isChecking || exists}>
             Add Meter
           </Button>
+        )}
+      </div>
+      <div className="h-6">
+        {isChecking ? (
+          <p className="text-sm text-gray-500">Checking serial number...</p>
+        ) : errorMessage ? (
+          <div className="text-sm text-red-500">
+            {errorMessage}
+          </div>
+        ) : serialNumber.trim() && !exists && (
+          <p className="text-sm text-green-500">Serial number is available</p>
         )}
       </div>
     </div>

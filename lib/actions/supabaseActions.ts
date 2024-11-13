@@ -36,25 +36,58 @@ async function withActiveUserCheck<T>(
   return action();
 }
 
+// Add this new function
+export async function getAllMeters() {
+  const { data, error } = await supabase
+    .from("meters")
+    .select("serial_number");
+
+  if (error) throw error;
+  return data?.map(m => m.serial_number) || [];
+}
+
+// Update the checkMeterExists function to use cache
+let metersCache: string[] | null = null;
+
 export async function checkMeterExists(serialNumber: string): Promise<boolean> {
   try {
-    const normalizedSerial = serialNumber.toUpperCase();
+    const normalizedSerial = serialNumber.replace(/^0+/, '').toUpperCase();
 
-    // Only check in meters table
-    const { data, error } = await supabase
-      .from("meters")
-      .select("serial_number")
-      .eq("serial_number", normalizedSerial)
-      .maybeSingle();
+    // If cache doesn't exist, fetch and store
+    if (!metersCache) {
+      metersCache = await getAllMeters();
+    }
 
-    if (error) throw error;
-
-    // Return true if meter exists, false if it doesn't
-    return !!data;
+    // Check in cache
+    return metersCache.some(m => 
+      m.replace(/^0+/, '').toUpperCase() === normalizedSerial
+    );
   } catch (error) {
     console.error("Error checking meter existence:", error);
     throw error;
   }
+}
+
+// Add function to clear cache
+export function clearMetersCache() {
+  metersCache = null;
+}
+
+// Combined addMeters function
+export async function addMeters(meters: Array<{
+  serial_number: string;
+  type: string;
+  added_by: string;
+  added_at: string;
+  adder_name: string;
+  batch_id?: string;
+}>) {
+  return withActiveUserCheck(meters[0].added_by, async () => {
+    const { data, error } = await supabase.from("meters").insert(meters);
+    if (error) throw error;
+    clearMetersCache(); // Clear cache after successful addition
+    return data;
+  });
 }
 
 export async function signUp(email: string, password: string, role: string) {
@@ -280,22 +313,6 @@ export async function markInvitationAsUsed(token: string) {
     .eq("token", token);
 
   if (error) throw error;
-}
-
-export async function addMeters(
-  meters: Array<{
-    serial_number: string;
-    type: string;
-    added_by: string;
-    added_at: string;
-    adder_name: string;
-  }>
-) {
-  return withActiveUserCheck(meters[0].added_by, async () => {
-    const { data, error } = await supabase.from("meters").insert(meters);
-    if (error) throw error;
-    return data;
-  });
 }
 
 export async function getUserProfile(userId: string) {
