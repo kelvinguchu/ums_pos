@@ -25,6 +25,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -52,9 +54,22 @@ interface BatchDetails {
   batchGroups: Array<{
     type: string;
     count: number;
+    unitPrice: string;
     totalCost: string;
   }>;
 }
+
+const normalizeSerialNumber = (serial: string) => {
+  // Remove leading zeros and convert to uppercase
+  return serial.replace(/^0+/, "").toUpperCase();
+};
+
+const checkDuplicateInTable = (serialNumber: string, meters: Meter[]) => {
+  const normalizedSerial = normalizeSerialNumber(serialNumber);
+  return meters.some(
+    (meter) => normalizeSerialNumber(meter.serialNumber) === normalizedSerial
+  );
+};
 
 export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   const [meters, setMeters] = useState<Meter[]>(() => {
@@ -95,10 +110,10 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
 
       setIsChecking(true);
       try {
-        // First check if it exists in current batch
-        const existsInBatch = meters.some(
-          (m) => m.serialNumber.toLowerCase() === serialNumber.toLowerCase()
-        );
+        const normalizedSerial = normalizeSerialNumber(serialNumber);
+
+        // First check if it exists in current batch (strict check)
+        const existsInBatch = checkDuplicateInTable(normalizedSerial, meters);
 
         if (existsInBatch) {
           setExists(true);
@@ -111,9 +126,9 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
           return;
         }
 
-        // Then check database
-        const exists = await checkMeterExists(serialNumber);
-        
+        // Then check database with normalized serial
+        const exists = await checkMeterExists(normalizedSerial);
+
         if (isSubscribed) {
           setExists(exists);
           if (exists) {
@@ -185,8 +200,20 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       return;
     }
 
+    const normalizedSerial = normalizeSerialNumber(serialNumber);
+
+    // Double check for duplicates before adding
+    if (checkDuplicateInTable(normalizedSerial, meters)) {
+      toast({
+        title: "Error",
+        description: "Serial number already in current batch",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newMeter = {
-      serialNumber: serialNumber.toUpperCase(),
+      serialNumber: normalizedSerial,
       type: selectedType,
       addedBy: currentUser.id,
       addedAt: new Date().toISOString(),
@@ -201,7 +228,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       description: "Meter added to the list",
       style: { backgroundColor: "#2ECC40", color: "white" },
     });
-  }, [serialNumber, selectedType, currentUser.id, adderName, toast]);
+  }, [serialNumber, selectedType, currentUser.id, adderName, meters, toast]);
 
   const handleRemoveMeter = useCallback((index: number) => {
     setMeters((prev) => prev.filter((_, i) => i !== index));
@@ -235,6 +262,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
         batchGroups: batchDetails.batchGroups.map((group) => ({
           type: group.type,
           count: group.count,
+          unitPrice: group.unitPrice,
           totalCost: group.totalCost,
         })),
       });
@@ -267,11 +295,11 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       setIsSubmitted(true);
       localStorage.removeItem("cachedAddMeters");
       localStorage.removeItem("cachedBatchDetails");
+      localStorage.removeItem("cachedMetersTable");
 
       toast({
         title: "Success",
-        description:
-          "Meters added successfully! You can now download the receipt.",
+        description: "Meters added successfully! You can now download the receipt.",
         style: { backgroundColor: "#0074D9", color: "white" },
       });
     } catch (error: any) {
@@ -283,7 +311,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       });
     } finally {
       setIsSubmitting(false);
-      setIsBatchDetailsOpen(false); // Ensure dialog is closed
+      setIsBatchDetailsOpen(false);
     }
   }, [adderName, batchDetails, currentUser.id, meters, toast]);
 
@@ -297,6 +325,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
         batchGroups: details.batchGroups.map((group) => ({
           type: group.type,
           count: group.count,
+          unitPrice: group.unitPrice,
           totalCost: group.totalCost,
         })),
       });
@@ -417,6 +446,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     setBatchDetails(null);
     localStorage.removeItem("cachedAddMeters");
     localStorage.removeItem("cachedBatchDetails");
+    localStorage.removeItem("cachedMetersTable");
   }, []);
 
   const generateMeterCountsFromMeters = (metersArray: any[]) => {
@@ -446,14 +476,29 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     }
   }, [batchDetails]);
 
-  // Add a cleanup effect when the component unmounts or sheet closes
+  // Add this effect to handle sheet state
   useEffect(() => {
-    return () => {
-      setBatchDetails(null);
-      setMeters([]);
-      localStorage.removeItem("cachedAddMeters");
-      localStorage.removeItem("cachedBatchDetails");
-    };
+    // Load cached data when component mounts
+    const cachedMeters = localStorage.getItem("cachedMetersTable");
+    const cachedDetails = localStorage.getItem("cachedBatchDetails");
+
+    if (cachedMeters) {
+      try {
+        const parsedMeters = JSON.parse(cachedMeters);
+        setMeters(parsedMeters);
+      } catch (error) {
+        console.error("Error parsing cached meters:", error);
+      }
+    }
+
+    if (cachedDetails) {
+      try {
+        const parsedDetails = JSON.parse(cachedDetails);
+        setBatchDetails(parsedDetails);
+      } catch (error) {
+        console.error("Error parsing cached details:", error);
+      }
+    }
   }, []);
 
   const handleTemplateDownload = (type: "csv" | "xlsx") => {
@@ -465,6 +510,39 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     link.click();
     document.body.removeChild(link);
   };
+
+  // Add this effect to cache the table data
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (meters.length > 0) {
+        localStorage.setItem("cachedMetersTable", JSON.stringify(meters));
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Load cached data on mount
+    const cachedData = localStorage.getItem("cachedMetersTable");
+    if (cachedData) {
+      try {
+        const parsedData = JSON.parse(cachedData);
+        setMeters(parsedData);
+      } catch (error) {
+        console.error("Error parsing cached data:", error);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
+  // Add this effect to handle auto mode
+  useEffect(() => {
+    if (isAutoMode && serialNumber && !isChecking && !exists) {
+      handleAddMeter();
+    }
+  }, [isAutoMode, serialNumber, isChecking, exists, handleAddMeter]);
 
   return (
     <div
@@ -494,7 +572,9 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                       </Badge>
                     </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align='end' className='w-56'>
+                  <DropdownMenuContent
+                    align='end'
+                    className={`${geistMono.className} w-56`}>
                     <DropdownMenuItem
                       onClick={() => handleTemplateDownload("csv")}
                       className='cursor-pointer'>
@@ -515,16 +595,32 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                 Clear Form
               </Button>
             </div>
+            <div className='flex items-center gap-2'>
+              <Switch
+                id='auto-mode'
+                checked={isAutoMode}
+                onCheckedChange={setIsAutoMode}
+              />
+              <Label htmlFor='auto-mode' className='text-sm'>
+                Auto Mode {isAutoMode ? "On" : "Off"}
+              </Label>
+            </div>
           </div>
 
           <MeterInputForm
             serialNumber={serialNumber}
             selectedType={selectedType}
-            onSerialNumberChange={setSerialNumber}
+            onSerialNumberChange={(value) => {
+              setSerialNumber(value);
+              // Clear any previous validation states when input changes
+              setExists(false);
+              setIsChecking(false);
+            }}
             onTypeChange={setSelectedType}
             onAddMeter={handleAddMeter}
             isChecking={isChecking}
             exists={exists}
+            isAutoMode={isAutoMode}
           />
 
           {meters.length > 0 && (

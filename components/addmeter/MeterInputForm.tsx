@@ -21,6 +21,7 @@ interface MeterInputFormProps {
   onAddMeter: () => void;
   isChecking: boolean;
   exists: boolean;
+  isAutoMode: boolean;
 }
 
 export const MeterInputForm = memo(function MeterInputForm({
@@ -30,7 +31,8 @@ export const MeterInputForm = memo(function MeterInputForm({
   onTypeChange,
   onAddMeter,
   isChecking,
-  exists
+  exists,
+  isAutoMode,
 }: MeterInputFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -92,6 +94,13 @@ export const MeterInputForm = memo(function MeterInputForm({
             <SelectItem value="Smart">Smart</SelectItem>
           </SelectContent>
         </Select>
+        {!isAutoMode && (
+          <Button
+            onClick={onAddMeter}
+            disabled={!serialNumber || isChecking || exists}>
+            Add Meter
+          </Button>
+        )}
       </div>
     </div>
   );

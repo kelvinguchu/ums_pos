@@ -197,16 +197,11 @@ export default function MeterSales() {
   // Function to format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date
-      .toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
-      .replace(",", " at");
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   const hasActiveFilters = () => {
@@ -487,9 +482,10 @@ export default function MeterSales() {
                     <TableRow>
                       <TableHead>Seller</TableHead>
                       <TableHead>Meter Type</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead>Quantity</TableHead>
                       <TableHead>Sale Amount</TableHead>
                       <TableHead>Sale Date</TableHead>
+                      <TableHead>Recipient</TableHead>
                       <TableHead>Customer Type</TableHead>
                       <TableHead>County</TableHead>
                     </TableRow>
@@ -510,6 +506,7 @@ export default function MeterSales() {
                             })}
                           </TableCell>
                           <TableCell>{formatDate(batch.sale_date)}</TableCell>
+                          <TableCell>{batch.recipient}</TableCell>
                           <TableCell>
                             <Badge variant='outline' className='bg-blue-100'>
                               {batch.customer_type}

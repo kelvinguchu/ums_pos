@@ -103,7 +103,11 @@ export function MeterSalesRow({
         <SheetHeader>
           <SheetTitle>Sale Batch Details</SheetTitle>
           <SheetDescription>
-            Batch #{batch.id} - {format(new Date(batch.sale_date), "PPpp")}
+            Batch #{batch.id} - {new Date(batch.sale_date).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric"
+            })}
           </SheetDescription>
         </SheetHeader>
 

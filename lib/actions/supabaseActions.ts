@@ -1888,3 +1888,21 @@ export async function updateFaultyMeterStatus(
     throw error;
   }
 }
+
+export async function changePassword(userId: string, newPassword: string) {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+
+    // Force sign out after password change
+    await signOut();
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error changing password:", error);
+    throw error;
+  }
+}

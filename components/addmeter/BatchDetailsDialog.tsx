@@ -8,7 +8,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import localFont from "next/font/local";
 
 const geistMono = localFont({
@@ -20,6 +19,7 @@ const geistMono = localFont({
 interface BatchGroup {
   type: string;
   count: number;
+  unitPrice: string;
   totalCost: string;
 }
 
@@ -61,7 +61,8 @@ export default function BatchDetailsDialog({
           batchGroups: meterGroups.map(group => ({
             type: group.type,
             count: group.count,
-            totalCost: ""
+            unitPrice: "",
+            totalCost: "0"
           }))
         });
       }
@@ -79,9 +80,37 @@ export default function BatchDetailsDialog({
     onOpenChange(open);
   };
 
+  const calculateTotalCost = (unitPrice: string, count: number): string => {
+    const price = parseFloat(unitPrice) || 0;
+    const total = price * count;
+    return total.toFixed(2);
+  };
+
+  const handleUnitPriceChange = (index: number, unitPrice: string) => {
+    const newGroups = [...formData.batchGroups];
+    const total = calculateTotalCost(unitPrice, newGroups[index].count);
+    
+    newGroups[index] = {
+      ...newGroups[index],
+      unitPrice: unitPrice,
+      totalCost: total
+    };
+    
+    setFormData(prev => ({ ...prev, batchGroups: newGroups }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    const submissionData = {
+      ...formData,
+      batchGroups: formData.batchGroups.map(group => ({
+        type: group.type,
+        count: group.count,
+        unitPrice: group.unitPrice,
+        totalCost: calculateTotalCost(group.unitPrice, group.count)
+      }))
+    };
+    onSubmit(submissionData);
     handleOpenChange(false);
   };
 
@@ -111,20 +140,34 @@ export default function BatchDetailsDialog({
             <div className="space-y-4">
               <label className="text-sm font-medium">Batch Costs</label>
               {formData.batchGroups.map((group, index) => (
-                <div key={`${group.type}-${index}`} className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
-                  <span className="text-sm font-medium">{group.type}</span>
-                  <span className="text-sm text-muted-foreground">×{group.count}</span>
-                  <Input
-                    type="number"
-                    placeholder="Total cost"
-                    value={group.totalCost}
-                    onChange={(e) => {
-                      const newGroups = [...formData.batchGroups];
-                      newGroups[index].totalCost = e.target.value;
-                      setFormData(prev => ({ ...prev, batchGroups: newGroups }));
-                    }}
-                    required
-                  />
+                <div key={`${group.type}-${index}`} className="space-y-2 p-4 border rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">{group.type}</span>
+                    <span className="text-sm text-muted-foreground">Quantity: {group.count}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500">Unit Price (KES)</label>
+                      <Input
+                        type="number"
+                        placeholder="Unit price"
+                        value={group.unitPrice}
+                        onChange={(e) => handleUnitPriceChange(index, e.target.value)}
+                        required
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Total Cost (KES)</label>
+                      <Input
+                        type="text"
+                        value={group.totalCost}
+                        readOnly
+                        className="bg-gray-50"
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

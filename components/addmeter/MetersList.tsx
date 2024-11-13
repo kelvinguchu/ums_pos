@@ -18,6 +18,7 @@ interface Meter {
   type: string;
   addedBy: string;
   addedAt: string;
+  adderName: string;
 }
 
 interface MetersListProps {

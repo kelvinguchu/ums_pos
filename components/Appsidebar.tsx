@@ -266,6 +266,25 @@ export function AppSidebar() {
                       open={isAddMetersOpen}
                       onOpenChange={(open) => {
                         setIsAddMetersOpen(open);
+                        if (!open) {
+                          const currentMeters = localStorage.getItem("cachedMetersTable");
+                          const currentDetails = localStorage.getItem("cachedBatchDetails");
+                          if (currentMeters) {
+                            localStorage.setItem("cachedAddMetersBackup", currentMeters);
+                          }
+                          if (currentDetails) {
+                            localStorage.setItem("cachedBatchDetailsBackup", currentDetails);
+                          }
+                        } else {
+                          const backedUpMeters = localStorage.getItem("cachedAddMetersBackup");
+                          const backedUpDetails = localStorage.getItem("cachedBatchDetailsBackup");
+                          if (backedUpMeters) {
+                            localStorage.setItem("cachedMetersTable", backedUpMeters);
+                          }
+                          if (backedUpDetails) {
+                            localStorage.setItem("cachedBatchDetails", backedUpDetails);
+                          }
+                        }
                       }}>
                       <SheetTrigger asChild>
                         <SidebarMenuButton>
@@ -273,7 +292,7 @@ export function AppSidebar() {
                           <span>Add Meters</span>
                         </SidebarMenuButton>
                       </SheetTrigger>
-                      <SheetContent className='min-w-[50vw] max-h-[100vh] overflow-y-auto'>
+                      <SheetContent className='min-w-[60vw] max-h-[100vh] overflow-y-auto'>
                         <SheetHeader>
                           <SheetTitle className='text-left'>
                             <Badge
