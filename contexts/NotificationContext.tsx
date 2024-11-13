@@ -12,6 +12,8 @@ import {
 } from '@/lib/actions/supabaseActions';
 import { useToast } from '@/hooks/use-toast';
 import { sendPushNotification } from '@/app/actions/pushNotifications';
+import { MoveUp } from 'lucide-react';
+import { registerServiceWorker, subscribeToPushNotifications, unsubscribeFromPushNotifications } from '@/lib/pushNotifications';
 
 interface Notification {
   id: string;
@@ -54,9 +56,20 @@ interface NotificationContextType {
   pushSubscription: PushSubscription | null;
   loadMore: () => Promise<void>;
   hasMore: boolean;
+  scrollToTop: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+// Add this interface for the subscription JSON
+interface PushSubscriptionJSON {
+  endpoint: string;
+  expirationTime: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -67,13 +80,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [isClient, setIsClient] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [lastFetchedId, setLastFetchedId] = useState<string | null>(null);
-  const NOTIFICATIONS_PER_PAGE = 5;
+  const NOTIFICATIONS_PER_PAGE = 10;
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   // Check if we're on the client side
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Initialize service worker
+  useEffect(() => {
+    if (isClient && 'serviceWorker' in navigator) {
+      registerServiceWorker()
+        .then(registration => {
+          setSwRegistration(registration);
+          // Check for existing subscription
+          return registration.pushManager.getSubscription();
+        })
+        .then(existingSubscription => {
+          if (existingSubscription) {
+            setPushSubscription(existingSubscription);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isClient]);
 
   const getCachedNotifications = (): NotificationCache | null => {
     const cached = localStorage.getItem('notificationsCache');
@@ -194,8 +226,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       });
 
       if (pushEnabled && pushSubscription && isClient) {
-        const subscriptionObject = {
+        // Convert PushSubscription to the correct format
+        const subscriptionJSON: PushSubscriptionJSON = {
           endpoint: pushSubscription.endpoint,
+          expirationTime: pushSubscription.expirationTime,
           keys: {
             p256dh: btoa(String.fromCharCode.apply(null, 
               new Uint8Array(pushSubscription.getKey('p256dh')!) as any)),
@@ -203,10 +237,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               new Uint8Array(pushSubscription.getKey('auth')!) as any))
           }
         };
-
-        sendPushNotification(subscriptionObject, {
-          icon: '/favi.png',
-          body: notification.message
+        
+        sendPushNotification(subscriptionJSON, {
+          title: notification.type,
+          body: notification.message,
+          icon: '/favi.png'
         });
       }
     });
@@ -225,23 +260,34 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         try {
           const status = await getPushNotificationStatus(currentUser.id);
           setPushEnabled(status);
+          
+          // Also check for existing subscription
+          const registration = await navigator.serviceWorker.ready;
+          const existingSubscription = await registration.pushManager.getSubscription();
+          setPushSubscription(existingSubscription);
         } catch (error) {
           console.error('Error loading push notification status:', error);
         }
       }
     };
-    loadPushStatus();
-  }, [currentUser]);
+    
+    if (isClient && currentUser) {
+      loadPushStatus();
+    }
+  }, [currentUser, isClient]);
 
-  const subscribeToPushNotifications = async () => {
-    if (!isClient) return;
+  const subscribeToPushNotificationsHandler = async () => {
+    if (!isClient || !swRegistration) return;
     try {
       if (!currentUser) throw new Error('No user logged in');
 
-      const registration = await navigator.serviceWorker.getRegistration('/custom-sw.js');
-      if (!registration) throw new Error('Service Worker not found');
+      // Request notification permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        throw new Error('Notification permission denied');
+      }
 
-      const subscription = await registration.pushManager.subscribe({
+      const subscription = await swRegistration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       });
@@ -249,7 +295,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setPushSubscription(subscription);
       await togglePushNotifications(currentUser.id, true);
       setPushEnabled(true);
-      
+
       toast({
         title: "Success",
         description: "Push notifications enabled",
@@ -265,23 +311,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  const unsubscribeFromPushNotifications = async () => {
-    if (!isClient) return;
+  const unsubscribeFromPushNotificationsHandler = async () => {
+    if (!isClient || !swRegistration) return;
     try {
       if (!currentUser) throw new Error('No user logged in');
 
-      const registration = await navigator.serviceWorker.getRegistration('/custom-sw.js');
-      if (registration) {
-        const subscription = await registration.pushManager.getSubscription();
-        if (subscription) {
-          await subscription.unsubscribe();
-        }
-      }
-
+      await unsubscribeFromPushNotifications(swRegistration);
       await togglePushNotifications(currentUser.id, false);
       setPushEnabled(false);
       setPushSubscription(null);
-      
+
       toast({
         title: "Success",
         description: "Push notifications disabled",
@@ -316,9 +355,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       setNotifications(prev => [...prev, ...processedData]);
       setHasMore(data.length === NOTIFICATIONS_PER_PAGE);
-      setLastFetchedId(data[data.length - 1]?.id || null);
+      if (data.length > 0) {
+        setLastFetchedId(data[data.length - 1]?.id);
+      }
 
-      // Update cache with new data
+      // Update cache with combined notifications
       updateCache({
         notifications: [...notifications, ...processedData],
         hasMore: data.length === NOTIFICATIONS_PER_PAGE,
@@ -327,7 +368,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Error loading more notifications:', error);
     }
-  }, [currentUser, lastFetchedId, notifications]);
+  }, [currentUser, lastFetchedId]);
+
+  const scrollToTop = () => {
+    const scrollArea = document.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollArea) {
+      scrollArea.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   return (
     <NotificationContext.Provider value={{
@@ -336,13 +387,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       markAsRead,
       markAllAsRead,
       refreshNotifications,
-      subscribeToPushNotifications,
-      unsubscribeFromPushNotifications,
+      subscribeToPushNotifications: subscribeToPushNotificationsHandler,
+      unsubscribeFromPushNotifications: unsubscribeFromPushNotificationsHandler,
       pushNotificationSupported,
       pushNotificationSubscribed: pushEnabled,
       pushSubscription,
       loadMore,
       hasMore,
+      scrollToTop,
     }}>
       {children}
     </NotificationContext.Provider>

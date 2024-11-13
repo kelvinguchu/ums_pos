@@ -1744,18 +1744,19 @@ export async function updateMeterPurchaseBatch(
 }
 
 // Toggle push notifications for a user
-export async function togglePushNotifications(
-  userId: string,
-  enabled: boolean
-) {
+export async function togglePushNotifications(userId: string, enabled: boolean) {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("user_profiles")
       .update({ push_enabled: enabled })
-      .eq("id", userId);
+      .eq("id", userId)
+      .select()
+      .single();
 
     if (error) throw error;
-    return true;
+    
+    // Return the actual status from the database
+    return data?.push_enabled === true;
   } catch (error) {
     console.error("Error toggling push notifications:", error);
     throw error;
@@ -1771,11 +1772,16 @@ export async function getPushNotificationStatus(userId: string) {
       .eq("id", userId)
       .single();
 
-    if (error) throw error;
-    return data?.push_enabled || false;
+    if (error) {
+      console.error("Error getting push notification status:", error);
+      return false;
+    }
+
+    // Explicitly return boolean
+    return data?.push_enabled === true;
   } catch (error) {
     console.error("Error getting push notification status:", error);
-    throw error;
+    return false;
   }
 }
 

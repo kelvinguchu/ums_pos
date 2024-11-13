@@ -1,29 +1,38 @@
 'use server'
 
-import webpush, { PushSubscription as WebPushSubscription } from 'web-push';
+import webpush from 'web-push';
 
 webpush.setVapidDetails(
-  'mailto:kelvinguchu5@gmail.com',
+  'mailto:info@umsprepaid.com',
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );
 
-function convertSubscription(subscription: any): WebPushSubscription {
-  return {
-    endpoint: subscription.endpoint,
-    keys: {
-      p256dh: subscription.keys.p256dh,
-      auth: subscription.keys.auth
-    }
+interface PushSubscriptionJSON {
+  endpoint: string;
+  expirationTime: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
   };
 }
 
-export async function sendPushNotification(subscription: any, notification: any) {
+export async function sendPushNotification(
+  subscription: PushSubscriptionJSON,
+  data: {
+    title?: string;
+    body: string;
+    icon?: string;
+  }
+) {
   try {
-    const webPushSubscription = convertSubscription(subscription);
     await webpush.sendNotification(
-      webPushSubscription,
-      JSON.stringify(notification)
+      subscription as any,
+      JSON.stringify({
+        title: data.title || 'UMS Prepaid',
+        message: data.body,
+        icon: data.icon || '/favi.png'
+      })
     );
     return { success: true };
   } catch (error) {

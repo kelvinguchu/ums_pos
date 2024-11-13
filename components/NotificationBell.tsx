@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellRing, BellOff } from 'lucide-react';
+import { Bell, BellRing, BellOff, MoveUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -31,6 +31,7 @@ const geistMono = localFont({
 });
 
 export function NotificationBell() {
+  const [isClient, setIsClient] = useState(false);
   const { 
     notifications, 
     unreadCount, 
@@ -44,11 +45,16 @@ export function NotificationBell() {
     pushSubscription,
     loadMore,
     hasMore,
+    scrollToTop,
   } = useNotifications();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -63,79 +69,106 @@ export function NotificationBell() {
 
   if (!currentUser) return null;
 
+  const handleScrollToTop = () => {
+    const scrollArea = scrollContainerRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollArea) {
+      scrollArea.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   const NotificationList = () => (
     <ScrollArea 
       ref={scrollContainerRef}
-      className={`${isMobile ? "h-[calc(100vh-8rem)]" : "h-[300px]"} ${geistMono.className}`}
+      className={`notification-scroll-area ${isMobile ? "h-[calc(100vh-8rem)]" : "h-[300px]"} ${geistMono.className} relative`}
     >
-      {notifications.length === 0 ? (
-        <div className="text-center text-muted-foreground py-8">
-          No notifications
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`p-4 rounded-lg border ${
-                notification.is_read ? 'bg-background' : 'bg-muted'
-              }`}
-              onClick={() => !notification.is_read && markAsRead(notification.id, currentUser.id)}
-            >
-              <div className="font-medium">{notification.message}</div>
-              {notification.metadata && (
-                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  {notification.type === "METER_SALE" && (
-                    <>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className="bg-blue-100">
-                          Type: {notification.metadata.customerType}
-                        </Badge>
-                        <Badge variant="outline" className="bg-green-100">
-                          County: {notification.metadata.customerCounty}
-                        </Badge>
-                        <Badge variant="outline" className="bg-yellow-100">
-                          Contact: {notification.metadata.customerContact}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>Total Price: KES {notification.metadata.totalPrice.toLocaleString()}</span>
-                        <span>•</span>
-                        <span>Unit Price: KES {notification.metadata.unitPrice.toLocaleString()}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-              <div className="text-xs text-muted-foreground mt-2">
-                {format(new Date(notification.created_at), 'PPp')}
-              </div>
-            </div>
-          ))}
-          
-          {hasMore && (
-            <div className="p-2 text-center">
-              <Button 
-                variant="ghost" 
-                onClick={async () => {
-                  const currentScroll = scrollContainerRef.current?.scrollTop || 0;
-                  
-                  await loadMore();
-                  
-                  setTimeout(() => {
-                    if (scrollContainerRef.current) {
-                      scrollContainerRef.current.scrollTop = currentScroll;
-                    }
-                  }, 100);
-                }}
-                className="w-full text-sm text-muted-foreground hover:text-foreground"
+      <div className="space-y-4">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-full fixed bottom-4 right-4 z-50 bg-background shadow-md hover:bg-accent"
+          onClick={handleScrollToTop}
+          title="Scroll to top"
+        >
+          <MoveUp className="h-4 w-4" />
+        </Button>
+
+        {notifications.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            No notifications
+          </div>
+        ) : (
+          <>
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`p-4 rounded-lg border ${
+                  notification.is_read ? 'bg-background' : 'bg-muted'
+                }`}
+                onClick={() => !notification.is_read && markAsRead(notification.id, currentUser.id)}
               >
-                Load More
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+                <div className="font-medium">{notification.message}</div>
+                {notification.metadata && (
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {notification.type === "METER_SALE" && (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="bg-blue-100">
+                            Type: {notification.metadata.customerType}
+                          </Badge>
+                          <Badge variant="outline" className="bg-green-100">
+                            County: {notification.metadata.customerCounty}
+                          </Badge>
+                          <Badge variant="outline" className="bg-yellow-100">
+                            Contact: {notification.metadata.customerContact}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>Total Price: KES {notification.metadata.totalPrice.toLocaleString()}</span>
+                          <span>•</span>
+                          <span>Unit Price: KES {notification.metadata.unitPrice.toLocaleString()}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground mt-2">
+                  {format(new Date(notification.created_at), 'PPp')}
+                </div>
+              </div>
+            ))}
+            
+            {hasMore && notifications.length > 0 && (
+              <div className="p-2 text-center">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    const currentScroll = scrollContainerRef.current
+                      ?.querySelector('[data-radix-scroll-area-viewport]')
+                      ?.scrollTop || 0;
+                    
+                    loadMore().then(() => {
+                      // Restore scroll position after loading
+                      setTimeout(() => {
+                        const viewport = scrollContainerRef.current
+                          ?.querySelector('[data-radix-scroll-area-viewport]');
+                        if (viewport) {
+                          viewport.scrollTop = currentScroll;
+                        }
+                      }, 100);
+                    });
+                  }}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Load More
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </ScrollArea>
   );
 
@@ -143,12 +176,22 @@ export function NotificationBell() {
     <div className={`${geistMono.className} flex items-center justify-between`}>
       <div className="flex items-center gap-2">
         <span>Notifications</span>
-        {pushNotificationSupported && (
+        {isClient && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
-            onClick={pushNotificationSubscribed ? unsubscribeFromPushNotifications : subscribeToPushNotifications}
+            className="h-8 w-8 relative"
+            onClick={async () => {
+              try {
+                if (pushNotificationSubscribed) {
+                  await unsubscribeFromPushNotifications();
+                } else {
+                  await subscribeToPushNotifications();
+                }
+              } catch (error) {
+                console.error('Error toggling notifications:', error);
+              }
+            }}
             title={pushNotificationSubscribed ? 'Disable Push Notifications' : 'Enable Push Notifications'}
           >
             {pushNotificationSubscribed ? (
