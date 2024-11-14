@@ -89,9 +89,9 @@ const SignIn = () => {
         src='/logo.png'
         alt='logo'
         width={120}
-        height={100}
-        className='w-auto h-auto'
-        style={{ aspectRatio: "1/1" }}
+        height={120}
+        className='w-20 h-20 object-contain'
+        priority
       />
       <h1 className='uppercase text-4xl font-bold'>POS System</h1>
       <Card className='w-[350px]'>
