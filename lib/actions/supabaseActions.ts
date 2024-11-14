@@ -1198,35 +1198,35 @@ export async function markNotificationAsRead(
 
 // Mark all notifications as read
 export async function markAllNotificationsAsRead(userId: string) {
-  // First get all notifications that this user hasn't read yet
-  const { data: notifications } = await supabase
-    .from("notifications")
-    .select("id, read_by")
-    .filter("read_by", "not.cs", `{${userId}}`); // Use containment operator to check array
-
-  if (!notifications || notifications.length === 0) return;
-
-  // Update each notification
-  const updates = notifications.map((notification) => {
-    const readBy = Array.isArray(notification.read_by)
-      ? notification.read_by
-      : [];
-    if (!readBy.includes(userId)) {
-      readBy.push(userId);
-    }
-
-    return supabase
-      .from("notifications")
-      .update({
-        read_by: readBy,
-        // Keep is_read as false since other users might not have read it
-        is_read: false,
-      })
-      .eq("id", notification.id);
-  });
-
   try {
+    // Get all unread notifications for this user
+    const { data: notifications, error: fetchError } = await supabase
+      .from("notifications")
+      .select("id, read_by")
+      .not("read_by", "cs", `{${userId}}`); // Get notifications where user hasn't read
+
+    if (fetchError) throw fetchError;
+    if (!notifications || notifications.length === 0) return;
+
+    // Update each notification
+    const updates = notifications.map((notification) => {
+      const readBy = notification.read_by || [];
+      
+      // Update the is_read flag based on whether this is the last user to read
+      const updatedReadBy = [...new Set([...readBy, userId])];
+      
+      return supabase
+        .from("notifications")
+        .update({
+          read_by: updatedReadBy,
+          is_read: true
+        })
+        .eq("id", notification.id);
+    });
+
     await Promise.all(updates);
+    
+    return { success: true };
   } catch (error) {
     console.error("Error marking all notifications as read:", error);
     throw error;
