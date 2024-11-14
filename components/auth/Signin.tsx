@@ -90,7 +90,7 @@ const SignIn = () => {
         alt='logo'
         width={120}
         height={120}
-        className='w-20 h-20 object-contain'
+        className='w-30 h-30 object-contain'
         priority
       />
       <h1 className='uppercase text-4xl font-bold'>POS System</h1>
