@@ -226,13 +226,25 @@ export function MeterInventoryCard({
                       </TableRow>
                     );
                   })}
-                  <TableRow className='bg-gray-50'>
+                  <TableRow className='bg-gray-50 font-bold'>
                     <TableCell>
                       <Badge variant='outline' className='bg-gray-100'>
                         Total
                       </Badge>
                     </TableCell>
-                    <TableCell className='text-right font-bold'>
+                    <TableCell className='text-right'>
+                      {remainingMetersByType.reduce(
+                        (sum, item) => sum + Number(item.remaining_meters),
+                        0
+                      )}
+                    </TableCell>
+                    <TableCell className='text-right'>
+                      {agentInventory.reduce(
+                        (sum, item) => sum + Number(item.with_agents),
+                        0
+                      )}
+                    </TableCell>
+                    <TableCell className='text-right'>
                       {remainingMetersByType.reduce(
                         (sum, item) => sum + Number(item.remaining_meters),
                         0

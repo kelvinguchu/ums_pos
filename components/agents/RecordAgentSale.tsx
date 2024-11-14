@@ -25,6 +25,14 @@ import {
 import { pdf } from "@react-pdf/renderer";
 import MeterSalesReceipt from "@/components/sharedcomponents/MeterSalesReceipt";
 import { KenyaCounty, CustomerType } from "@/lib/constants/locationData";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -79,6 +87,9 @@ export default function RecordAgentSale({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();
   const [userName, setUserName] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPage, setSelectedPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     const fetchInventory = async () => {
@@ -291,6 +302,21 @@ export default function RecordAgentSale({
     meter.serial_number.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pagination calculations for inventory table
+  const totalPages = Math.ceil(filteredInventory.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentItems = filteredInventory.slice(startIndex, endIndex);
+
+  // Pagination calculations for selected meters table
+  const totalSelectedPages = Math.ceil(selectedMeters.length / ITEMS_PER_PAGE);
+  const selectedStartIndex = (selectedPage - 1) * ITEMS_PER_PAGE;
+  const selectedEndIndex = selectedStartIndex + ITEMS_PER_PAGE;
+  const currentSelectedItems = selectedMeters.slice(
+    selectedStartIndex,
+    selectedEndIndex
+  );
+
   return (
     <div
       className={`${geistMono.className} p-2 md:p-4 flex flex-col md:flex-row h-[80vh]`}>
@@ -306,55 +332,86 @@ export default function RecordAgentSale({
           />
         </div>
 
-        <div className={tableStyles.container}>
-          <Table className={tableStyles.table}>
-            <TableHeader>
-              <TableRow>
-                <TableHead className='w-[40px] md:w-[50px]'></TableHead>
-                <TableHead className={tableStyles.headerCell}>
-                  Serial Number
-                </TableHead>
-                <TableHead className={tableStyles.headerCell}>Type</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
+        <div className="flex flex-col h-[calc(100%-120px)]">
+          <div className={`${tableStyles.container} flex-1`}>
+            <Table className={tableStyles.table}>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={3} className='text-center py-8'>
-                    Loading inventory...
-                  </TableCell>
+                  <TableHead className='w-[40px] md:w-[50px]'></TableHead>
+                  <TableHead className={tableStyles.headerCell}>
+                    Serial Number
+                  </TableHead>
+                  <TableHead className={tableStyles.headerCell}>Type</TableHead>
                 </TableRow>
-              ) : filteredInventory.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className='text-center py-8'>
-                    {searchTerm
-                      ? "No meters found matching search"
-                      : "No meters available"}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredInventory.map((meter) => (
-                  <TableRow key={meter.id}>
-                    <TableCell className={tableStyles.cell}>
-                      <Checkbox
-                        checked={selectedMeters.some((m) => m.id === meter.id)}
-                        onCheckedChange={() => handleCheckMeter(meter)}
-                        className={`border-[#000080] ${tableStyles.checkbox}`}
-                      />
-                    </TableCell>
-                    <TableCell
-                      className={`${tableStyles.cell} text-sm md:text-base`}>
-                      {meter.serial_number}
-                    </TableCell>
-                    <TableCell
-                      className={`${tableStyles.cell} text-sm md:text-base`}>
-                      {meter.type}
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className='text-center py-8'>
+                      Loading inventory...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : currentItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className='text-center py-8'>
+                      {searchTerm
+                        ? "No meters found matching search"
+                        : "No meters available"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  currentItems.map((meter) => (
+                    <TableRow key={meter.id}>
+                      <TableCell className={tableStyles.cell}>
+                        <Checkbox
+                          checked={selectedMeters.some((m) => m.id === meter.id)}
+                          onCheckedChange={() => handleCheckMeter(meter)}
+                          className={`border-[#000080] ${tableStyles.checkbox}`}
+                        />
+                      </TableCell>
+                      <TableCell
+                        className={`${tableStyles.cell} text-sm md:text-base`}>
+                        {meter.serial_number}
+                      </TableCell>
+                      <TableCell
+                        className={`${tableStyles.cell} text-sm md:text-base`}>
+                        {meter.type}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {totalPages > 1 && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <PaginationItem key={i + 1}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(i + 1)}
+                      isActive={currentPage === i + 1}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       </div>
 
@@ -384,32 +441,62 @@ export default function RecordAgentSale({
           )}
         </div>
 
-        {/* Selected Meters Table */}
-        <div className={tableStyles.container}>
-          <Table className={tableStyles.table}>
-            <TableHeader>
-              <TableRow>
-                <TableHead className={tableStyles.headerCell}>
-                  Serial Number
-                </TableHead>
-                <TableHead className={tableStyles.headerCell}>Type</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {selectedMeters.map((meter) => (
-                <TableRow key={meter.id}>
-                  <TableCell
-                    className={`${tableStyles.cell} text-sm md:text-base`}>
-                    {meter.serial_number}
-                  </TableCell>
-                  <TableCell
-                    className={`${tableStyles.cell} text-sm md:text-base`}>
-                    {meter.type}
-                  </TableCell>
+        <div className="flex flex-col h-[calc(100%-280px)]">
+          <div className={`${tableStyles.container} flex-1`}>
+            <Table className={tableStyles.table}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={tableStyles.headerCell}>
+                    Serial Number
+                  </TableHead>
+                  <TableHead className={tableStyles.headerCell}>Type</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {currentSelectedItems.map((meter) => (
+                  <TableRow key={meter.id}>
+                    <TableCell
+                      className={`${tableStyles.cell} text-sm md:text-base`}>
+                      {meter.serial_number}
+                    </TableCell>
+                    <TableCell
+                      className={`${tableStyles.cell} text-sm md:text-base`}>
+                      {meter.type}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {totalSelectedPages > 1 && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setSelectedPage((p) => Math.max(1, p - 1))}
+                    className={selectedPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalSelectedPages }, (_, i) => (
+                  <PaginationItem key={i + 1}>
+                    <PaginationLink
+                      onClick={() => setSelectedPage(i + 1)}
+                      isActive={selectedPage === i + 1}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setSelectedPage((p) => Math.min(totalSelectedPages, p + 1))}
+                    className={selectedPage === totalSelectedPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
 
         {/* Buttons */}
