@@ -91,8 +91,6 @@ export default function ReplacementsView() {
   const endIndex = startIndex + itemsPerPage;
   const currentReplacements = filteredReplacements?.slice(startIndex, endIndex);
 
-  if (isLoading) return <Loader />;
-
   if (error) {
     return (
       <div className='p-4 text-center text-red-500 flex items-center justify-center gap-2'>
@@ -130,121 +128,129 @@ export default function ReplacementsView() {
         </div>
       </SheetHeader>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            type="text"
-            placeholder="Search by serial, customer, or staff..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-[300px]"
-          />
-
-          <div className="w-[130px]">
-            <DatePicker
-              value={selectedDate}
-              onChange={setSelectedDate}
-            />
-          </div>
-
-          {hasActiveFilters() && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clearFilters}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {filteredReplacements && filteredReplacements.length > 0 ? (
-        <div className='space-y-4'>
-          <div className='overflow-x-auto'>
-            <Table>
-              <TableHeader>
-                <TableRow className='bg-gray-50'>
-                  <TableHead>Original Serial</TableHead>
-                  <TableHead>Replacement Serial</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Replaced By</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(currentReplacements || []).map((replacement) => (
-                  <TableRow key={replacement.id}>
-                    <TableCell className='font-mono'>
-                      {replacement.serial_number}
-                    </TableCell>
-                    <TableCell className='font-mono'>
-                      {replacement.replacement_serial}
-                    </TableCell>
-                    <TableCell>{replacement.recipient}</TableCell>
-                    <TableCell>{replacement.customer_contact}</TableCell>
-                    <TableCell>{replacement.replacement_by}</TableCell>
-                    <TableCell>
-                      {new Date(replacement.replacement_date).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-4">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious 
-                      onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                    />
-                  </PaginationItem>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(page => 
-                      page === 1 || 
-                      page === totalPages || 
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    )
-                    .map((page, i, arr) => (
-                      <React.Fragment key={page}>
-                        {i > 0 && arr[i - 1] !== page - 1 && (
-                          <PaginationItem>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        )}
-                        <PaginationItem>
-                          <PaginationLink
-                            onClick={() => setCurrentPage(page)}
-                            isActive={currentPage === page}
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      </React.Fragment>
-                    ))}
-
-                  <PaginationItem>
-                    <PaginationNext 
-                      onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
+      {isLoading ? (
+        <div className="flex justify-center items-center min-h-[200px]">
+          <Loader />
         </div>
       ) : (
-        <EmptyState icon={RefreshCw} message='No meter replacements found' />
+        <>
+          {/* Filters */}
+          <div className="bg-white p-4 rounded-lg border shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                type="text"
+                placeholder="Search by serial, customer, or staff..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-[300px]"
+              />
+
+              <div className="w-[130px]">
+                <DatePicker
+                  value={selectedDate}
+                  onChange={setSelectedDate}
+                />
+              </div>
+
+              {hasActiveFilters() && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearFilters}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {filteredReplacements && filteredReplacements.length > 0 ? (
+            <div className='space-y-4'>
+              <div className='overflow-x-auto'>
+                <Table>
+                  <TableHeader>
+                    <TableRow className='bg-gray-50'>
+                      <TableHead>Original Serial</TableHead>
+                      <TableHead>Replacement Serial</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Replaced By</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(currentReplacements || []).map((replacement) => (
+                      <TableRow key={replacement.id}>
+                        <TableCell className='font-mono'>
+                          {replacement.serial_number}
+                        </TableCell>
+                        <TableCell className='font-mono'>
+                          {replacement.replacement_serial}
+                        </TableCell>
+                        <TableCell>{replacement.recipient}</TableCell>
+                        <TableCell>{replacement.customer_contact}</TableCell>
+                        <TableCell>{replacement.replacement_by}</TableCell>
+                        <TableCell>
+                          {new Date(replacement.replacement_date).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page => 
+                          page === 1 || 
+                          page === totalPages || 
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        )
+                        .map((page, i, arr) => (
+                          <React.Fragment key={page}>
+                            {i > 0 && arr[i - 1] !== page - 1 && (
+                              <PaginationItem>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            )}
+                            <PaginationItem>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          </React.Fragment>
+                        ))}
+
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </div>
+          ) : (
+            <EmptyState icon={RefreshCw} message='No meter replacements found' />
+          )}
+        </>
       )}
     </div>
   );

@@ -52,6 +52,14 @@ interface PurchaseBatch {
   } | null;
 }
 
+// Update sorting function
+const sortBatches = (batches: PurchaseBatch[]) => {
+  return [...batches].sort((a, b) => {
+    // Sort by remaining meters (highest first)
+    return b.remaining_meters - a.remaining_meters;
+  });
+};
+
 export default function PurchaseBatchesView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("");
@@ -85,10 +93,6 @@ export default function PurchaseBatchesView() {
     }
   };
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   if (error) {
     return <div className="flex items-center justify-center p-4 text-red-500">Error loading purchase batches</div>;
   }
@@ -98,7 +102,7 @@ export default function PurchaseBatchesView() {
   }
 
   // Filter batches
-  let filteredBatches = batches.filter((batch: PurchaseBatch) => {
+  let filteredBatches = batches?.filter((batch: PurchaseBatch) => {
     const matchesSearch = searchTerm === "" || 
       batch.batch_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       batch.user_profiles?.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -110,7 +114,10 @@ export default function PurchaseBatchesView() {
       format(new Date(batch.purchase_date), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
 
     return matchesSearch && matchesType && matchesDate;
-  });
+  }) || [];
+
+  // Apply sorting after filtering
+  filteredBatches = sortBatches(filteredBatches);
 
   // Pagination
   const totalPages = Math.ceil(filteredBatches.length / itemsPerPage);
@@ -145,156 +152,164 @@ export default function PurchaseBatchesView() {
       </CardHeader>
 
       <CardContent>
-        {/* Filters */}
-        <div className="mb-6 space-y-4">
-          <div className="bg-white p-4 rounded-lg border shadow-sm">
-            <div className="flex flex-wrap items-center gap-3">
-              <Input
-                type="text"
-                placeholder="Search by batch number or user..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[200px]"
-              />
-
-              <Select 
-                value={selectedType} 
-                onChange={(e) => setSelectedType(e.target.value)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue>
-                    {selectedType || "Meter Type"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
-                  <SelectItem value="split">Split</SelectItem>
-                  <SelectItem value="integrated">Integrated</SelectItem>
-                  <SelectItem value="gas">Gas</SelectItem>
-                  <SelectItem value="water">Water</SelectItem>
-                  <SelectItem value="3 Phase">3 Phase</SelectItem>
-                  <SelectItem value="Smart">Smart</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className="w-[130px]">
-                <DatePicker
-                  value={selectedDate}
-                  onChange={setSelectedDate}
-                />
-              </div>
-
-              {hasActiveFilters() && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={clearFilters}
-                  className="text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center min-h-[200px]">
+            <Loader />
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Filters */}
+            <div className="mb-6 space-y-4">
+              <div className="bg-white p-4 rounded-lg border shadow-sm">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Input
+                    type="text"
+                    placeholder="Search by batch number or user..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-[200px]"
+                  />
 
-        {/* Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Batch Number</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Remaining</TableHead>
-                <TableHead>Cost (KES)</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Added By</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentBatches.map((batch: PurchaseBatch) => (
-                <TableRow key={batch.id}>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {batch.batch_number}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {batch.meter_type.charAt(0).toUpperCase() + batch.meter_type.slice(1)}
-                  </TableCell>
-                  <TableCell>{batch.quantity}</TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      batch.remaining_meters === 0 ? "destructive" : 
-                      batch.remaining_meters < batch.quantity * 0.2 ? "secondary" : 
-                      "default"
-                    }>
-                      {batch.remaining_meters}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div>Total: {batch.total_cost.toLocaleString()}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Unit: {batch.unit_cost.toLocaleString()}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(batch.purchase_date), 'dd/MM/yyyy')}
-                  </TableCell>
-                  <TableCell>
-                    {batch.user_profiles?.name || 'Unknown User'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  <Select 
+                    value={selectedType} 
+                    onChange={(e) => setSelectedType(e.target.value)}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue>
+                        {selectedType || "Meter Type"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Types</SelectItem>
+                      <SelectItem value="split">Split</SelectItem>
+                      <SelectItem value="integrated">Integrated</SelectItem>
+                      <SelectItem value="gas">Gas</SelectItem>
+                      <SelectItem value="water">Water</SelectItem>
+                      <SelectItem value="3 Phase">3 Phase</SelectItem>
+                      <SelectItem value="Smart">Smart</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-        {/* Pagination */}
-        <div className="mt-4">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
-                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => 
-                  page === 1 || 
-                  page === totalPages || 
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                )
-                .map((page, i, arr) => (
-                  <React.Fragment key={page}>
-                    {i > 0 && arr[i - 1] !== page - 1 && (
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    )}
-                    <PaginationItem>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(page)}
-                        isActive={currentPage === page}
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  </React.Fragment>
-                ))}
+                  <div className="w-[130px]">
+                    <DatePicker
+                      value={selectedDate}
+                      onChange={setSelectedDate}
+                    />
+                  </div>
 
-              <PaginationItem>
-                <PaginationNext 
-                  onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
-                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+                  {hasActiveFilters() && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={clearFilters}
+                      className="text-muted-foreground hover:text-foreground">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Batch Number</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Remaining</TableHead>
+                    <TableHead>Cost (KES)</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Added By</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentBatches.map((batch: PurchaseBatch) => (
+                    <TableRow key={batch.id}>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {batch.batch_number}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {batch.meter_type.charAt(0).toUpperCase() + batch.meter_type.slice(1)}
+                      </TableCell>
+                      <TableCell>{batch.quantity}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          batch.remaining_meters === 0 ? "destructive" : 
+                          batch.remaining_meters < batch.quantity * 0.2 ? "secondary" : 
+                          "default"
+                        }>
+                          {batch.remaining_meters}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div>Total: {batch.total_cost.toLocaleString()}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Unit: {batch.unit_cost.toLocaleString()}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(batch.purchase_date), 'dd/MM/yyyy')}
+                      </TableCell>
+                      <TableCell>
+                        {batch.user_profiles?.name || 'Unknown User'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => 
+                      page === 1 || 
+                      page === totalPages || 
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    )
+                    .map((page, i, arr) => (
+                      <React.Fragment key={page}>
+                        {i > 0 && arr[i - 1] !== page - 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))}
+
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
