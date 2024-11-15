@@ -70,6 +70,7 @@ export const SalesTable = memo(function SalesTable({
                 <TableHead>Amount</TableHead>
                 <TableHead>Total Price</TableHead>
                 <TableHead>Time</TableHead>
+                <TableHead>Recipient</TableHead>
                 <TableHead>Customer Type</TableHead>
                 <TableHead>County</TableHead>
               </TableRow>
@@ -77,7 +78,7 @@ export const SalesTable = memo(function SalesTable({
             <TableBody>
               {sales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <NoDataMessage />
                   </TableCell>
                 </TableRow>
@@ -93,6 +94,7 @@ export const SalesTable = memo(function SalesTable({
                     <TableCell>
                       {new Date(sale.sale_date).toLocaleTimeString()}
                     </TableCell>
+                    <TableCell>{sale.recipient}</TableCell>
                     <TableCell>
                       <Badge variant='outline' className='bg-blue-100'>
                         {sale.customer_type}

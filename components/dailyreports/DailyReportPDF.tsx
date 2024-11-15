@@ -219,6 +219,7 @@ const DailyReportPDF = ({
               <Text style={styles.tableHeaderCell}>Amount</Text>
               <Text style={styles.tableHeaderCell}>Total Price</Text>
               <Text style={styles.tableHeaderCell}>Time</Text>
+              <Text style={styles.tableHeaderCell}>Recipient</Text>
             </View>
             {todaySales.map((sale, index) => (
               <View key={index} style={styles.tableRow}>
@@ -229,6 +230,7 @@ const DailyReportPDF = ({
                 <Text style={styles.tableCell}>
                   {format(new Date(sale.sale_date), "HH:mm:ss")}
                 </Text>
+                <Text style={styles.tableCell}>{sale.recipient}</Text>
               </View>
             ))}
           </View>
