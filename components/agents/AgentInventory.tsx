@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Search } from "lucide-react";
+import { Search, Package } from "lucide-react";
 import localFont from "next/font/local";
 import { getAgentInventory } from "@/lib/actions/supabaseActions";
 import {
@@ -23,12 +23,27 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
+
+// Add cache interface
+interface InventoryCache {
+  [key: string]: {
+    data: MeterInventory[];
+    timestamp: number;
+  };
+}
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
 });
+
+// Cache duration in milliseconds (5 minutes)
+const CACHE_DURATION = 5 * 60 * 1000;
+
+// Initialize cache
+const inventoryCache: InventoryCache = {};
 
 interface AgentInventoryProps {
   agentId: string;
@@ -52,7 +67,25 @@ export default function AgentInventory({ agentId }: AgentInventoryProps) {
   useEffect(() => {
     const fetchInventory = async () => {
       try {
+        // Check cache first
+        const cachedData = inventoryCache[agentId];
+        const now = Date.now();
+
+        if (cachedData && now - cachedData.timestamp < CACHE_DURATION) {
+          setInventory(cachedData.data);
+          setIsLoading(false);
+          return;
+        }
+
+        // If no cache or expired, fetch from API
         const data = await getAgentInventory(agentId);
+        
+        // Update cache
+        inventoryCache[agentId] = {
+          data: data || [],
+          timestamp: now,
+        };
+
         setInventory(data || []);
       } catch (error) {
         console.error('Error fetching inventory:', error);
@@ -85,8 +118,35 @@ export default function AgentInventory({ agentId }: AgentInventoryProps) {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  // Get meter counts by type
+  const meterCounts = inventory.reduce((acc, meter) => {
+    acc[meter.type] = (acc[meter.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
   return (
     <div className={`${geistMono.className} p-2 sm:p-4`}>
+      {/* Meter Count Summary */}
+      <div className="mb-6 p-4 bg-white rounded-lg border shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <Package className="h-5 w-5 text-[#000080]" />
+          <h3 className="text-lg font-semibold text-[#000080]">
+            Total Meters: {inventory.length}
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(meterCounts).map(([type, count]) => (
+            <Badge 
+              key={type} 
+              variant="outline" 
+              className="bg-blue-50"
+            >
+              {type}: {count}
+            </Badge>
+          ))}
+        </div>
+      </div>
+
       <div className="relative mb-4">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-[#000080]" />
         <Input

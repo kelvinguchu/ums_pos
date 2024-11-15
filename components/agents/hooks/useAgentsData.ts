@@ -19,30 +19,21 @@ interface Agent {
   total_meters: number;
 }
 
-interface User {
-  id: string;
-  role: string;
-  email: string;
-  name?: string;
-  is_active?: boolean;
-  app_metadata: any;
-  user_metadata: any;
-}
+// Query keys
+const AGENTS_KEYS = {
+  all: ['agents'] as const,
+  lists: () => [...AGENTS_KEYS.all, 'list'] as const,
+} as const;
 
-interface AgentsData {
-  agents: Agent[];
-  currentUser: User | null;
-}
-
-const CACHE_TIME = 1000 * 60 * 5; // 5 minutes
-const STALE_TIME = 1000 * 30; // 30 seconds
+// 1 hour stale time since agent data changes less frequently
+const STALE_TIME = 60 * 60 * 1000; // 1 hour
 
 export function useAgentsData() {
   const queryClient = useQueryClient();
 
-  // Setup Supabase real-time subscription
+  // Setup real-time subscription
   useEffect(() => {
-    const agentsSubscription = supabase
+    const agentsChannel = supabase
       .channel('agents_changes')
       .on(
         'postgres_changes',
@@ -52,66 +43,57 @@ export function useAgentsData() {
           table: 'agents'
         },
         () => {
-          // Invalidate and refetch queries when data changes
-          queryClient.invalidateQueries({ queryKey: ['agents'] });
+          // Invalidate and refetch agents data
+          queryClient.invalidateQueries({ queryKey: AGENTS_KEYS.lists() });
         }
       )
       .subscribe();
 
     return () => {
-      agentsSubscription.unsubscribe();
+      agentsChannel.unsubscribe();
     };
   }, [queryClient]);
 
-  // Fetch current user with caching
-  const userQuery = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: async () => {
-      const current = await getCurrentUser();
-      if (!current) {
-        throw new Error("User not found");
-      }
-      const profile = await getUserProfile(current.id);
-      
-      // Ensure we have all required fields and handle potential undefined values
-      const userData: User = {
-        id: current.id,
-        email: current.email || '', // Provide default empty string if undefined
-        role: profile?.role || 'user', // Provide default role if undefined
-        name: profile?.name,
-        is_active: profile?.is_active,
-        app_metadata: current.app_metadata,
-        user_metadata: current.user_metadata
-      };
-      
-      return userData;
-    },
-    gcTime: CACHE_TIME,
-    staleTime: STALE_TIME,
-  });
-
-  // Fetch agents list with caching
-  const agentsQuery = useQuery({
-    queryKey: ['agents'],
+  // Query for agents list with longer cache duration
+  const {
+    data: agents = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: AGENTS_KEYS.lists(),
     queryFn: getAgentsList,
-    gcTime: CACHE_TIME,
-    staleTime: STALE_TIME,
+    staleTime: STALE_TIME, // Data will be considered fresh for 1 hour
+    gcTime: STALE_TIME * 2, // Cache will be kept for 2 hours
   });
 
-  // Combine the data
-  const agentsData: AgentsData = {
-    agents: agentsQuery.data || [],
-    currentUser: userQuery.data || null,
-  };
+  // Query for current user with user profile data
+  const { data: currentUser } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      const user = await getCurrentUser();
+      if (user) {
+        const profile = await getUserProfile(user.id);
+        return {
+          ...user,
+          name: profile?.name || user.email,
+        };
+      }
+      return null;
+    },
+    staleTime: STALE_TIME,
+    gcTime: STALE_TIME * 2,
+  });
 
   return {
-    agentsData,
-    isLoading: agentsQuery.isLoading || userQuery.isLoading,
-    isError: agentsQuery.isError || userQuery.isError,
-    error: agentsQuery.error || userQuery.error,
-    refetch: () => {
-      agentsQuery.refetch();
-      userQuery.refetch();
-    }
+    agentsData: {
+      agents,
+      currentUser,
+    },
+    isLoading,
+    isError,
+    error,
+    refetch,
   };
 } 

@@ -24,7 +24,10 @@ const USERS_KEYS = {
   current: () => [...USERS_KEYS.all, 'current'] as const,
 } as const;
 
-export function useUsersData(showDeactivated: boolean = false) {
+// 30 minutes stale time since user data doesn't change frequently
+const STALE_TIME = 30 * 60 * 1000;
+
+export function useUsersData(showDeactivated: boolean) {
   const queryClient = useQueryClient();
 
   // Setup real-time subscription
@@ -50,32 +53,39 @@ export function useUsersData(showDeactivated: boolean = false) {
     };
   }, [queryClient]);
 
-  // Current user query
-  const currentUserQuery = useQuery({
-    queryKey: USERS_KEYS.current(),
-    queryFn: async () => {
-      const user = await getCurrentUser();
-      if (!user) throw new Error('No user found');
-      const profile = await getUserProfile(user.id);
-      return { ...user, ...profile };
+  // Query for users list
+  const {
+    data: users = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["users", showDeactivated],
+    queryFn: () => getUsersList(),
+    staleTime: STALE_TIME, // Data will be considered fresh for 30 minutes
+    gcTime: STALE_TIME * 2, // Cache will be kept for 1 hour
+    select: (data) => 
+      showDeactivated 
+        ? data 
+        : data.filter(user => user.isActive),
+  });
+
+  // Query for current user
+  const { data: currentUser } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: getCurrentUser,
+    staleTime: STALE_TIME,
+    gcTime: STALE_TIME * 2,
+  });
+
+  // Mutation for updating user
+  const { mutateAsync: updateUser, isPending } = useMutation({
+    mutationFn: async ({ userId, updates }: { userId: string; updates: any }) => {
+      const result = await updateUserProfile(userId, updates);
+      return result;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
-  // Users list query
-  const usersQuery = useQuery({
-    queryKey: USERS_KEYS.lists(),
-    queryFn: getUsersList,
-    select: (data) => showDeactivated ? data : data.filter(user => user.isActive),
-    staleTime: 1000 * 30, // 30 seconds
-  });
-
-  // Update user mutation
-  const updateUserMutation = useMutation({
-    mutationFn: ({ userId, updates }: { userId: string, updates: Partial<User> }) => 
-      updateUserProfile(userId, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_KEYS.lists() });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
   });
 
@@ -88,17 +98,14 @@ export function useUsersData(showDeactivated: boolean = false) {
   });
 
   return {
-    users: usersQuery.data || [],
-    currentUser: currentUserQuery.data,
-    isLoading: usersQuery.isPending || currentUserQuery.isPending,
-    error: usersQuery.error || currentUserQuery.error,
-    updateUser: updateUserMutation.mutate,
+    users,
+    currentUser,
+    isLoading,
+    error,
+    updateUser,
+    isPending,
+    refetch,
     deleteUser: deleteUserMutation.mutate,
-    isPending: updateUserMutation.isPending,
     isDeleting: deleteUserMutation.isPending,
-    refetch: () => {
-      usersQuery.refetch();
-      currentUserQuery.refetch();
-    }
   };
 } 

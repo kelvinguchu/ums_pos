@@ -455,10 +455,7 @@ export default function MeterSales() {
                       <div>
                         <p className='text-muted-foreground'>Sale Amount</p>
                         <p>
-                          {batch.total_price.toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "KES",
-                          })}
+                          KES {Math.round(batch.total_price).toLocaleString()}
                         </p>
                       </div>
                       <div>
@@ -504,10 +501,7 @@ export default function MeterSales() {
                           <TableCell>{batch.meter_type}</TableCell>
                           <TableCell>{batch.batch_amount}</TableCell>
                           <TableCell>
-                            {batch.total_price.toLocaleString("en-US", {
-                              style: "currency",
-                              currency: "KES",
-                            })}
+                            KES {Math.round(batch.total_price).toLocaleString()}
                           </TableCell>
                           <TableCell>{formatDate(batch.sale_date)}</TableCell>
                           <TableCell>{batch.recipient}</TableCell>

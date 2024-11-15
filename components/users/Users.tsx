@@ -229,6 +229,24 @@ export default function UsersPage() {
     };
   };
 
+  // Add refresh handler
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Success",
+        description: "Users list refreshed",
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh data",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (error) {
     return (
       <div className='flex flex-col items-center justify-center min-h-[60vh] gap-4'>
@@ -261,8 +279,19 @@ export default function UsersPage() {
             />
             <Label htmlFor='show-deactivated'>Show deactivated users</Label>
           </div>
-          <div className='text-sm text-muted-foreground font-medium'>
-            Total: {filteredAndPaginatedUsers().totalUsers} users
+          <div className='flex items-center gap-4'>
+            {/* Add refresh button */}
+            <Button
+              variant='outline'
+              size='icon'
+              onClick={handleRefresh}
+              className='hover:bg-gray-100'
+            >
+              <RefreshCw className='h-4 w-4' />
+            </Button>
+            <div className='text-sm text-muted-foreground font-medium'>
+              Total: {filteredAndPaginatedUsers().totalUsers} users
+            </div>
           </div>
         </div>
 

@@ -55,6 +55,7 @@ import {
   Info,
   Users2,
   ArrowLeftCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import localFont from "next/font/local";
@@ -251,6 +252,23 @@ export default function Agents() {
     };
   };
 
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Success",
+        description: "Agents list refreshed",
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh data",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -279,8 +297,18 @@ export default function Agents() {
               className='pl-8 border-[#000] focus:ring-[#000080]'
             />
           </div>
-          <div className='text-sm text-[#000080] font-medium'>
-            Total: {filteredAndPaginatedAgents().totalAgents} agents
+          <div className='flex items-center gap-4'>
+            <Button
+              variant='outline'
+              size='icon'
+              onClick={handleRefresh}
+              className='hover:bg-gray-100'
+            >
+              <RefreshCw className='h-4 w-4' />
+            </Button>
+            <div className='text-sm text-[#000080] font-medium'>
+              Total: {filteredAndPaginatedAgents().totalAgents} agents
+            </div>
           </div>
         </div>
 
