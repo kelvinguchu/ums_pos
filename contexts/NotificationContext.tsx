@@ -8,7 +8,8 @@ import {
   markAllNotificationsAsRead,
   getCurrentUser,
   togglePushNotifications,
-  getPushNotificationStatus
+  getPushNotificationStatus,
+  getUnreadNotificationsCount
 } from '@/lib/actions/supabaseActions';
 import { useToast } from '@/hooks/use-toast';
 import { sendPushNotification } from '@/app/actions/pushNotifications';
@@ -83,6 +84,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const NOTIFICATIONS_PER_PAGE = 10;
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
 
   // Check if we're on the client side
   useEffect(() => {
@@ -130,6 +132,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }));
   };
 
+  const refreshUnreadCount = async (userId: string) => {
+    try {
+      const count = await getUnreadNotificationsCount(userId);
+      setTotalUnreadCount(count);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
   const refreshNotifications = async (userId: string) => {
     try {
       // First check cache
@@ -156,6 +167,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         hasMore: data.length === NOTIFICATIONS_PER_PAGE,
         lastFetched: Date.now()
       });
+
+      // Refresh unread count
+      await refreshUnreadCount(userId);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -380,10 +394,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
+  // Add effect to refresh unread count periodically
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Initial fetch
+    refreshUnreadCount(currentUser.id);
+
+    // Refresh every minute
+    const interval = setInterval(() => {
+      refreshUnreadCount(currentUser.id);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
   return (
     <NotificationContext.Provider value={{
       notifications,
-      unreadCount,
+      unreadCount: totalUnreadCount,
       markAsRead,
       markAllAsRead,
       refreshNotifications,

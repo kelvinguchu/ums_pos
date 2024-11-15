@@ -1940,3 +1940,18 @@ export async function changePassword(userId: string, newPassword: string) {
     throw error;
   }
 }
+
+// Add this new function
+export async function getUnreadNotificationsCount(userId: string) {
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("*", { count: "exact", head: true })
+    .not("read_by", "cs", `{${userId}}`); // Get count of notifications where user hasn't read
+
+  if (error) {
+    console.error("Error getting unread notifications count:", error);
+    return 0;
+  }
+
+  return count || 0;
+}
