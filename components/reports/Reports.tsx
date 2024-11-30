@@ -51,6 +51,8 @@ export default function Reports() {
     refetch
   } = useReportsData();
 
+  const hasReportsAccess = userRole === "admin" || userRole === "accountant";
+
   const handleRefresh = async () => {
     try {
       await refetch();
@@ -121,7 +123,7 @@ export default function Reports() {
           <BestSellerCard product={mostSellingProduct} />
         </LazyCard>
 
-        {userRole === "admin" || userRole === "accountant" && (
+        {hasReportsAccess && (
           <>
             <LazyCard>
               <EarningsByTypeCard earnings={earningsByMeterType} />
