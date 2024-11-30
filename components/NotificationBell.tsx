@@ -223,20 +223,10 @@ export function NotificationBell() {
           size='sm'
           onClick={async () => {
             try {
-              // Get all unread notifications for the current user
-              const unreadNotifications = notifications.filter(
-                (notification) =>
-                  !notification.read_by?.includes(currentUser.id)
-              );
+              // Mark all as read directly
+              await markAllAsRead(currentUser.id);
 
-              // Mark each unread notification as read
-              await Promise.all(
-                unreadNotifications.map((notification) =>
-                  markAsRead(notification.id, currentUser.id)
-                )
-              );
-
-              // Refresh the notifications list
+              // Refresh notifications to update the UI
               await refreshNotifications(currentUser.id);
 
               toast({
