@@ -1925,8 +1925,14 @@ export async function updateFaultyMeterStatus(
 
 export async function changePassword(userId: string, newPassword: string) {
   try {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
+    // First check if password meets requirements
+    if (newPassword.length < 6) {
+      throw new Error("Password must be at least 6 characters long");
+    }
+
+    // Use updateUser for self password change instead of admin API
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
     });
 
     if (error) throw error;
@@ -1935,9 +1941,9 @@ export async function changePassword(userId: string, newPassword: string) {
     await signOut();
 
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error changing password:", error);
-    throw error;
+    throw new Error(error.message || "Failed to change password");
   }
 }
 

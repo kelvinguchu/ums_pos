@@ -58,6 +58,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import Loader from "@/components/Loader";
 import { changePassword } from "@/lib/actions/supabaseActions";
+import { useQueryClient } from "@tanstack/react-query";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -77,6 +78,7 @@ export default function UsersPage() {
   const [isVisible, setIsVisible] = useState(false);
   const itemsPerPage = 10;
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const {
     users,
@@ -178,21 +180,28 @@ export default function UsersPage() {
 
     try {
       await changePassword(userId, newPassword);
-
       toast({
         title: "Success",
         description: "Password changed successfully. Please sign in again.",
-        style: { backgroundColor: "#2ECC40", color: "white" },
+        variant: "default",
       });
-
-      // Redirect to signin page
-      window.location.href = "/signin";
-    } catch (error) {
+      
+      // Clear any cached data
+      queryClient.clear();
+      
+      // Redirect to signin page after a short delay
+      setTimeout(() => {
+        window.location.href = "/signin";
+      }, 1500);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to change password",
+        description: error.message || "Failed to change password",
         variant: "destructive",
       });
+    } finally {
+      setShowChangePasswordDialog(false);
+      setNewPassword("");
     }
   };
 

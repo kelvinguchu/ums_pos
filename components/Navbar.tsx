@@ -23,7 +23,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { signOut, superSearchMeter } from "@/lib/actions/supabaseActions";
+import { signOut, superSearchMeter, changePassword } from "@/lib/actions/supabaseActions";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -226,6 +226,11 @@ const Navbar: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (!newPassword.trim() || !user?.id) {
+      toast({
+        title: "Error",
+        description: "Password cannot be empty",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -236,13 +241,23 @@ const Navbar: React.FC = () => {
         description: "Password changed successfully. Please sign in again.",
         variant: "default",
       });
-      window.location.href = "/signin";
-    } catch (error) {
+      
+      // Clear any cached data
+      queryClient.clear();
+      
+      // Redirect to signin page after a short delay
+      setTimeout(() => {
+        window.location.href = "/signin";
+      }, 1500);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to change password",
+        description: error.message || "Failed to change password",
         variant: "destructive",
       });
+    } finally {
+      setShowChangePasswordDialog(false);
+      setNewPassword("");
     }
   };
 
