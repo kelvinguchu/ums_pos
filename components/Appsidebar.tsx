@@ -47,6 +47,8 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 import ReturnSoldMeters from "@/components/returns/ReturnSoldMeters";
 import { useQueryClient } from "@tanstack/react-query";
+import { hasPermission } from "@/lib/utils/rolePermissions";
+import type { UserRole } from "@/lib/utils/rolePermissions";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -62,7 +64,8 @@ const items = [
     title: "Daily Reports",
     url: "/daily-reports",
     icon: Calendar,
-    adminOnly: true,
+    adminOnly: false,
+    requiresReportAccess: true,
   },
   { title: "Users", url: "/users", icon: Users },
   { title: "Agents", url: "/agents", icon: HandPlatter },
@@ -114,6 +117,8 @@ export function AppSidebar() {
   }, []);
 
   const isAdmin = userRole === "admin";
+  const isAccountant = userRole === "accountant";
+  const hasReportsAccess = isAdmin || isAccountant;
 
   const handleLogout = async () => {
     try {
@@ -166,7 +171,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items
-                .filter((item) => !item.adminOnly || isAdmin)
+                .filter(item => {
+                  if (item.requiresReportAccess) return hasReportsAccess;
+                  if (item.adminOnly) return isAdmin;
+                  return true;
+                })
                 .map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={pathname === item.url}>
@@ -208,24 +217,60 @@ export function AppSidebar() {
                   </SheetContent>
                 </Sheet>
               </SidebarMenuItem>
+              {(isAdmin || isAccountant) && (
+                <>
+                  <SidebarMenuItem>
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <SidebarMenuButton>
+                          <ArrowLeftCircle className='mr-2 h-4 w-4 text-red-600' />
+                          <span>Return Sold Meters</span>
+                        </SidebarMenuButton>
+                      </SheetTrigger>
+                      <SheetContent className='min-w-[70vw] max-h-[100vh] overflow-y-auto'>
+                        <SheetHeader>
+                          <SheetTitle className='text-left'>
+                            <Badge
+                              variant='outline'
+                              className='ml-2 bg-blue-100'>
+                              Return Sold Meters
+                            </Badge>
+                          </SheetTitle>
+                        </SheetHeader>
+                        {currentUserData && (
+                          <ReturnSoldMeters currentUser={currentUserData} />
+                        )}
+                      </SheetContent>
+                    </Sheet>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <Sheet
+                      open={isAssignMetersOpen}
+                      onOpenChange={setIsAssignMetersOpen}>
+                      <SheetTrigger asChild>
+                        <SidebarMenuButton>
+                          <Users className='mr-2 h-4 w-4 text-orange-600' />
+                          <span>Assign Meters to Agent</span>
+                        </SidebarMenuButton>
+                      </SheetTrigger>
+                      <SheetContent className='min-w-[50vw] max-h-[100vh] overflow-y-auto'>
+                        <SheetHeader>
+                          <SheetTitle className='text-left'>
+                            <Badge
+                              variant='outline'
+                              className='ml-2 bg-blue-100'>
+                              {userName}
+                            </Badge>
+                          </SheetTitle>
+                        </SheetHeader>
+                        <AssignMetersToAgent currentUser={user} />
+                      </SheetContent>
+                    </Sheet>
+                  </SidebarMenuItem>
+                </>
+              )}
               {isAdmin && (
                 <>
-                  {/* <SidebarMenuItem>
-                    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                      <DialogTrigger asChild>
-                        <SidebarMenuButton>
-                          <PlusCircle className='mr-2 h-4 w-4 text-indigo-600' />
-                          <span>Invite User</span>
-                        </SidebarMenuButton>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <InviteUser
-                          currentUser={user}
-                          onClose={() => setIsOpen(false)}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                  </SidebarMenuItem> */}
                   <SidebarMenuItem>
                     <Dialog
                       open={isCreateUserOpen}
@@ -325,102 +370,65 @@ export function AppSidebar() {
                       </SheetContent>
                     </Sheet>
                   </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <Sheet
-                      open={isAssignMetersOpen}
-                      onOpenChange={setIsAssignMetersOpen}>
-                      <SheetTrigger asChild>
-                        <SidebarMenuButton>
-                          <Users className='mr-2 h-4 w-4 text-orange-600' />
-                          <span>Assign Meters to Agent</span>
-                        </SidebarMenuButton>
-                      </SheetTrigger>
-                      <SheetContent className='min-w-[50vw] max-h-[100vh] overflow-y-auto'>
-                        <SheetHeader>
-                          <SheetTitle className='text-left'>
-                            <Badge
-                              variant='outline'
-                              className='ml-2 bg-blue-100'>
-                              {userName}
-                            </Badge>
-                          </SheetTitle>
-                        </SheetHeader>
-                        <AssignMetersToAgent currentUser={user} />
-                      </SheetContent>
-                    </Sheet>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <SidebarMenuButton>
-                          <ArrowLeftCircle className='mr-2 h-4 w-4 text-red-600' />
-                          <span>Return Sold Meters</span>
-                        </SidebarMenuButton>
-                      </SheetTrigger>
-                      <SheetContent className='min-w-[70vw] max-h-[100vh] overflow-y-auto'>
-                        <SheetHeader>
-                          <SheetTitle className='text-left'>
-                            <Badge
-                              variant='outline'
-                              className='ml-2 bg-blue-100'>
-                              Return Sold Meters
-                            </Badge>
-                          </SheetTitle>
-                        </SheetHeader>
-                        {currentUserData && (
-                          <ReturnSoldMeters currentUser={currentUserData} />
-                        )}
-                      </SheetContent>
-                    </Sheet>
-                  </SidebarMenuItem>
                 </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         {isMobile && (
-          <SidebarGroup>
-            <SidebarGroupLabel className='text-lg font-bold'>
-              Notifications
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <NotificationBell />
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-        {isMobile && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    onClick={handleLogout}
-                    className='w-full text-red-600 hover:text-red-700 hover:bg-red-50'>
-                    <LogOut className='mr-2 h-4 w-4' />
-                    <span>Logout</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel className='text-lg font-bold'>
+                Notifications
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <NotificationBell />
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className={`${geistMono.className} p-4 border-t border-gray-200 bg-background`}>
+                  <div className='flex items-center gap-2'>
+                    <span className='text-sm text-gray-600'>{userName}</span>
+                    <Badge
+                      variant='outline'
+                      className={`${
+                        isAdmin 
+                          ? "bg-green-100" 
+                          : isAccountant
+                            ? "bg-purple-100"
+                            : "bg-yellow-100"
+                      }`}>
+                      {userRole || "User"}
+                    </Badge>
+                  </div>
+                  <p className='text-xs text-gray-500 mt-1'>{user?.email}</p>
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={handleLogout}
+                      className='w-full text-red-600 hover:text-red-700 hover:bg-red-50'>
+                      <LogOut className='mr-2 h-4 w-4' />
+                      <span>Logout</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
         )}
       </SidebarContent>
-      <div
-        className={`${geistMono.className} p-4 border-t border-gray-200 bg-background`}>
-        <div className='flex items-center gap-2'>
-          <span className='text-sm text-gray-600'>{userName}</span>
-          <Badge
-            variant='outline'
-            className={`${isAdmin ? "bg-green-100" : "bg-yellow-100"}`}>
-            {userRole || "User"}
-          </Badge>
-        </div>
-        <p className='text-xs text-gray-500 mt-1'>{user?.email}</p>
-      </div>
     </Sidebar>
   );
 }

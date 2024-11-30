@@ -19,6 +19,9 @@ import {
   Loader2,
   X,
   Menu,
+  Edit2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { signOut, superSearchMeter } from "@/lib/actions/supabaseActions";
 import { useRouter } from "next/navigation";
@@ -37,6 +40,21 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { StockAlert } from "@/components/stock/StockAlert";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -70,9 +88,13 @@ const Navbar: React.FC = () => {
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
-  const { userRole, updateAuthState } = useAuth();
+  const { userRole, updateAuthState, user } = useAuth();
   const isAdmin = userRole === "admin";
   const queryClient = useQueryClient();
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [isVisible, setIsVisible] = useState(false);
+  const { toast } = useToast();
 
   // Add function to check and clean cache
   const cleanCache = useMemo(() => {
@@ -190,6 +212,39 @@ const Navbar: React.FC = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const toggleVisibility = () => setIsVisible(prev => !prev);
+
+  const handleChangePassword = async () => {
+    if (!newPassword.trim() || !user?.id) {
+      return;
+    }
+
+    try {
+      await changePassword(user.id, newPassword);
+      toast({
+        title: "Success",
+        description: "Password changed successfully. Please sign in again.",
+        variant: "default",
+      });
+      window.location.href = "/signin";
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to change password",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <nav className='bg-white shadow-md h-16 flex items-center px-4 fixed top-0 right-0 left-0 z-50'>
@@ -341,28 +396,106 @@ const Navbar: React.FC = () => {
             <>
               {isAdmin && <StockAlert />}
               <NotificationBell />
+              
+              {/* User Profile Button */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative flex items-center gap-2 rounded-full px-3 py-2 bg-gradient-to-r from-[#000080]/10 to-blue-500/10 hover:from-[#000080]/20 hover:to-blue-500/20 transition-all duration-200"
+                  >
+                    <User className="h-4 w-4 text-[#000080]" />
+                    <span className="text-sm font-medium text-[#000080]">
+                      {user?.name?.split(' ')[0]}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="flex flex-col space-y-4 p-2">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="text-xs text-gray-500">{user?.email}</p>
+                      <Badge
+                        variant="outline"
+                        className={`${
+                          userRole === "admin"
+                            ? "bg-green-100"
+                            : userRole === "accountant"
+                              ? "bg-purple-100"
+                              : "bg-yellow-100"
+                        } w-fit`}
+                      >
+                        {userRole}
+                      </Badge>
+                    </div>
+                    
+                    <Dialog
+                      open={showChangePasswordDialog}
+                      onOpenChange={setShowChangePasswordDialog}
+                    >
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setNewPassword("");
+                          }}
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" />
+                          Change Password
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className={geistMono.className}>
+                        <DialogHeader>
+                          <DialogTitle>Change Password</DialogTitle>
+                        </DialogHeader>
+                        <div className="relative">
+                          <Input
+                            id="new-password"
+                            className="pe-9"
+                            placeholder="Enter new password"
+                            type={isVisible ? "text" : "password"}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            required
+                          />
+                          <button
+                            className="absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80"
+                            type="button"
+                            onClick={toggleVisibility}
+                          >
+                            {isVisible ? (
+                              <EyeOff size={16} strokeWidth={2} />
+                            ) : (
+                              <Eye size={16} strokeWidth={2} />
+                            )}
+                          </button>
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                          </DialogClose>
+                          <Button onClick={handleChangePassword}>
+                            Change Password
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </>
           )}
           {isMobile && <SidebarTrigger />}
-          {!isMobile && (
-            <div className='flex-shrink-0'>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className='bg-gradient-to-r from-red-500/20 to-orange-500/20 text-black rounded-full'
-                      variant='outline'
-                      onClick={handleLogout}>
-                      <LogOut className='h-4 w-4' />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Logout</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
         </div>
 
         <Sheet open={isInventoryOpen} onOpenChange={setIsInventoryOpen}>

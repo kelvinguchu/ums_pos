@@ -143,11 +143,18 @@ const CreateUser = ({
         </div>
         <Select value={role} onChange={(e) => setRole(e.target.value)}>
           <SelectTrigger className='w-full border border-gray-300 rounded-md p-2'>
-            <SelectValue>{role === "user" ? "User" : "Admin"}</SelectValue>
+            <SelectValue>
+              {role === "user" 
+                ? "User" 
+                : role === "admin" 
+                  ? "Admin" 
+                  : "Accountant"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='user'>User</SelectItem>
             <SelectItem value='admin'>Admin</SelectItem>
+            <SelectItem value='accountant'>Accountant</SelectItem>
           </SelectContent>
         </Select>
         <Button

@@ -63,6 +63,30 @@ export function MeterInventoryCard({
     return Number(remaining) + Number(withAgents);
   };
 
+  // Add this: Ensure all meter types are represented (like in DailyReportsSummary)
+  const allMeterTypes = METER_TYPES.map((type) => {
+    const existingData = remainingMetersByType.find(
+      (item) => item.type.toLowerCase() === type.toLowerCase()
+    );
+    return existingData || { type, remaining_meters: 0 };
+  });
+
+  // Calculate grand totals
+  const grandTotals = {
+    remaining: allMeterTypes.reduce(
+      (sum, item) => sum + Number(item.remaining_meters),
+      0
+    ),
+    withAgents: agentInventory.reduce(
+      (sum, item) => sum + Number(item.with_agents),
+      0
+    ),
+    total: allMeterTypes.reduce(
+      (sum, item) => sum + Number(item.remaining_meters) + getAgentCount(item.type),
+      0
+    ),
+  };
+
   return (
     <Card
       className={cn(
@@ -122,14 +146,12 @@ export function MeterInventoryCard({
         </div>
       </CardHeader>
       <CardContent className='p-4 md:p-6'>
-        {remainingMetersByType.length > 0 ? (
+        {grandTotals.total > 0 ? (
           <div className='overflow-x-auto'>
             {/* Mobile View */}
             <div className='md:hidden space-y-4'>
               {METER_TYPES.map((type, index) => {
-                const item = remainingMetersByType.find(
-                  (m) => m.type === type
-                ) || { type, remaining_meters: 0 };
+                const item = allMeterTypes.find(m => m.type === type)!;
                 return (
                   <div key={index} className='space-y-2'>
                     <div className='flex justify-between items-center font-medium'>
@@ -137,9 +159,9 @@ export function MeterInventoryCard({
                         variant='outline'
                         className={cn(
                           "capitalize",
-                          getMeterTypeBadgeClass(type)
+                          getMeterTypeBadgeClass(item.type)
                         )}>
-                        {type}
+                        {item.type}
                       </Badge>
                     </div>
                     <div className='grid grid-cols-3 gap-2 text-sm pl-2'>
@@ -149,12 +171,12 @@ export function MeterInventoryCard({
                       </div>
                       <div>
                         <p className='text-muted-foreground'>With Agents</p>
-                        <p className='font-medium'>{getAgentCount(type)}</p>
+                        <p className='font-medium'>{getAgentCount(item.type)}</p>
                       </div>
                       <div>
                         <p className='text-muted-foreground'>Total</p>
                         <p className='font-medium'>
-                          {getTotal(type, item.remaining_meters)}
+                          {getTotal(item.type, item.remaining_meters)}
                         </p>
                       </div>
                     </div>
@@ -167,14 +189,7 @@ export function MeterInventoryCard({
                 </Badge>
                 <div className='grid grid-cols-3 gap-4 text-sm font-bold'>
                   <span>
-                    {remainingMetersByType.reduce(
-                      (sum, item) => sum + Number(item.remaining_meters),
-                      0
-                    ) +
-                      agentInventory.reduce(
-                        (sum, item) => sum + Number(item.with_agents),
-                        0
-                      )}
+                    {grandTotals.remaining}
                   </span>
                 </div>
               </div>
@@ -198,34 +213,29 @@ export function MeterInventoryCard({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {METER_TYPES.map((type, index) => {
-                    const item = remainingMetersByType.find(
-                      (m) => m.type === type
-                    ) || { type, remaining_meters: 0 };
-                    return (
-                      <TableRow key={index} className='hover:bg-gray-50'>
-                        <TableCell>
-                          <Badge
-                            variant='outline'
-                            className={cn(
-                              "capitalize",
-                              getMeterTypeBadgeClass(item.type)
-                            )}>
-                            {item.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className='text-right'>
-                          {item.remaining_meters}
-                        </TableCell>
-                        <TableCell className='text-right'>
-                          {getAgentCount(type)}
-                        </TableCell>
-                        <TableCell className='text-right'>
-                          {getTotal(type, item.remaining_meters)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {allMeterTypes.map((item, index) => (
+                    <TableRow key={index} className='hover:bg-gray-50'>
+                      <TableCell>
+                        <Badge
+                          variant='outline'
+                          className={cn(
+                            "capitalize",
+                            getMeterTypeBadgeClass(item.type)
+                          )}>
+                          {item.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className='text-right'>
+                        {item.remaining_meters}
+                      </TableCell>
+                      <TableCell className='text-right'>
+                        {getAgentCount(item.type)}
+                      </TableCell>
+                      <TableCell className='text-right'>
+                        {getTotal(item.type, item.remaining_meters)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                   <TableRow className='bg-gray-50 font-bold'>
                     <TableCell>
                       <Badge variant='outline' className='bg-gray-100'>
@@ -233,26 +243,13 @@ export function MeterInventoryCard({
                       </Badge>
                     </TableCell>
                     <TableCell className='text-right'>
-                      {remainingMetersByType.reduce(
-                        (sum, item) => sum + Number(item.remaining_meters),
-                        0
-                      )}
+                      {grandTotals.remaining}
                     </TableCell>
                     <TableCell className='text-right'>
-                      {agentInventory.reduce(
-                        (sum, item) => sum + Number(item.with_agents),
-                        0
-                      )}
+                      {grandTotals.withAgents}
                     </TableCell>
                     <TableCell className='text-right'>
-                      {remainingMetersByType.reduce(
-                        (sum, item) => sum + Number(item.remaining_meters),
-                        0
-                      ) +
-                        agentInventory.reduce(
-                          (sum, item) => sum + Number(item.with_agents),
-                          0
-                        )}
+                      {grandTotals.total}
                     </TableCell>
                   </TableRow>
                 </TableBody>

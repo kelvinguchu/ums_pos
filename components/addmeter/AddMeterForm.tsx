@@ -29,6 +29,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { hasPermission } from "@/lib/utils/rolePermissions";
+import type { UserRole } from "@/lib/utils/rolePermissions";
+import { useRouter } from "next/navigation";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -98,6 +101,13 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   );
 
   const { toast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!hasPermission(currentUser.role as UserRole, 'addMeter')) {
+      router.push('/dashboard');
+    }
+  }, [currentUser]);
 
   // Cache meters whenever they change
   useEffect(() => {

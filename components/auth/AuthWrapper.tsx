@@ -27,8 +27,9 @@ const AIChatAssistant = dynamic(
 );
 
 // Routes configuration
-const ADMIN_ROUTES = ["/daily-reports"];
-const PUBLIC_ROUTES = ["/", "/signin", "/signup", "/deactivated"];
+const ADMIN_ONLY_ROUTES: string[] = [];
+const ADMIN_AND_ACCOUNTANT_ROUTES: string[] = ["/daily-reports"];
+const PUBLIC_ROUTES: string[] = ["/", "/signin", "/signup", "/deactivated"];
 
 const AuthWrapper = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
@@ -64,7 +65,17 @@ const AuthWrapper = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      if (!isLoading && isAuthenticated && ADMIN_ROUTES.includes(pathname) && userRole !== "admin") {
+      // Check for admin-only routes
+      if (!isLoading && isAuthenticated && ADMIN_ONLY_ROUTES.includes(pathname) && userRole !== "admin") {
+        timeoutId = setTimeout(() => {
+          router.replace("/dashboard");
+        }, 100);
+        return;
+      }
+
+      // Check for admin and accountant routes
+      if (!isLoading && isAuthenticated && ADMIN_AND_ACCOUNTANT_ROUTES.includes(pathname) 
+          && userRole !== "admin" && userRole !== "accountant") {
         timeoutId = setTimeout(() => {
           router.replace("/dashboard");
         }, 100);

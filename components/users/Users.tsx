@@ -341,9 +341,11 @@ export default function UsersPage() {
                       <Badge
                         variant='outline'
                         className={`${
-                          user.role === "admin"
-                            ? "bg-green-100"
-                            : "bg-yellow-100"
+                          user.role === "admin" 
+                            ? "bg-green-100" 
+                            : user.role === "accountant"
+                              ? "bg-purple-100" 
+                              : "bg-yellow-100"
                         }`}>
                         {user.role}
                       </Badge>
@@ -376,7 +378,9 @@ export default function UsersPage() {
                                     <DropdownMenuItem
                                       onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         setNewPassword("");
+                                        setShowChangePasswordDialog(true);
                                       }}>
                                       <Edit2 className='mr-2 h-4 w-4' />
                                       Change Password
@@ -569,9 +573,11 @@ export default function UsersPage() {
                       <Badge
                         variant='outline'
                         className={`${
-                          user.role === "admin"
-                            ? "bg-green-100"
-                            : "bg-yellow-100"
+                          user.role === "admin" 
+                            ? "bg-green-100" 
+                            : user.role === "accountant"
+                              ? "bg-purple-100" 
+                              : "bg-yellow-100"
                         }`}>
                         {user.role}
                       </Badge>
@@ -604,7 +610,9 @@ export default function UsersPage() {
                                     <DropdownMenuItem
                                       onSelect={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         setNewPassword("");
+                                        setShowChangePasswordDialog(true);
                                       }}>
                                       <Edit2 className='mr-2 h-4 w-4' />
                                       Change Password

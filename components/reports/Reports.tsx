@@ -121,7 +121,7 @@ export default function Reports() {
           <BestSellerCard product={mostSellingProduct} />
         </LazyCard>
 
-        {userRole === "admin" && (
+        {userRole === "admin" || userRole === "accountant" && (
           <>
             <LazyCard>
               <EarningsByTypeCard earnings={earningsByMeterType} />

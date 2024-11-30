@@ -4,12 +4,13 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { getCurrentUser, getUserProfile } from "@/lib/actions/supabaseActions";
 import { supabase } from "@/lib/supabase";
 import { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { UserRole } from "@/lib/utils/rolePermissions";
 
 // Define a more specific type for the user from Supabase
 interface UserProfile {
   id: string;
   name?: string;
-  role?: string;
+  role?: UserRole;
   is_active?: boolean;
   email: string;
 }
