@@ -18,11 +18,19 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getSaleBatches } from "@/lib/actions/supabaseActions";
 import NumberTicker from "@/components/ui/number-ticker";
 import { TrendingDown, BarChart as ChartIcon, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
+import type { SelectProps } from "@radix-ui/react-select";
 
 interface SaleBatch {
   id: number;
@@ -48,6 +56,17 @@ interface ChartData {
   [key: string]: number | string | MeterTypeData;
   userSales: MeterTypeData;
 }
+
+const TIME_PERIODS = {
+  "7d": { label: "7 Days", days: 7 },
+  "30d": { label: "30 Days", days: 30 },
+  "90d": { label: "90 Days", days: 90 },
+  "180d": { label: "6 Months", days: 180 },
+  "365d": { label: "1 Year", days: 365 },
+  all: { label: "All Time", days: 0 },
+} as const;
+
+type TimePeriod = keyof typeof TIME_PERIODS;
 
 const chartConfig = {
   integrated: {
@@ -126,8 +145,10 @@ const EmptyState = () => (
 
 export function SalesBarchart() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [allData, setAllData] = useState<ChartData[]>([]);
   const [activeChart, setActiveChart] =
     useState<keyof typeof chartConfig>("integrated");
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("30d");
   const { state } = useSidebar();
 
   useEffect(() => {
@@ -163,7 +184,11 @@ export function SalesBarchart() {
           }
         });
 
-        setChartData(Object.values(processedData));
+        const sortedData = Object.values(processedData).sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
+        setAllData(sortedData);
       } catch (error) {
         console.error("Error fetching and processing sale batches:", error);
       }
@@ -171,6 +196,25 @@ export function SalesBarchart() {
 
     fetchAndProcessData();
   }, []);
+
+  useEffect(() => {
+    if (allData.length === 0) return;
+
+    if (timePeriod === "all") {
+      setChartData(allData);
+      return;
+    }
+
+    const days = TIME_PERIODS[timePeriod].days;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const filteredData = allData.filter(
+      (item) => new Date(item.date) >= cutoffDate
+    );
+
+    setChartData(filteredData);
+  }, [timePeriod, allData]);
 
   const total = React.useMemo(
     () =>
@@ -211,8 +255,28 @@ export function SalesBarchart() {
       )}>
       <CardHeader className='flex flex-col items-stretch space-y-4 border-b p-4 lg:p-0 lg:space-y-0 lg:flex-row'>
         <div className='flex flex-1 flex-col justify-center gap-1 lg:px-6 lg:py-6'>
-          <CardTitle>Meter Sales Chart</CardTitle>
-          <CardDescription>Showing total meter sales by type</CardDescription>
+          <div className='flex items-center justify-between'>
+            <div>
+              <CardTitle>Meter Sales Chart</CardTitle>
+              <CardDescription>
+                Showing total meter sales by type
+              </CardDescription>
+            </div>
+            <Select
+              defaultValue='30d'
+              onChange={(e) => setTimePeriod(e.target.value as TimePeriod)}>
+              <SelectTrigger className='w-[180px]'>
+                <SelectValue>{TIME_PERIODS[timePeriod].label}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(TIME_PERIODS).map(([value, { label }]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className='grid grid-cols-2 lg:flex lg:flex-wrap'>
           {Object.entries(chartConfig).map(([key, config]) => (
@@ -248,11 +312,11 @@ export function SalesBarchart() {
           <ResponsiveContainer width='100%' height='100%'>
             <BarChart
               data={chartData}
-              margin={{ 
-                top: 5, 
-                right: window.innerWidth < 768 ? 0 : 5, 
-                bottom: 5, 
-                left: window.innerWidth < 768 ? -15 : 0 
+              margin={{
+                top: 5,
+                right: window.innerWidth < 768 ? 0 : 5,
+                bottom: 5,
+                left: window.innerWidth < 768 ? -15 : 0,
               }}>
               {renderGradients()}
               <CartesianGrid strokeDasharray='3 3' />
