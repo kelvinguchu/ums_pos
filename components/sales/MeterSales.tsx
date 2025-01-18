@@ -481,14 +481,16 @@ export default function MeterSales() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Seller</TableHead>
-                      <TableHead>Meter Type</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Sale Amount</TableHead>
-                      <TableHead>Sale Date</TableHead>
-                      <TableHead>Recipient</TableHead>
-                      <TableHead>Customer Type</TableHead>
-                      <TableHead>County</TableHead>
+                      <TableHead className='w-[12%]'>Seller</TableHead>
+                      <TableHead className='w-[10%]'>Meter Type</TableHead>
+                      <TableHead className='w-[8%] text-center'>
+                        Quantity
+                      </TableHead>
+                      <TableHead className='w-[15%]'>Sale Amount</TableHead>
+                      <TableHead className='w-[12%]'>Sale Date</TableHead>
+                      <TableHead className='w-[18%]'>Recipient</TableHead>
+                      <TableHead className='w-[12%]'>Customer Type</TableHead>
+                      <TableHead className='w-[13%]'>County</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -499,12 +501,16 @@ export default function MeterSales() {
                           onClick={() => setSelectedBatch(batch.id)}>
                           <TableCell>{batch.user_name}</TableCell>
                           <TableCell>{batch.meter_type}</TableCell>
-                          <TableCell>{batch.batch_amount}</TableCell>
+                          <TableCell className='text-center'>
+                            {batch.batch_amount}
+                          </TableCell>
                           <TableCell>
                             KES {Math.round(batch.total_price).toLocaleString()}
                           </TableCell>
                           <TableCell>{formatDate(batch.sale_date)}</TableCell>
-                          <TableCell>{batch.recipient}</TableCell>
+                          <TableCell className='max-w-[200px] truncate'>
+                            {batch.recipient}
+                          </TableCell>
                           <TableCell>
                             <Badge variant='outline' className='bg-blue-100'>
                               {batch.customer_type}

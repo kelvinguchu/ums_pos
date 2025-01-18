@@ -23,7 +23,11 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { signOut, superSearchMeter, changePassword } from "@/lib/actions/supabaseActions";
+import {
+  signOut,
+  superSearchMeter,
+  changePassword,
+} from "@/lib/actions/supabaseActions";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -91,7 +95,8 @@ const Navbar: React.FC = () => {
   const { userRole, updateAuthState, user } = useAuth();
   const isAdmin = userRole === "admin";
   const queryClient = useQueryClient();
-  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] =
+    useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);
   const { toast } = useToast();
@@ -215,14 +220,14 @@ const Navbar: React.FC = () => {
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
 
-  const toggleVisibility = () => setIsVisible(prev => !prev);
+  const toggleVisibility = () => setIsVisible((prev) => !prev);
 
   const handleChangePassword = async () => {
     if (!newPassword.trim() || !user?.id) {
@@ -241,10 +246,10 @@ const Navbar: React.FC = () => {
         description: "Password changed successfully. Please sign in again.",
         variant: "default",
       });
-      
+
       // Clear any cached data
       queryClient.clear();
-      
+
       // Redirect to signin page after a short delay
       setTimeout(() => {
         window.location.href = "/signin";
@@ -277,7 +282,7 @@ const Navbar: React.FC = () => {
         </div>
 
         <div
-          className={`${geistMono.className} flex-1 max-w-[70%] lg:max-w-[40%]`}
+          className={`${geistMono.className} relative flex-1 max-w-[70%] lg:max-w-[40%]`}
           ref={searchRef}>
           <div className='relative w-full'>
             <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
@@ -289,7 +294,7 @@ const Navbar: React.FC = () => {
                 setSearchTerm(e.target.value.toUpperCase());
                 setIsSearchOpen(true);
               }}
-              className='pl-8 pr-8 w-full'
+              className='pl-8 pr-8 w-full bg-gray-50/50 border-gray-200 focus:bg-white transition-colors'
               onFocus={() => setIsSearchOpen(true)}
             />
             {searchTerm && (
@@ -310,7 +315,7 @@ const Navbar: React.FC = () => {
           </div>
 
           {searchTerm.length > 0 && (
-            <div className='absolute mt-1 w-[95%] lg:w-[45vw] mx-auto left-0 right-0 bg-white rounded-md border shadow-lg z-50'>
+            <div className='absolute mt-1 w-full bg-white rounded-md border shadow-lg z-50'>
               <div className='max-h-[60vh] lg:max-h-[400px] overflow-y-auto p-2'>
                 {isLoading ? (
                   <div className='flex items-center justify-center py-4'>
@@ -325,78 +330,77 @@ const Navbar: React.FC = () => {
                     {searchResults.map((result) => (
                       <div
                         key={result.serial_number}
-                        className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 hover:bg-gray-50 rounded-md gap-2'>
+                        className='flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 hover:bg-gray-50 rounded-md gap-2 border-b last:border-0'>
                         <div>
-                          <div className='font-medium text-[#000080]'>
+                          <div className='font-medium text-[#000080] flex items-center gap-2'>
                             {result.serial_number}
+                            {result.status === "in_stock" && (
+                              <Badge className='bg-green-500'>
+                                <Check className='mr-1 h-3 w-3' />
+                                In Stock
+                              </Badge>
+                            )}
+                            {result.status === "sold" && (
+                              <Badge className='bg-blue-500'>
+                                <DollarSign className='mr-1 h-3 w-3' />
+                                Sold
+                              </Badge>
+                            )}
                           </div>
                           {result.type && (
-                            <div className='text-sm text-gray-500'>
+                            <div className='text-sm text-gray-500 mt-1'>
                               Type: {result.type}
                             </div>
                           )}
                           {result.status === "sold" && result.sale_details && (
-                            <div className='text-sm text-gray-500 space-y-0.5'>
-                              <div>
-                                Sold by:{" "}
+                            <div className='text-sm text-gray-500 space-y-1 mt-2'>
+                              <div className='flex items-center gap-2'>
+                                <User className='h-3 w-3' />
                                 {result.sale_details.seller_name
                                   ? `${result.sale_details.seller_name} (${result.sale_details.seller_role})`
                                   : result.sale_details.sold_by}
                               </div>
                               <div>
-                                Date:{" "}
+                                Sold on:{" "}
                                 {new Date(
                                   result.sale_details.sold_at
-                                ).toLocaleString("en-GB", {
+                                ).toLocaleDateString("en-GB", {
                                   day: "numeric",
-                                  month: "long",
+                                  month: "short",
                                   year: "numeric",
-                                  hour: "numeric",
-                                  minute: "numeric",
-                                  hour12: true,
                                 })}
                               </div>
                               <div>
-                                To: {result.sale_details.recipient} in{" "}
+                                Price: KES{" "}
+                                {result.sale_details?.unit_price?.toLocaleString()}
+                              </div>
+                              <div className='flex items-center gap-1'>
+                                To: {result.sale_details.recipient}
+                                <span className='text-gray-400'>•</span>
                                 {result.sale_details.destination}
                               </div>
                             </div>
                           )}
                         </div>
-                        <div className='flex flex-wrap items-center gap-2'>
-                          {result.status === "with_agent" && (
-                            <div className='flex flex-wrap items-center gap-2'>
-                              <Badge className='bg-orange-500'>
-                                <User className='mr-1 h-3 w-3' />
-                                With {result.agent.name}
-                              </Badge>
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                className='h-7 text-[#000080] hover:text-white hover:bg-[#000080] w-full sm:w-auto'
-                                onClick={() => {
-                                  setSelectedAgentId(result.agent.id);
-                                  setSelectedAgentName(result.agent.name);
-                                  setIsInventoryOpen(true);
-                                }}>
-                                View Agent Inventory
-                              </Button>
-                            </div>
-                          )}
-                          {result.status === "in_stock" && (
-                            <Badge className='bg-green-500'>
-                              <Check className='mr-1 h-3 w-3' />
-                              In Stock
+                        {result.status === "with_agent" && (
+                          <div className='flex flex-col gap-2 sm:items-end mt-2 sm:mt-0'>
+                            <Badge className='bg-orange-500 whitespace-nowrap'>
+                              <User className='mr-1 h-3 w-3' />
+                              With {result.agent.name}
                             </Badge>
-                          )}
-                          {result.status === "sold" && (
-                            <Badge className='bg-blue-500'>
-                              <DollarSign className='mr-1 h-3 w-3' />
-                              Sold - KES{" "}
-                              {result.sale_details?.unit_price?.toLocaleString()}
-                            </Badge>
-                          )}
-                        </div>
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              className='h-7 text-[#000080] hover:text-white hover:bg-[#000080] w-full sm:w-auto'
+                              onClick={() => {
+                                setSelectedAgentId(result.agent.id);
+                                setSelectedAgentName(result.agent.name);
+                                setIsInventoryOpen(true);
+                              }}>
+                              View Inventory
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -411,52 +415,48 @@ const Navbar: React.FC = () => {
             <>
               {isAdmin && <StockAlert />}
               <NotificationBell />
-              
+
               {/* User Profile Button */}
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant="ghost"
-                    className="relative flex items-center gap-2 rounded-full px-3 py-2 bg-gradient-to-r from-[#000080]/10 to-blue-500/10 hover:from-[#000080]/20 hover:to-blue-500/20 transition-all duration-200"
-                  >
-                    <User className="h-4 w-4 text-[#000080]" />
-                    <span className="text-sm font-medium text-[#000080]">
-                      {user?.name?.split(' ')[0]}
+                    variant='ghost'
+                    className='relative flex items-center gap-2 rounded-full px-3 py-2 bg-gradient-to-r from-[#000080]/10 to-blue-500/10 hover:from-[#000080]/20 hover:to-blue-500/20 transition-all duration-200'>
+                    <User className='h-4 w-4 text-[#000080]' />
+                    <span className='text-sm font-medium text-[#000080]'>
+                      {user?.name?.split(" ")[0]}
                     </span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80" align="end">
-                  <div className="flex flex-col space-y-4 p-2">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">{user?.name}</p>
-                      <p className="text-xs text-gray-500">{user?.email}</p>
+                <PopoverContent className='w-80' align='end'>
+                  <div className='flex flex-col space-y-4 p-2'>
+                    <div className='flex flex-col space-y-1'>
+                      <p className='text-sm font-medium'>{user?.name}</p>
+                      <p className='text-xs text-gray-500'>{user?.email}</p>
                       <Badge
-                        variant="outline"
+                        variant='outline'
                         className={`${
                           userRole === "admin"
                             ? "bg-green-100"
                             : userRole === "accountant"
-                              ? "bg-purple-100"
-                              : "bg-yellow-100"
-                        } w-fit`}
-                      >
+                            ? "bg-purple-100"
+                            : "bg-yellow-100"
+                        } w-fit`}>
                         {userRole}
                       </Badge>
                     </div>
-                    
+
                     <Dialog
                       open={showChangePasswordDialog}
-                      onOpenChange={setShowChangePasswordDialog}
-                    >
+                      onOpenChange={setShowChangePasswordDialog}>
                       <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start"
+                        <Button
+                          variant='outline'
+                          className='w-full justify-start'
                           onClick={() => {
                             setNewPassword("");
-                          }}
-                        >
-                          <Edit2 className="mr-2 h-4 w-4" />
+                          }}>
+                          <Edit2 className='mr-2 h-4 w-4' />
                           Change Password
                         </Button>
                       </DialogTrigger>
@@ -464,21 +464,20 @@ const Navbar: React.FC = () => {
                         <DialogHeader>
                           <DialogTitle>Change Password</DialogTitle>
                         </DialogHeader>
-                        <div className="relative">
+                        <div className='relative'>
                           <Input
-                            id="new-password"
-                            className="pe-9"
-                            placeholder="Enter new password"
+                            id='new-password'
+                            className='pe-9'
+                            placeholder='Enter new password'
                             type={isVisible ? "text" : "password"}
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             required
                           />
                           <button
-                            className="absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80"
-                            type="button"
-                            onClick={toggleVisibility}
-                          >
+                            className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80'
+                            type='button'
+                            onClick={toggleVisibility}>
                             {isVisible ? (
                               <EyeOff size={16} strokeWidth={2} />
                             ) : (
@@ -488,7 +487,7 @@ const Navbar: React.FC = () => {
                         </div>
                         <DialogFooter>
                           <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
+                            <Button variant='outline'>Cancel</Button>
                           </DialogClose>
                           <Button onClick={handleChangePassword}>
                             Change Password
@@ -498,11 +497,10 @@ const Navbar: React.FC = () => {
                     </Dialog>
 
                     <Button
-                      variant="outline"
-                      className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
+                      variant='outline'
+                      className='w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50'
+                      onClick={handleLogout}>
+                      <LogOut className='mr-2 h-4 w-4' />
                       Logout
                     </Button>
                   </div>
