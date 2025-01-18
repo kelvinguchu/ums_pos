@@ -15,7 +15,8 @@ export const CUSTOMER_TYPES = [
   "walk in",
   "agent",
   "technician",
-  "referal"
+  "referal",
+  "online"
 ] as const;
 
 export type KenyaCounty = typeof KENYA_COUNTIES[number];

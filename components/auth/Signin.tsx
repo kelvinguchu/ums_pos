@@ -60,19 +60,19 @@ const SignIn = () => {
       if (!response.session) {
         throw new Error("No session established");
       }
-      
-      window.location.href = '/dashboard';
-      
+
+      window.location.href = "/dashboard";
     } catch (error: any) {
-      const errorMessage = error.message === "ACCOUNT_DEACTIVATED" 
-        ? "Account is deactivated" 
-        : error.message || "Failed to sign in";
-        
+      const errorMessage =
+        error.message === "ACCOUNT_DEACTIVATED"
+          ? "Account is deactivated"
+          : error.message || "Failed to sign in";
+
       setError(errorMessage);
       setIsLoading(false);
-      
+
       if (errorMessage === "ACCOUNT_DEACTIVATED") {
-        window.location.href = '/deactivated';
+        window.location.href = "/deactivated";
         return;
       }
 
