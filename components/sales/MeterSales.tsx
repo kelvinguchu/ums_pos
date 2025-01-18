@@ -481,9 +481,9 @@ export default function MeterSales() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className='w-[12%]'>Seller</TableHead>
-                      <TableHead className='w-[10%]'>Meter Type</TableHead>
-                      <TableHead className='w-[8%] text-center'>
+                      <TableHead className='w-[16%]'>Seller</TableHead>
+                      <TableHead className='w-[8%]'>Meter Type</TableHead>
+                      <TableHead className='w-[7%] text-center'>
                         Quantity
                       </TableHead>
                       <TableHead className='w-[15%]'>Sale Amount</TableHead>
