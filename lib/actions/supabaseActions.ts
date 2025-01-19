@@ -1211,21 +1211,21 @@ export async function markAllNotificationsAsRead(userId: string) {
     // Update each notification
     const updates = notifications.map((notification) => {
       const readBy = notification.read_by || [];
-      
+
       // Update the is_read flag based on whether this is the last user to read
       const updatedReadBy = [...new Set([...readBy, userId])];
-      
+
       return supabase
         .from("notifications")
         .update({
           read_by: updatedReadBy,
-          is_read: true
+          is_read: true,
         })
         .eq("id", notification.id);
     });
 
     await Promise.all(updates);
-    
+
     return { success: true };
   } catch (error) {
     console.error("Error marking all notifications as read:", error);
@@ -1744,7 +1744,10 @@ export async function updateMeterPurchaseBatch(
 }
 
 // Toggle push notifications for a user
-export async function togglePushNotifications(userId: string, enabled: boolean) {
+export async function togglePushNotifications(
+  userId: string,
+  enabled: boolean
+) {
   try {
     const { data, error } = await supabase
       .from("user_profiles")
@@ -1754,7 +1757,7 @@ export async function togglePushNotifications(userId: string, enabled: boolean) 
       .single();
 
     if (error) throw error;
-    
+
     // Return the actual status from the database
     return data?.push_enabled === true;
   } catch (error) {
@@ -1932,7 +1935,7 @@ export async function changePassword(userId: string, newPassword: string) {
 
     // Use updateUser for self password change instead of admin API
     const { data, error } = await supabase.auth.updateUser({
-      password: newPassword
+      password: newPassword,
     });
 
     if (error) throw error;
@@ -1960,4 +1963,44 @@ export async function getUnreadNotificationsCount(userId: string) {
   }
 
   return count || 0;
+}
+
+export async function checkMeterExistsInSoldMeters(
+  serialNumber: string
+): Promise<boolean> {
+  try {
+    const normalizedSerial = serialNumber.replace(/^0+/, "").toUpperCase();
+
+    const { data, error } = await supabase
+      .from("sold_meters")
+      .select("serial_number")
+      .ilike("serial_number", normalizedSerial)
+      .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
+  } catch (error) {
+    console.error("Error checking meter in sold_meters:", error);
+    throw error;
+  }
+}
+
+export async function checkMeterExistsInAgentInventory(
+  serialNumber: string
+): Promise<boolean> {
+  try {
+    const normalizedSerial = serialNumber.replace(/^0+/, "").toUpperCase();
+
+    const { data, error } = await supabase
+      .from("agent_inventory")
+      .select("serial_number")
+      .ilike("serial_number", normalizedSerial)
+      .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
+  } catch (error) {
+    console.error("Error checking meter in agent_inventory:", error);
+    throw error;
+  }
 }

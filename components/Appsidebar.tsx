@@ -216,16 +216,19 @@ export function AppSidebar() {
                       <span>Sell Meters</span>
                     </SidebarMenuButton>
                   </SheetTrigger>
-                  <SheetContent className='min-w-[50vw]'>
-                    <SheetHeader>
-                      <SheetTitle className='text-left flex items-center gap-2'>
-                        <span>Sell Meters</span>
-                        <Badge variant='outline' className='bg-blue-100'>
-                          {userName}
-                        </Badge>
-                      </SheetTitle>
-                    </SheetHeader>
-                    <SellMeters currentUser={user} />
+                  <SheetContent
+                    side='right'
+                    className='w-full min-w-[50vw] overflow-y-auto p-0'>
+                    <div className='h-full flex flex-col'>
+                      <div className='p-6 border-b'>
+                        <SheetHeader>
+                          <SheetTitle>Sell Meters</SheetTitle>
+                        </SheetHeader>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        <SellMeters currentUser={user} />
+                      </div>
+                    </div>
                   </SheetContent>
                 </Sheet>
               </SidebarMenuItem>

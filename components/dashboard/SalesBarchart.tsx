@@ -201,7 +201,16 @@ export function SalesBarchart() {
     if (allData.length === 0) return;
 
     if (timePeriod === "all") {
-      setChartData(allData);
+      setChartData(
+        allData.filter((item) => {
+          const date = new Date(item.date);
+          return !(
+            date.getDate() === 19 &&
+            date.getMonth() === 0 &&
+            date.getFullYear() === 2025
+          );
+        })
+      );
       return;
     }
 
@@ -209,9 +218,17 @@ export function SalesBarchart() {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    const filteredData = allData.filter(
-      (item) => new Date(item.date) >= cutoffDate
-    );
+    const filteredData = allData.filter((item) => {
+      const date = new Date(item.date);
+      return (
+        date >= cutoffDate &&
+        !(
+          date.getDate() === 19 &&
+          date.getMonth() === 0 &&
+          date.getFullYear() === 2025
+        )
+      );
+    });
 
     setChartData(filteredData);
   }, [timePeriod, allData]);

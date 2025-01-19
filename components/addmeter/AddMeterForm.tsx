@@ -94,7 +94,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   const [isBatchDetailsOpen, setIsBatchDetailsOpen] = useState(false);
   const [batchDetails, setBatchDetails] = useState<BatchDetails | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | React.ReactNode>(
-    "Input Serial Number"
+    ""
   );
 
   const { toast } = useToast();
@@ -639,6 +639,13 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     };
   }, []);
 
+  const handleExistsChange = (exists: boolean, message?: string) => {
+    setExists(exists);
+    if (message) {
+      setErrorMessage(message);
+    }
+  };
+
   return (
     <div
       className={`${geistMono.className} bg-white shadow-md rounded-lg p-2 sm:p-6 max-w-[100%] mx-auto`}>
@@ -724,6 +731,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
             exists={exists}
             isAutoMode={isAutoMode}
             errorMessage={errorMessage}
+            onExistsChange={handleExistsChange}
           />
 
           {meters.length > 0 && (

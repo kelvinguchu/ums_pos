@@ -11,7 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { getMeterBySerial } from "@/lib/actions/supabaseActions";
+import {
+  getMeterBySerial,
+  checkMeterExistsInSoldMeters,
+  checkMeterExistsInAgentInventory,
+} from "@/lib/actions/supabaseActions";
 
 interface MeterInputFormProps {
   serialNumber: string;
@@ -23,6 +27,7 @@ interface MeterInputFormProps {
   exists: boolean;
   isAutoMode: boolean;
   errorMessage: string | React.ReactNode;
+  onExistsChange: (exists: boolean, message?: string) => void;
 }
 
 export const MeterInputForm = memo(function MeterInputForm({
@@ -35,14 +40,55 @@ export const MeterInputForm = memo(function MeterInputForm({
   exists,
   isAutoMode,
   errorMessage,
+  onExistsChange,
 }: MeterInputFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
+
+  useEffect(() => {
+    const checkMeterStatus = async () => {
+      if (!serialNumber.trim()) return;
+
+      try {
+        // Check in sold_meters
+        const existsInSoldMeters = await checkMeterExistsInSoldMeters(
+          serialNumber
+        );
+        if (existsInSoldMeters) {
+          onExistsChange(true, "Meter already exists in sold meters");
+          return;
+        }
+
+        // Check in agent_inventory
+        const existsInAgentInventory = await checkMeterExistsInAgentInventory(
+          serialNumber
+        );
+        if (existsInAgentInventory) {
+          onExistsChange(true, "Meter already exists in agent inventory");
+          return;
+        }
+
+        // If not found in either table, reset exists state
+        onExistsChange(false);
+      } catch (error) {
+        console.error("Error checking meter status:", error);
+        toast({
+          title: "Error",
+          description: "Failed to check meter status",
+          variant: "destructive",
+        });
+      }
+    };
+
+    const timeoutId = setTimeout(checkMeterStatus, 300);
+    return () => clearTimeout(timeoutId);
+  }, [serialNumber, onExistsChange, toast]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !exists) {
@@ -68,9 +114,7 @@ export const MeterInputForm = memo(function MeterInputForm({
             autoFocus
           />
         </div>
-        <Select
-          value={selectedType}
-          onChange={(e) => onTypeChange(e.target.value)}>
+        <Select value={selectedType} onChange={(e) => onTypeChange(e.target.value)}>
           <SelectTrigger className='w-[180px]'>
             <SelectValue />
           </SelectTrigger>
