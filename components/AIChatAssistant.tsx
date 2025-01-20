@@ -12,22 +12,15 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  MessageCircle,
-  Loader2,
-  Send,
-  Bot,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
-import { getChatResponse } from "@/lib/actions/geminiActions";
+import { Send, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { usePathname } from "next/navigation";
-import { getCurrentUser } from "@/lib/actions/supabaseActions";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import localFont from "next/font/local";
+import { getCurrentUser } from "@/lib/actions/supabaseActions";
+import { getChatResponse } from "@/lib/actions/geminiActions";
 
 const geistMono = localFont({
   src: "../public/fonts/GeistMonoVF.woff",
@@ -139,6 +132,7 @@ export function AIChatAssistant() {
     if (open) {
       setTimeout(() => {
         inputRef.current?.focus();
+        scrollToBottom();
       }, 100);
     }
   };
@@ -169,9 +163,9 @@ export function AIChatAssistant() {
       },
     ]);
 
-    // Type each character with increased speed
+    // Type each character
     for (let i = 0; i < content.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 15)); // Increased speed here
+      await new Promise((resolve) => setTimeout(resolve, 15));
 
       currentMessage += content[i];
 
@@ -277,7 +271,7 @@ export function AIChatAssistant() {
   }, [isLoading]);
 
   // Add clear chat handler
-  const handleClearChat = () => {
+  const handleClearChat = async (): Promise<void> => {
     setMessages([]);
     localStorage.removeItem(CHAT_CACHE_KEY);
 
@@ -291,7 +285,7 @@ export function AIChatAssistant() {
 
     // Re-initialize welcome message
     const welcomeMessage = "Hello! I'm your UMS Assistant. How can I help?";
-    typeMessage(welcomeMessage);
+    await typeMessage(welcomeMessage);
   };
 
   return (
@@ -334,7 +328,7 @@ export function AIChatAssistant() {
         </SheetHeader>
 
         <ScrollArea
-          className='flex-1 px-6 py-4 overflow-y-auto'
+          className='flex-1 px-6 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-[#000080] scrollbar-track-transparent'
           ref={scrollAreaRef}>
           <div className='space-y-4'>
             <AnimatePresence initial={false} mode='sync'>
@@ -417,7 +411,7 @@ export function AIChatAssistant() {
               }
               className='flex-1 border-gray-200 focus:ring-[#000080] focus:border-[#000080]'
               disabled={isLoading}
-              autoFocus // Add autoFocus prop
+              autoFocus
             />
             <Button
               size='icon'

@@ -2004,3 +2004,95 @@ export async function checkMeterExistsInAgentInventory(
     throw error;
   }
 }
+
+// Add new time-based query functions
+export async function getSalesByDateRange(startDate: Date, endDate: Date) {
+  try {
+    const { data, error } = await supabase
+      .from("sale_batches")
+      .select("*")
+      .gte("sale_date", startDate.toISOString())
+      .lte("sale_date", endDate.toISOString())
+      .order("sale_date", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching sales by date range:", error);
+    throw error;
+  }
+}
+
+export async function getSalesThisWeek() {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setHours(0, 0, 0, 0);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // Start from Sunday
+
+  return getSalesByDateRange(startOfWeek, now);
+}
+
+export async function getSalesThisMonth() {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  return getSalesByDateRange(startOfMonth, now);
+}
+
+export async function getSalesLastXDays(days: number) {
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setDate(now.getDate() - days);
+  startDate.setHours(0, 0, 0, 0);
+
+  return getSalesByDateRange(startDate, now);
+}
+
+// Add helper function to aggregate sales data
+export interface AggregatedSales {
+  totalTransactions: number;
+  totalMeters: number;
+  totalRevenue: number;
+  averagePrice: number;
+  byType: {
+    [key: string]: {
+      count: number;
+      revenue: number;
+    };
+  };
+}
+
+export function aggregateSalesData(sales: any[]): AggregatedSales {
+  const aggregated = sales.reduce(
+    (acc, sale) => {
+      // Update totals
+      acc.totalTransactions++;
+      acc.totalMeters += sale.batch_amount;
+      acc.totalRevenue += sale.total_price;
+
+      // Update by type
+      if (!acc.byType[sale.meter_type]) {
+        acc.byType[sale.meter_type] = { count: 0, revenue: 0 };
+      }
+      acc.byType[sale.meter_type].count += sale.batch_amount;
+      acc.byType[sale.meter_type].revenue += sale.total_price;
+
+      return acc;
+    },
+    {
+      totalTransactions: 0,
+      totalMeters: 0,
+      totalRevenue: 0,
+      averagePrice: 0,
+      byType: {},
+    } as AggregatedSales
+  );
+
+  // Calculate average price
+  aggregated.averagePrice =
+    aggregated.totalMeters > 0
+      ? aggregated.totalRevenue / aggregated.totalMeters
+      : 0;
+
+  return aggregated;
+}

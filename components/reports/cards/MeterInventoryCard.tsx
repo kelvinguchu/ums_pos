@@ -63,7 +63,7 @@ export function MeterInventoryCard({
     return Number(remaining) + Number(withAgents);
   };
 
-  // Add this: Ensure all meter types are represented (like in DailyReportsSummary)
+  // all meter types are represented (like in DailyReportsSummary)
   const allMeterTypes = METER_TYPES.map((type) => {
     const existingData = remainingMetersByType.find(
       (item) => item.type.toLowerCase() === type.toLowerCase()
