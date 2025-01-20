@@ -9,6 +9,8 @@ import {
   addMeterPurchaseBatch,
   getAllMeters,
   clearMetersCache,
+  checkMeterExistsInSoldMeters,
+  checkMeterExistsInAgentInventory,
 } from "@/lib/actions/supabaseActions";
 import { useToast } from "@/hooks/use-toast";
 import { FileUploadHandler } from "./FileUploadHandler";
@@ -27,8 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -83,7 +83,6 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   });
   const [serialNumber, setSerialNumber] = useState("");
   const [selectedType, setSelectedType] = useState("Split");
-  const [isAutoMode, setIsAutoMode] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [exists, setExists] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,6 +95,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   const [errorMessage, setErrorMessage] = useState<string | React.ReactNode>(
     ""
   );
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const { toast } = useToast();
 
@@ -211,6 +211,11 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
   }, [currentUser.id, currentUser.name]);
 
   const handleAddMeter = useCallback(async () => {
+    // If already processing a meter, ignore new requests
+    if (isProcessing || isChecking) {
+      return;
+    }
+
     if (!serialNumber.trim()) {
       toast({
         title: "Error",
@@ -229,41 +234,50 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       return;
     }
 
-    const normalizedSerial = normalizeSerialNumber(serialNumber);
-
-    // Double check for duplicates before adding
-    const existingIndex = findExistingMeter(normalizedSerial, meters);
-    if (existingIndex !== -1) {
-      setErrorMessage(
-        <div className='flex items-center gap-2'>
-          <span>Serial Number Already in the Table</span>
-          <button
-            className='text-blue-500 hover:underline'
-            onClick={() => {
-              const element = document.querySelector(
-                `[data-row-index="${existingIndex}"]`
-              );
-              element?.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              });
-              element?.classList.add("bg-yellow-100");
-              setTimeout(
-                () => element?.classList.remove("bg-yellow-100"),
-                2000
-              );
-            }}>
-            View Entry
-          </button>
-        </div>
-      );
-      return;
-    }
-
-    // Check database before adding
+    setIsProcessing(true);
+    setIsChecking(true);
     try {
-      const exists = await checkMeterExists(normalizedSerial);
-      if (exists) {
+      const normalizedSerial = normalizeSerialNumber(serialNumber);
+
+      // First check if it exists in current batch
+      const existingIndex = findExistingMeter(normalizedSerial, meters);
+      if (existingIndex !== -1) {
+        setExists(true);
+        setErrorMessage(
+          <div className='flex items-center gap-2'>
+            <span>Serial Number Already in the Table</span>
+            <button
+              className='text-blue-500 hover:underline'
+              onClick={() => {
+                const element = document.querySelector(
+                  `[data-row-index="${existingIndex}"]`
+                );
+                element?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+                element?.classList.add("bg-yellow-100");
+                setTimeout(
+                  () => element?.classList.remove("bg-yellow-100"),
+                  2000
+                );
+              }}>
+              View Entry
+            </button>
+          </div>
+        );
+        return;
+      }
+
+      // Check all existence conditions in parallel
+      const [existsInDB, existsInSold, existsInAgent] = await Promise.all([
+        checkMeterExists(normalizedSerial),
+        checkMeterExistsInSoldMeters(normalizedSerial),
+        checkMeterExistsInAgentInventory(normalizedSerial),
+      ]);
+
+      if (existsInDB) {
+        setExists(true);
         setErrorMessage("Serial Number Already Exists in Database");
         toast({
           title: "Error",
@@ -273,6 +287,29 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
         return;
       }
 
+      if (existsInSold) {
+        setExists(true);
+        setErrorMessage("Meter already exists in sold meters");
+        toast({
+          title: "Error",
+          description: "Meter already exists in sold meters",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (existsInAgent) {
+        setExists(true);
+        setErrorMessage("Meter already exists in agent inventory");
+        toast({
+          title: "Error",
+          description: "Meter already exists in agent inventory",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // If we get here, the meter doesn't exist anywhere
       const newMeter = {
         serialNumber: normalizedSerial,
         type: selectedType,
@@ -284,6 +321,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
       setMeters((prev) => [newMeter, ...prev]);
       setSerialNumber("");
       setErrorMessage("");
+      setExists(false);
 
       toast({
         title: "Success",
@@ -291,14 +329,26 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
         style: { backgroundColor: "#2ECC40", color: "white" },
       });
     } catch (error) {
-      setErrorMessage("Failed to check serial number");
+      console.error("Error adding meter:", error);
       toast({
         title: "Error",
-        description: "Failed to check serial number",
+        description: "Failed to add meter",
         variant: "destructive",
       });
+    } finally {
+      setIsChecking(false);
+      setIsProcessing(false);
     }
-  }, [serialNumber, selectedType, currentUser.id, adderName, meters, toast]);
+  }, [
+    serialNumber,
+    selectedType,
+    currentUser.id,
+    adderName,
+    meters,
+    toast,
+    isProcessing,
+    isChecking,
+  ]);
 
   const handleRemoveMeter = useCallback((index: number) => {
     setMeters((prev) => prev.filter((_, i) => i !== index));
@@ -614,31 +664,6 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
     };
   }, []);
 
-  // Add this effect to handle auto mode
-  useEffect(() => {
-    if (isAutoMode && serialNumber && !isChecking && !exists) {
-      handleAddMeter();
-    }
-  }, [isAutoMode, serialNumber, isChecking, exists, handleAddMeter]);
-
-  // Add this effect to initialize cache when component mounts
-  useEffect(() => {
-    const initializeCache = async () => {
-      try {
-        await getAllMeters(); // This will populate the cache
-      } catch (error) {
-        console.error("Error initializing meters cache:", error);
-      }
-    };
-
-    initializeCache();
-
-    // Clear cache when component unmounts
-    return () => {
-      clearMetersCache();
-    };
-  }, []);
-
   const handleExistsChange = (exists: boolean, message?: string) => {
     setExists(exists);
     if (message) {
@@ -696,16 +721,6 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                 </Badge>
               </div>
             </div>
-            <div className='flex items-center gap-2'>
-              <Switch
-                id='auto-mode'
-                checked={isAutoMode}
-                onCheckedChange={setIsAutoMode}
-              />
-              <Label htmlFor='auto-mode' className='text-sm'>
-                Auto Mode {isAutoMode ? "On" : "Off"}
-              </Label>
-            </div>
           </div>
 
           <MeterInputForm
@@ -729,7 +744,6 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
             onAddMeter={handleAddMeter}
             isChecking={isChecking}
             exists={exists}
-            isAutoMode={isAutoMode}
             errorMessage={errorMessage}
             onExistsChange={handleExistsChange}
           />

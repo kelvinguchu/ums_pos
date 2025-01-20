@@ -25,7 +25,6 @@ interface MeterInputFormProps {
   onAddMeter: () => void;
   isChecking: boolean;
   exists: boolean;
-  isAutoMode: boolean;
   errorMessage: string | React.ReactNode;
   onExistsChange: (exists: boolean, message?: string) => void;
 }
@@ -38,7 +37,6 @@ export const MeterInputForm = memo(function MeterInputForm({
   onAddMeter,
   isChecking,
   exists,
-  isAutoMode,
   errorMessage,
   onExistsChange,
 }: MeterInputFormProps) {
@@ -114,7 +112,9 @@ export const MeterInputForm = memo(function MeterInputForm({
             autoFocus
           />
         </div>
-        <Select value={selectedType} onChange={(e) => onTypeChange(e.target.value)}>
+        <Select
+          value={selectedType}
+          onChange={(e) => onTypeChange(e.target.value)}>
           <SelectTrigger className='w-[180px]'>
             <SelectValue />
           </SelectTrigger>
@@ -127,13 +127,11 @@ export const MeterInputForm = memo(function MeterInputForm({
             <SelectItem value='Smart'>Smart</SelectItem>
           </SelectContent>
         </Select>
-        {!isAutoMode && (
-          <Button
-            onClick={onAddMeter}
-            disabled={!serialNumber || isChecking || exists}>
-            Add Meter
-          </Button>
-        )}
+        <Button
+          onClick={onAddMeter}
+          disabled={!serialNumber || isChecking || exists}>
+          Add Meter
+        </Button>
       </div>
       <div className='h-6'>
         {isChecking ? (

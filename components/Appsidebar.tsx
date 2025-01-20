@@ -225,7 +225,7 @@ export function AppSidebar() {
                           <SheetTitle>Sell Meters</SheetTitle>
                         </SheetHeader>
                       </div>
-                      <div className="flex-1 overflow-y-auto">
+                      <div className='flex-1 overflow-y-auto'>
                         <SellMeters currentUser={user} />
                       </div>
                     </div>
