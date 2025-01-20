@@ -39,11 +39,19 @@ interface FileUploadHandlerProps {
     id: string;
     name: string;
   };
+  currentMeters: Array<{
+    serialNumber: string;
+    type: string;
+    addedBy: string;
+    addedAt: string;
+    adderName: string;
+  }>;
 }
 
 export const FileUploadHandler = memo(function FileUploadHandler({
   onMetersAdd,
   currentUser,
+  currentMeters,
 }: FileUploadHandlerProps) {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -76,6 +84,48 @@ export const FileUploadHandler = memo(function FileUploadHandler({
         return;
       }
 
+      // Check for duplicates within the file itself
+      const duplicatesInFile = newMeters.filter(
+        (meter, index) =>
+          newMeters.findIndex(
+            (m) =>
+              m.serialNumber.replace(/^0+/, "").toUpperCase() ===
+              meter.serialNumber.replace(/^0+/, "").toUpperCase()
+          ) !== index
+      );
+
+      if (duplicatesInFile.length > 0) {
+        toast({
+          title: "Error",
+          description: `Found ${duplicatesInFile.length} duplicate serial numbers in the file. Please remove duplicates and try again.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check for duplicates against current table
+      const duplicatesInTable = newMeters.filter((meter) =>
+        currentMeters.some(
+          (existingMeter) =>
+            existingMeter.serialNumber.replace(/^0+/, "").toUpperCase() ===
+            meter.serialNumber.replace(/^0+/, "").toUpperCase()
+        )
+      );
+
+      if (duplicatesInTable.length > 0) {
+        toast({
+          title: "Error",
+          description: `Found ${
+            duplicatesInTable.length
+          } meters that are already in the table:\n${duplicatesInTable
+            .slice(0, 3)
+            .map((m) => m.serialNumber)
+            .join("\n")}${duplicatesInTable.length > 3 ? "\n..." : ""}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       setProgress({ current: 0, total: newMeters.length });
 
       const errors: Array<{ serial: string; reason: string }> = [];
@@ -91,65 +141,47 @@ export const FileUploadHandler = memo(function FileUploadHandler({
       const BATCH_SIZE = 50;
       for (let i = 0; i < newMeters.length; i += BATCH_SIZE) {
         const batch = newMeters.slice(i, i + BATCH_SIZE);
-
-        // Process each serial number in the batch
-        const batchResults = await Promise.all(
-          batch.map(async (meter) => {
-            try {
-              // Check in sold_meters
-              const existsInSoldMeters = await checkMeterExistsInSoldMeters(
-                meter.serialNumber
-              );
-              if (existsInSoldMeters) {
-                return {
-                  serial: meter.serialNumber,
-                  error: "Already exists in sold meters",
-                };
-              }
-
-              // Check in agent_inventory
-              const existsInAgentInventory =
-                await checkMeterExistsInAgentInventory(meter.serialNumber);
-              if (existsInAgentInventory) {
-                return {
-                  serial: meter.serialNumber,
-                  error: "Already exists in agent inventory",
-                };
-              }
-
-              // Check in meters table
-              const existsInMeters = await checkMultipleSerialNumbers([
-                meter.serialNumber,
-              ]);
-              if (existsInMeters.length > 0) {
-                return {
-                  serial: meter.serialNumber,
-                  error: "Already exists in meters table",
-                };
-              }
-
-              return {
-                serial: meter.serialNumber,
-                valid: true,
-                type: meter.type,
-              };
-            } catch (error) {
-              return {
-                serial: meter.serialNumber,
-                error: "Failed to check meter status",
-              };
-            }
-          })
+        const serialNumbers = batch.map((m) =>
+          m.serialNumber.replace(/^0+/, "").toUpperCase()
         );
 
-        // Process results
-        batchResults.forEach((result) => {
-          if (result.error) {
-            errors.push({ serial: result.serial, reason: result.error });
-          } else if (result.valid) {
+        // Check all existence conditions in parallel for the batch
+        const [existingInDB, existingInSold, existingInAgent] =
+          await Promise.all([
+            checkMultipleSerialNumbers(serialNumbers),
+            Promise.all(
+              serialNumbers.map((s) => checkMeterExistsInSoldMeters(s))
+            ),
+            Promise.all(
+              serialNumbers.map((s) => checkMeterExistsInAgentInventory(s))
+            ),
+          ]);
+
+        // Process results for this batch
+        batch.forEach((meter, idx) => {
+          const normalizedSerial = meter.serialNumber
+            .replace(/^0+/, "")
+            .toUpperCase();
+
+          if (existingInDB.includes(normalizedSerial)) {
+            errors.push({
+              serial: meter.serialNumber,
+              reason: "Already exists in database",
+            });
+          } else if (existingInSold[idx]) {
+            errors.push({
+              serial: meter.serialNumber,
+              reason: "Already exists in sold meters",
+            });
+          } else if (existingInAgent[idx]) {
+            errors.push({
+              serial: meter.serialNumber,
+              reason: "Already exists in agent inventory",
+            });
+          } else {
             validMeters.push({
-              serialNumber: result.serial,
-              type: result.type,
+              serialNumber: normalizedSerial,
+              type: meter.type,
               addedBy: currentUser.id,
               addedAt: new Date().toISOString(),
               adderName: currentUser.name,

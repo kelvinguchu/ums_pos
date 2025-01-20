@@ -687,6 +687,7 @@ export default function AddMeterForm({ currentUser }: AddMeterFormProps) {
                     setMeters((prev) => [...newMeters, ...prev])
                   }
                   currentUser={currentUser}
+                  currentMeters={meters}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger>

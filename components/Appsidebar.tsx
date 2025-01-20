@@ -336,7 +336,6 @@ export function AppSidebar() {
                       <SheetContent className='min-w-[60vw] max-h-[100vh] overflow-y-auto'>
                         <SheetHeader>
                           <SheetTitle className='text-left flex items-center gap-2'>
-                            <span>Add New Meters</span>
                             <Badge variant='outline' className='bg-green-100'>
                               {userName}
                             </Badge>
