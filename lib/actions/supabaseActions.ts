@@ -1974,11 +1974,10 @@ export async function checkMeterExistsInSoldMeters(
     const { data, error } = await supabase
       .from("sold_meters")
       .select("serial_number")
-      .ilike("serial_number", normalizedSerial)
-      .maybeSingle();
+      .ilike("serial_number", normalizedSerial);
 
     if (error) throw error;
-    return !!data;
+    return data && data.length > 0;
   } catch (error) {
     console.error("Error checking meter in sold_meters:", error);
     throw error;
@@ -1994,11 +1993,10 @@ export async function checkMeterExistsInAgentInventory(
     const { data, error } = await supabase
       .from("agent_inventory")
       .select("serial_number")
-      .ilike("serial_number", normalizedSerial)
-      .maybeSingle();
+      .ilike("serial_number", normalizedSerial);
 
     if (error) throw error;
-    return !!data;
+    return data && data.length > 0;
   } catch (error) {
     console.error("Error checking meter in agent_inventory:", error);
     throw error;
