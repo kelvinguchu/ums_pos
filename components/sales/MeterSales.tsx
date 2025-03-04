@@ -273,32 +273,21 @@ export default function MeterSales() {
   const handleExportCSV = () => {
     const dataToExport = hasActiveFilters() ? currentBatches : filteredBatches;
 
-    const headers = [
-      "Seller",
-      "Meter Type",
-      "Amount",
-      "Sale Amount",
-      "Sale Date",
-      "Destination",
-      "Recipient",
-      "Customer Type",
-      "County",
-      "Contact",
-    ];
-    const data = dataToExport.map((batch) => [
-      batch.user_name,
-      batch.meter_type,
-      batch.batch_amount.toString(),
-      batch.total_price.toString(),
-      formatDate(batch.sale_date),
-      batch.destination,
-      batch.recipient,
-      batch.customer_type,
-      batch.customer_county,
-      batch.customer_contact,
-    ]);
+    // Transform the data into the format expected by generateCSV
+    const csvData = dataToExport.map((batch) => ({
+      Seller: batch.user_name,
+      "Meter Type": batch.meter_type,
+      Amount: batch.batch_amount.toString(),
+      "Sale Amount": batch.total_price.toString(),
+      "Sale Date": formatDate(batch.sale_date),
+      Destination: batch.destination,
+      Recipient: batch.recipient,
+      "Customer Type": batch.customer_type,
+      County: batch.customer_county,
+      Contact: batch.customer_contact,
+    }));
 
-    generateCSV("meter_sales_report", headers, data);
+    generateCSV(csvData, "meter_sales_report");
   };
 
   return (

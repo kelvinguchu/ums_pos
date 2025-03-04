@@ -164,28 +164,19 @@ export default function DailyReports({
   const handleExportCSV = () => {
     const dataToExport = hasActiveFilters() ? currentItems : filteredSales;
 
-    const headers = [
-      "Seller's Name",
-      "Meter Type",
-      "Amount",
-      "Total Price",
-      "Time",
-      "Customer Type",
-      "County",
-      "Contact",
-    ];
-    const data = dataToExport.map((sale) => [
-      sale.user_name,
-      sale.meter_type,
-      sale.batch_amount.toString(),
-      sale.total_price.toString(),
-      new Date(sale.sale_date).toLocaleTimeString(),
-      sale.customer_type,
-      sale.customer_county,
-      sale.customer_contact,
-    ]);
+    // Transform the data into the format expected by generateCSV
+    const csvData = dataToExport.map((sale) => ({
+      "Seller's Name": sale.user_name,
+      "Meter Type": sale.meter_type,
+      Amount: sale.batch_amount.toString(),
+      "Total Price": sale.total_price.toString(),
+      Time: new Date(sale.sale_date).toLocaleTimeString(),
+      "Customer Type": sale.customer_type,
+      County: sale.customer_county,
+      Contact: sale.customer_contact,
+    }));
 
-    generateCSV("daily_sales_report", headers, data);
+    generateCSV(csvData, "daily_sales_report");
   };
 
   useEffect(() => {
@@ -279,9 +270,10 @@ export default function DailyReports({
                 variant='outline'
                 size='icon'
                 onClick={handleRefresh}
-                disabled={isLoading}
-              >
-                <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+                disabled={isLoading}>
+                <RefreshCw
+                  className={cn("h-4 w-4", isLoading && "animate-spin")}
+                />
               </Button>
             </div>
           </CardHeader>

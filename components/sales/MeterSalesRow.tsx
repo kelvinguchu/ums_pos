@@ -122,10 +122,12 @@ export function MeterSalesRow({
   };
 
   const handleDownloadSerials = () => {
-    const headers = ["SN#"];
-    const data = meters.map((meter) => [meter.serial_number]);
+    // Transform the data into the format expected by generateCSV
+    const csvData = meters.map((meter) => ({
+      "SN#": meter.serial_number,
+    }));
 
-    generateCSV(`meter_serials_batch_${batch.id}`, headers, data);
+    generateCSV(csvData, `meter_serials_batch_${batch.id}`);
   };
 
   return (
