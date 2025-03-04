@@ -1565,32 +1565,23 @@ export async function returnSoldMeter({
             fault_description: meter.fault_description,
             status: "pending",
           });
-
         if (faultyError) throw faultyError;
 
-        // 2. Update sold_meters status to 'faulty'
-        const { error: updateError } = await supabase
-          .from("sold_meters")
-          .update({ status: "faulty" })
-          .eq("id", meter.id);
-
-        if (updateError) throw updateError;
-
-        // 3. Handle replacement if exists
+        // Check if a replacement is provided for this meter
         const replacement = replacements.find(
           (r) => r.original_id === meter.id
         );
+
         if (replacement) {
           // Remove replacement meter from meters table
           const { error: removeError } = await supabase
             .from("meters")
             .delete()
             .eq("serial_number", replacement.new_serial);
-
           if (removeError) throw removeError;
 
-          // Update original sold_meters record with replacement info
-          const { error: replacementError } = await supabase
+          // Update sold_meters record with replacement info in one update
+          const { error: updateError } = await supabase
             .from("sold_meters")
             .update({
               status: "replaced",
@@ -1599,8 +1590,14 @@ export async function returnSoldMeter({
               replacement_by: returnedBy,
             })
             .eq("id", meter.id);
-
-          if (replacementError) throw replacementError;
+          if (updateError) throw updateError;
+        } else {
+          // Update sold_meters record to mark as faulty
+          const { error: updateError } = await supabase
+            .from("sold_meters")
+            .update({ status: "faulty" })
+            .eq("id", meter.id);
+          if (updateError) throw updateError;
         }
       }
     }
