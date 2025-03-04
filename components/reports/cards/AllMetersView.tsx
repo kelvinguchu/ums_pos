@@ -363,9 +363,9 @@ const AllMetersView: React.FC = () => {
           defaultValue='in_stock'
           className='w-full'
           value={filters.statusFilter}
-          onValueChange={(value) =>
-            filters.handleStatusFilterChange(value as MeterStatusFilter)
-          }>
+          onValueChange={(value) => {
+            filters.handleStatusFilterChange(value as MeterStatusFilter);
+          }}>
           <div className='flex justify-between items-center mb-4 pr-2'>
             <TabsList>
               <TabsTrigger value='in_stock'>In Stock</TabsTrigger>
@@ -377,9 +377,10 @@ const AllMetersView: React.FC = () => {
 
             <Select
               value={filters.typeFilter || ""}
-              onChange={(e) =>
-                filters.handleTypeFilterChange(e.target.value || null)
-              }>
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                const value = e.target.value;
+                filters.handleTypeFilterChange(value || null);
+              }}>
               <SelectTrigger className='w-[150px]'>
                 <SelectValue>All Types</SelectValue>
               </SelectTrigger>

@@ -38,18 +38,28 @@ export function useMetersData(initialPageSize: number = 20) {
     searchTerm,
   ];
 
+
   // The main query
   const { data, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
       const filterStatus = statusFilter === "all" ? undefined : statusFilter;
-      return getAllMetersWithStatus(
-        page,
-        pageSize,
-        filterStatus,
-        typeFilter || undefined,
-        searchTerm || undefined
-      );
+
+      try {
+        const result = await getAllMetersWithStatus(
+          page,
+          pageSize,
+          filterStatus,
+          typeFilter || undefined,
+          searchTerm || undefined
+        );
+
+
+        return result;
+      } catch (error) {
+        console.error("Error in useMetersData query:", error);
+        throw error;
+      }
     },
     staleTime: 1000 * 60, // 1 minute
   });
@@ -58,6 +68,7 @@ export function useMetersData(initialPageSize: number = 20) {
   const prefetchNextPage = useCallback(() => {
     if (page < Math.ceil((data?.totalCount || 0) / pageSize)) {
       const nextPage = page + 1;
+
       const nextPageQueryKey = [
         QUERY_KEYS.allMeters,
         nextPage,
