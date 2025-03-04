@@ -198,7 +198,6 @@ export const FileUploadHandler = memo(function FileUploadHandler({
 
       // Show results
       if (errors.length > 0) {
-        console.log("Errors:", errors); // For debugging
         toast({
           title: "Warning",
           description: `${validMeters.length} meters added. ${

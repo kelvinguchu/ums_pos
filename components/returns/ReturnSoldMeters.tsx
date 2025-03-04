@@ -18,13 +18,10 @@ import {
   getAvailableReplacementMeters,
 } from "@/lib/actions/supabaseActions";
 import { X, Loader2 } from "lucide-react";
-import { pdf } from "@react-pdf/renderer";
-import SoldMeterReturnReceipt from "../sharedcomponents/SoldMeterReturnReceipt";
 import localFont from "next/font/local";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { supabase } from '@/lib/supabase';
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -180,14 +177,22 @@ export default function ReturnSoldMeters({
     replacementSerial: string
   ) => {
     try {
-      const { data: availableMeter, error } = await supabase
-        .from("meters")
-        .select("serial_number, type")
-        .eq("serial_number", replacementSerial.toUpperCase())
-        .eq("type", meter.type)
-        .single();
+      // Use getAvailableReplacementMeters to fetch available meters of the same type
+      const availableMeters = await getAvailableReplacementMeters(meter.type);
 
-      if (error || !availableMeter) {
+      // Find the replacement meter with the matching serial number
+      const availableMeter = availableMeters.find(
+        (m: { serial_number: string; type: string }) =>
+          m.serial_number.toUpperCase() === replacementSerial.toUpperCase()
+      );
+
+      if (!availableMeter) {
+        console.error(
+          "Replacement meter not found or wrong type for meter:",
+          meter,
+          "Replacement Serial:",
+          replacementSerial.toUpperCase()
+        );
         toast({
           title: "Error",
           description: "Replacement meter not found or wrong type",
@@ -219,6 +224,7 @@ export default function ReturnSoldMeters({
         style: { backgroundColor: "#2ECC40", color: "white" },
       });
     } catch (error) {
+      console.error("Exception in handleReplacement:", error);
       toast({
         title: "Error",
         description: "Failed to add replacement meter",

@@ -17,7 +17,6 @@ export async function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.register('/custom-sw.js');
-      console.log('Service Worker registered successfully:', registration);
       return registration;
     } catch (error) {
       console.error('Error registering service worker:', error);

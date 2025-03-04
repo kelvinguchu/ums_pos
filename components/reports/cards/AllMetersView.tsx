@@ -52,6 +52,7 @@ import { generateCSV } from "@/lib/utils/csvGenerator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 const METER_TYPES = [
   "integrated",
@@ -94,6 +95,7 @@ function debounce<T extends (...args: any[]) => any>(
 const AllMetersView: React.FC = () => {
   const { meters, totalCount, isLoading, error, pagination, filters, refetch } =
     useMetersData(25); // Reduce to 25 entries per page
+  const { toast } = useToast();
 
   const [searchInput, setSearchInput] = useState("");
 
@@ -182,6 +184,23 @@ const AllMetersView: React.FC = () => {
       csvData,
       `meters-report-${new Date().toISOString().split("T")[0]}`
     );
+  };
+
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Refreshed",
+        description: "Meter data has been refreshed",
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh meter data",
+        variant: "destructive",
+      });
+    }
   };
 
   const renderMeterDetails = (meter: MeterWithStatus) => {
@@ -313,9 +332,13 @@ const AllMetersView: React.FC = () => {
 
   return (
     <div className='flex flex-col h-full'>
-      <div className='flex justify-between items-center mb-4'>
+      <div className='flex justify-between items-center mb-4 pr-8'>
         <h2 className='text-2xl font-bold'>All Meters</h2>
         <div className='flex items-center gap-2'>
+          <Button variant='outline' onClick={handleRefresh}>
+            <RefreshCw className='h-4 w-4 mr-2' />
+            Refresh
+          </Button>
           <Input
             type='text'
             placeholder='Search by serial number...'
@@ -339,10 +362,11 @@ const AllMetersView: React.FC = () => {
         <Tabs
           defaultValue='in_stock'
           className='w-full'
+          value={filters.statusFilter}
           onValueChange={(value) =>
             filters.handleStatusFilterChange(value as MeterStatusFilter)
           }>
-          <div className='flex justify-between items-center mb-4'>
+          <div className='flex justify-between items-center mb-4 pr-2'>
             <TabsList>
               <TabsTrigger value='in_stock'>In Stock</TabsTrigger>
               <TabsTrigger value='with_agent'>With Agent</TabsTrigger>
