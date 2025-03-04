@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Package, History, AlertTriangle, RefreshCw } from "lucide-react";
+import { Package, History, AlertTriangle, RefreshCw, List } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { cn } from "@/lib/utils";
 import { getMeterTypeBadgeClass } from "../utils/meterTypeConfig";
@@ -24,6 +24,7 @@ import PurchaseBatchesView from "./PurchaseBatchesView";
 import localFont from "next/font/local";
 import FaultyMetersView from "./FaultyMetersView";
 import ReplacementsView from "./ReplacementsView";
+import AllMetersView from "./AllMetersView";
 
 const geistMono = localFont({
   src: "../../../public/fonts/GeistMonoVF.woff",
@@ -82,7 +83,8 @@ export function MeterInventoryCard({
       0
     ),
     total: allMeterTypes.reduce(
-      (sum, item) => sum + Number(item.remaining_meters) + getAgentCount(item.type),
+      (sum, item) =>
+        sum + Number(item.remaining_meters) + getAgentCount(item.type),
       0
     ),
   };
@@ -98,6 +100,22 @@ export function MeterInventoryCard({
       <CardHeader className='flex flex-row items-center justify-between p-4 md:p-6'>
         <CardTitle className='text-lg md:text-xl'>Meters Remaining</CardTitle>
         <div className='flex items-center gap-2'>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Badge
+                variant='outline'
+                className='hover:bg-gray-100 cursor-pointer flex items-center gap-1'>
+                <List className='h-3 w-3' />
+                All Meters
+              </Badge>
+            </SheetTrigger>
+            <SheetContent
+              className={`${geistMono.className} min-w-[90vw] md:min-w-[70vw]`}
+              side='right'>
+              <AllMetersView />
+            </SheetContent>
+          </Sheet>
+
           <Sheet>
             <SheetTrigger asChild>
               <Badge
@@ -151,7 +169,7 @@ export function MeterInventoryCard({
             {/* Mobile View */}
             <div className='md:hidden space-y-4'>
               {METER_TYPES.map((type, index) => {
-                const item = allMeterTypes.find(m => m.type === type)!;
+                const item = allMeterTypes.find((m) => m.type === type)!;
                 return (
                   <div key={index} className='space-y-2'>
                     <div className='flex justify-between items-center font-medium'>
@@ -171,7 +189,9 @@ export function MeterInventoryCard({
                       </div>
                       <div>
                         <p className='text-muted-foreground'>With Agents</p>
-                        <p className='font-medium'>{getAgentCount(item.type)}</p>
+                        <p className='font-medium'>
+                          {getAgentCount(item.type)}
+                        </p>
                       </div>
                       <div>
                         <p className='text-muted-foreground'>Total</p>
@@ -188,9 +208,7 @@ export function MeterInventoryCard({
                   Total
                 </Badge>
                 <div className='grid grid-cols-3 gap-4 text-sm font-bold'>
-                  <span>
-                    {grandTotals.remaining}
-                  </span>
+                  <span>{grandTotals.remaining}</span>
                 </div>
               </div>
             </div>

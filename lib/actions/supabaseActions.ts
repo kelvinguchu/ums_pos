@@ -2094,3 +2094,363 @@ export function aggregateSalesData(sales: any[]): AggregatedSales {
 
   return aggregated;
 }
+
+export interface MeterWithStatus {
+  serial_number: string;
+  type: string;
+  status: "in_stock" | "with_agent" | "sold" | "faulty" | "replaced";
+  agent?: {
+    id: string;
+    name: string;
+    location: string;
+  };
+  sale_details?: {
+    sold_at: string;
+    sold_by: string;
+    destination: string;
+    recipient: string;
+    customer_contact: string;
+    unit_price: number;
+    batch_id: string;
+  };
+  fault_details?: {
+    returned_at: string;
+    returner_name: string;
+    fault_description: string;
+    fault_status: string;
+  };
+  replacement_details?: {
+    replacement_serial: string;
+    replacement_date: string;
+    replacement_by: string;
+  };
+}
+
+interface StockMeter {
+  id: string;
+  serial_number: string;
+  type: string;
+}
+
+interface AgentMeter {
+  id: string;
+  serial_number: string;
+  type: string;
+  agents: {
+    id: string;
+    name: string;
+    location: string;
+  };
+}
+
+interface SoldMeter {
+  id: string;
+  serial_number: string;
+  type?: string;
+  sold_at: string;
+  sold_by: string;
+  destination: string;
+  recipient: string;
+  unit_price: number;
+  batch_id: string;
+  replacement_serial?: string;
+  replacement_date?: string;
+  replacement_by?: string;
+  customer_contact: string;
+}
+
+interface FaultyMeter {
+  id: string;
+  serial_number: string;
+  type: string;
+  returned_by: string;
+  returned_at: string;
+  returner_name: string;
+  fault_description: string;
+  status: string;
+  original_sale_id: string;
+}
+
+export async function getAllMetersWithStatus(
+  page: number = 1,
+  pageSize: number = 20,
+  filterStatus?: string,
+  filterType?: string,
+  searchTerm?: string
+): Promise<{ meters: MeterWithStatus[]; totalCount: number }> {
+  try {
+    // Calculate offset based on page and pageSize
+    const offset = (page - 1) * pageSize;
+
+    // Prepare queries for each meter status
+    let stockMetersQuery = supabase
+      .from("meters")
+      .select("id, serial_number, type", { count: "exact" });
+
+    let agentMetersQuery = supabase.from("agent_inventory").select(
+      `
+        id, serial_number, type,
+        agents (
+          id,
+          name,
+          location
+        )
+      `,
+      { count: "exact" }
+    );
+
+    let soldMetersQuery = supabase.from("sold_meters").select(
+      `
+        id,
+        serial_number,
+        sold_at,
+        sold_by,
+        destination,
+        recipient,
+        unit_price,
+        batch_id,
+        replacement_serial,
+        replacement_date,
+        replacement_by,
+        customer_contact
+      `,
+      { count: "exact" }
+    );
+
+    let faultyMetersQuery = supabase.from("faulty_returns").select(
+      `
+        id,
+        serial_number,
+        type,
+        returned_by,
+        returned_at,
+        returner_name,
+        fault_description,
+        status,
+        original_sale_id
+      `,
+      { count: "exact" }
+    );
+
+    // Apply filters if provided
+    if (searchTerm) {
+      const searchPattern = `%${searchTerm}%`;
+      stockMetersQuery = stockMetersQuery.ilike("serial_number", searchPattern);
+      agentMetersQuery = agentMetersQuery.ilike("serial_number", searchPattern);
+      soldMetersQuery = soldMetersQuery.ilike("serial_number", searchPattern);
+      faultyMetersQuery = faultyMetersQuery.ilike(
+        "serial_number",
+        searchPattern
+      );
+    }
+
+    if (filterType) {
+      stockMetersQuery = stockMetersQuery.eq("type", filterType);
+      agentMetersQuery = agentMetersQuery.eq("type", filterType);
+      faultyMetersQuery = faultyMetersQuery.eq("type", filterType);
+    }
+
+    // Execute only the queries needed based on filterStatus
+    const queries = [];
+
+    if (!filterStatus || filterStatus === "in_stock") {
+      queries.push(stockMetersQuery.range(offset, offset + pageSize - 1));
+    }
+
+    if (!filterStatus || filterStatus === "with_agent") {
+      queries.push(agentMetersQuery.range(offset, offset + pageSize - 1));
+    }
+
+    if (
+      !filterStatus ||
+      filterStatus === "sold" ||
+      filterStatus === "replaced"
+    ) {
+      queries.push(soldMetersQuery.range(offset, offset + pageSize - 1));
+    }
+
+    if (!filterStatus || filterStatus === "faulty") {
+      queries.push(faultyMetersQuery.range(offset, offset + pageSize - 1));
+    }
+
+    // Execute all queries in parallel
+    const results = await Promise.all(queries);
+
+    // Process results
+    let allMeters: MeterWithStatus[] = [];
+    let totalCount = 0;
+
+    // Process stock meters
+    if (!filterStatus || filterStatus === "in_stock") {
+      const {
+        data: stockMeters,
+        count: stockCount,
+        error: stockError,
+      } = results.shift() || {};
+
+      if (stockError) throw stockError;
+
+      if (stockMeters) {
+        allMeters = [
+          ...allMeters,
+          ...(stockMeters as StockMeter[]).map((meter) => ({
+            serial_number: meter.serial_number,
+            type: meter.type,
+            status: "in_stock" as const,
+          })),
+        ];
+      }
+
+      totalCount += stockCount || 0;
+    }
+
+    // Process agent meters
+    if (!filterStatus || filterStatus === "with_agent") {
+      const {
+        data: agentMeters,
+        count: agentCount,
+        error: agentError,
+      } = results.shift() || {};
+
+      if (agentError) throw agentError;
+
+      if (agentMeters) {
+        allMeters = [
+          ...allMeters,
+          ...(agentMeters as AgentMeter[]).map((meter) => ({
+            serial_number: meter.serial_number,
+            type: meter.type,
+            status: "with_agent" as const,
+            agent: meter.agents,
+          })),
+        ];
+      }
+
+      totalCount += agentCount || 0;
+    }
+
+    // Process sold meters
+    if (
+      !filterStatus ||
+      filterStatus === "sold" ||
+      filterStatus === "replaced"
+    ) {
+      const {
+        data: soldMeters,
+        count: soldCount,
+        error: soldError,
+      } = results.shift() || {};
+
+      if (soldError) throw soldError;
+
+      if (soldMeters) {
+        // Get user profiles for sold meters
+        const userIds = [
+          ...new Set((soldMeters as SoldMeter[]).map((m) => m.sold_by)),
+        ];
+
+        const { data: userProfiles } = await supabase
+          .from("user_profiles")
+          .select("id, name")
+          .in("id", userIds);
+
+        const userMap = (userProfiles || []).reduce((acc, user) => {
+          acc[user.id] = user.name;
+          return acc;
+        }, {} as { [key: string]: string });
+
+        // Get meter types from the sale_batches table by joining with batch_id
+        const batchIds = [
+          ...new Set((soldMeters as SoldMeter[]).map((m) => m.batch_id)),
+        ];
+
+        const { data: batchData } = await supabase
+          .from("sale_batches")
+          .select("id, meter_type")
+          .in("id", batchIds);
+
+        const batchTypeMap = (batchData || []).reduce((acc, batch) => {
+          acc[batch.id] = batch.meter_type;
+          return acc;
+        }, {} as { [key: string]: string });
+
+        const processedSoldMeters = (soldMeters as SoldMeter[])
+          .filter((meter) => {
+            if (filterStatus === "sold") return !meter.replacement_serial;
+            if (filterStatus === "replaced") return !!meter.replacement_serial;
+            return true;
+          })
+          .map((meter) => ({
+            serial_number: meter.serial_number,
+            // Get the type from the batch data
+            type: batchTypeMap[meter.batch_id] || "unknown",
+            status: meter.replacement_serial
+              ? ("replaced" as const)
+              : ("sold" as const),
+            sale_details: {
+              sold_at: meter.sold_at,
+              sold_by: userMap[meter.sold_by] || meter.sold_by,
+              destination: meter.destination,
+              recipient: meter.recipient,
+              customer_contact: meter.customer_contact,
+              unit_price: meter.unit_price,
+              batch_id: meter.batch_id,
+            },
+            replacement_details: meter.replacement_serial
+              ? {
+                  replacement_serial: meter.replacement_serial,
+                  replacement_date: meter.replacement_date || "",
+                  replacement_by: meter.replacement_by || "",
+                }
+              : undefined,
+          }));
+
+        allMeters = [...allMeters, ...processedSoldMeters];
+      }
+
+      totalCount += soldCount || 0;
+    }
+
+    // Process faulty meters
+    if (!filterStatus || filterStatus === "faulty") {
+      const {
+        data: faultyMeters,
+        count: faultyCount,
+        error: faultyError,
+      } = results.shift() || {};
+
+      if (faultyError) throw faultyError;
+
+      if (faultyMeters) {
+        allMeters = [
+          ...allMeters,
+          ...(faultyMeters as FaultyMeter[]).map((meter) => ({
+            serial_number: meter.serial_number,
+            type: meter.type,
+            status: "faulty" as const,
+            fault_details: {
+              returned_at: meter.returned_at,
+              returner_name: meter.returner_name,
+              fault_description: meter.fault_description,
+              fault_status: meter.status,
+            },
+          })),
+        ];
+      }
+
+      totalCount += faultyCount || 0;
+    }
+
+    // Sort by serial number
+    allMeters.sort((a, b) => a.serial_number.localeCompare(b.serial_number));
+
+    // Return paginated results
+    return {
+      meters: allMeters.slice(0, pageSize),
+      totalCount,
+    };
+  } catch (error) {
+    console.error("Error fetching all meters with status:", error);
+    throw error;
+  }
+}
