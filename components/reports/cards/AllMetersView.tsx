@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useMetersData, MeterStatusFilter } from "../hooks/useMetersData";
-import { MeterWithStatus } from "@/lib/actions/supabaseActions";
+import { MeterWithStatus } from "@/lib/actions/supabaseActions2";
 import {
   Table,
   TableBody,
@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { generateCSV } from "@/lib/utils/csvGenerator";
+import { getAllMetersForExport } from "@/lib/actions/supabaseActions2";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,6 +99,7 @@ const AllMetersView: React.FC = () => {
   const { toast } = useToast();
 
   const [searchInput, setSearchInput] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
 
   // Debounced search function
   const debouncedSearch = debounce(() => {
@@ -120,70 +122,167 @@ const AllMetersView: React.FC = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    if (!meters.length) return;
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
 
-    const csvData = meters.map((meter) => {
-      const baseData = {
-        "Serial Number": meter.serial_number,
-        Type: meter.type,
-        Status: meter.status,
-      };
+      // Get all meters based on current filters
+      const allMeters = await getAllMetersForExport(
+        filters.statusFilter,
+        filters.typeFilter,
+        filters.searchTerm
+      );
 
-      let additionalData = {};
-
-      if (meter.status === "with_agent" && meter.agent) {
-        additionalData = {
-          "Agent Name": meter.agent.name,
-          "Agent Location": meter.agent.location,
-        };
-      } else if (
-        (meter.status === "sold" || meter.status === "replaced") &&
-        meter.sale_details
-      ) {
-        additionalData = {
-          "Sold Date": meter.sale_details.sold_at
-            ? format(new Date(meter.sale_details.sold_at), "yyyy-MM-dd")
-            : "",
-          "Sold By": meter.sale_details.sold_by,
-          Recipient: meter.sale_details.recipient,
-          Destination: meter.sale_details.destination,
-          "Unit Price": meter.sale_details.unit_price,
-        };
-
-        if (meter.status === "replaced" && meter.replacement_details) {
-          additionalData = {
-            ...additionalData,
-            "Replacement Serial": meter.replacement_details.replacement_serial,
-            "Replacement Date": meter.replacement_details.replacement_date
-              ? format(
-                  new Date(meter.replacement_details.replacement_date),
-                  "yyyy-MM-dd"
-                )
-              : "",
-          };
-        }
-      } else if (meter.status === "faulty" && meter.fault_details) {
-        additionalData = {
-          "Returned Date": meter.fault_details.returned_at
-            ? format(new Date(meter.fault_details.returned_at), "yyyy-MM-dd")
-            : "",
-          "Returned By": meter.fault_details.returner_name,
-          "Fault Description": meter.fault_details.fault_description,
-          "Fault Status": meter.fault_details.fault_status,
-        };
+      if (!allMeters.length) {
+        toast({
+          title: "Export Failed",
+          description: "No meters found to export with the current filters",
+          variant: "destructive",
+        });
+        setIsExporting(false);
+        return;
       }
 
-      return {
-        ...baseData,
-        ...additionalData,
-      };
-    });
+      // Format the data for CSV
+      const csvData = allMeters.map((meter: MeterWithStatus) => {
+        const baseData = {
+          "Serial Number": meter.serial_number,
+          Type: meter.type,
+          Status: meter.status,
+        };
 
-    generateCSV(
-      csvData,
-      `meters-report-${new Date().toISOString().split("T")[0]}`
-    );
+        let additionalData = {};
+
+        // Handle different meter statuses
+        switch (meter.status) {
+          case "with_agent":
+            if (meter.agent_details) {
+              additionalData = {
+                "Agent Name": meter.agent_details.agent_name,
+                "Agent Phone": meter.agent_details.agent_phone,
+                "Agent Location": meter.agent_details.agent_location,
+                "Assigned Date": meter.agent_details.assigned_at
+                  ? format(
+                      new Date(meter.agent_details.assigned_at),
+                      "yyyy-MM-dd"
+                    )
+                  : "",
+              };
+            }
+            break;
+
+          case "sold":
+            if (meter.sale_details) {
+              additionalData = {
+                "Sold Date": meter.sale_details.sold_at
+                  ? format(new Date(meter.sale_details.sold_at), "yyyy-MM-dd")
+                  : "",
+                "Sold By": meter.sale_details.sold_by,
+                Recipient: meter.sale_details.recipient,
+                Destination: meter.sale_details.destination,
+                "Customer Contact": meter.sale_details.customer_contact,
+                "Unit Price": meter.sale_details.unit_price,
+              };
+            }
+            break;
+
+          case "replaced":
+            if (meter.sale_details) {
+              additionalData = {
+                "Sold Date": meter.sale_details.sold_at
+                  ? format(new Date(meter.sale_details.sold_at), "yyyy-MM-dd")
+                  : "",
+                "Sold By": meter.sale_details.sold_by,
+                Recipient: meter.sale_details.recipient,
+                Destination: meter.sale_details.destination,
+                "Customer Contact": meter.sale_details.customer_contact,
+                "Unit Price": meter.sale_details.unit_price,
+              };
+
+              if (meter.replacement_details) {
+                additionalData = {
+                  ...additionalData,
+                  "Replacement Serial":
+                    meter.replacement_details.replacement_serial,
+                  "Replacement Date": meter.replacement_details.replacement_date
+                    ? format(
+                        new Date(meter.replacement_details.replacement_date),
+                        "yyyy-MM-dd"
+                      )
+                    : "",
+                  "Replaced By": meter.replacement_details.replacement_by,
+                };
+              }
+            }
+            break;
+
+          case "faulty":
+            if (meter.fault_details) {
+              additionalData = {
+                "Reported Date": meter.fault_details.reported_at
+                  ? format(
+                      new Date(meter.fault_details.reported_at),
+                      "yyyy-MM-dd"
+                    )
+                  : "",
+                "Reported By": meter.fault_details.reported_by,
+                "Returner Name": meter.fault_details.returner_name,
+                "Fault Description": meter.fault_details.fault_description,
+                "Fault Status": meter.fault_details.fault_status,
+              };
+            }
+
+            if (meter.sale_details) {
+              additionalData = {
+                ...additionalData,
+                "Sold Date": meter.sale_details.sold_at
+                  ? format(new Date(meter.sale_details.sold_at), "yyyy-MM-dd")
+                  : "",
+                "Sold By": meter.sale_details.sold_by,
+                Recipient: meter.sale_details.recipient,
+                Destination: meter.sale_details.destination,
+              };
+            }
+            break;
+
+          case "in_stock":
+            // No additional data needed for in_stock meters
+            break;
+
+          default:
+            break;
+        }
+
+        return {
+          ...baseData,
+          ...additionalData,
+        };
+      });
+
+      // Generate and download the CSV
+      generateCSV(
+        csvData,
+        `meters-report-${filters.statusFilter || "all"}-${
+          new Date().toISOString().split("T")[0]
+        }`
+      );
+
+      toast({
+        title: "Export Successful",
+        description: `Exported ${allMeters.length} meters`,
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      toast({
+        title: "Export Failed",
+        description:
+          "An error occurred while exporting the data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleRefresh = async () => {
@@ -206,14 +305,28 @@ const AllMetersView: React.FC = () => {
   const renderMeterDetails = (meter: MeterWithStatus) => {
     return (
       <div className='space-y-1 text-sm'>
-        {meter.status === "with_agent" && meter.agent && (
+        {meter.status === "with_agent" && meter.agent_details && (
           <div>
             <p className='text-muted-foreground'>
-              <span className='font-medium'>Agent:</span> {meter.agent.name}
+              <span className='font-medium'>Agent:</span>{" "}
+              {meter.agent_details.agent_name}
+            </p>
+            <p className='text-muted-foreground'>
+              <span className='font-medium'>Phone:</span>{" "}
+              {meter.agent_details.agent_phone}
             </p>
             <p className='text-muted-foreground'>
               <span className='font-medium'>Location:</span>{" "}
-              {meter.agent.location}
+              {meter.agent_details.agent_location}
+            </p>
+            <p className='text-muted-foreground'>
+              <span className='font-medium'>Assigned on:</span>{" "}
+              {meter.agent_details.assigned_at
+                ? format(
+                    new Date(meter.agent_details.assigned_at),
+                    "MMM d, yyyy"
+                  )
+                : "Unknown"}
             </p>
           </div>
         )}
@@ -266,11 +379,14 @@ const AllMetersView: React.FC = () => {
           <div>
             <p className='text-muted-foreground'>
               <span className='font-medium'>Returned on:</span>{" "}
-              {format(new Date(meter.fault_details.returned_at), "MMM d, yyyy")}
+              {format(
+                new Date(meter.fault_details.returned_at || ""),
+                "MMM d, yyyy"
+              )}
             </p>
             <p className='text-muted-foreground'>
               <span className='font-medium'>Returned by:</span>{" "}
-              {meter.fault_details.returner_name}
+              {meter.fault_details.returner_name || ""}
             </p>
             <p className='text-muted-foreground'>
               <span className='font-medium'>Fault:</span>{" "}
@@ -285,7 +401,7 @@ const AllMetersView: React.FC = () => {
                     ? "bg-green-100 text-green-800"
                     : "bg-yellow-100 text-yellow-800"
                 }>
-                {meter.fault_details.fault_status}
+                {meter.fault_details.fault_status || ""}
               </Badge>
             </p>
           </div>
@@ -351,9 +467,20 @@ const AllMetersView: React.FC = () => {
             <Search className='h-4 w-4 mr-2' />
             Search
           </Button>
-          <Button variant='outline' onClick={handleExportCSV}>
-            <Download className='h-4 w-4 mr-2' />
-            Export CSV
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={handleExportCSV}
+            disabled={isExporting || isLoading}
+            className='ml-2'>
+            {isExporting ? (
+              <>
+                <span className='animate-spin mr-2'>⏳</span>
+                Exporting...
+              </>
+            ) : (
+              "Export CSV"
+            )}
           </Button>
         </div>
       </div>
@@ -378,8 +505,7 @@ const AllMetersView: React.FC = () => {
             <Select
               value={filters.typeFilter || ""}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                const value = e.target.value;
-                filters.handleTypeFilterChange(value || null);
+                filters.handleTypeFilterChange(e.target.value || null);
               }}>
               <SelectTrigger className='w-[150px]'>
                 <SelectValue>All Types</SelectValue>
@@ -431,7 +557,7 @@ const AllMetersView: React.FC = () => {
                   <>
                     {/* Mobile view */}
                     <div className='md:hidden space-y-4'>
-                      {meters.map((meter: MeterWithStatus) => (
+                      {(meters as MeterWithStatus[]).map((meter) => (
                         <Card key={meter.serial_number} className='p-4'>
                           <div className='flex justify-between items-start'>
                             <div>
@@ -460,7 +586,7 @@ const AllMetersView: React.FC = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {meters.map((meter: MeterWithStatus) => (
+                          {(meters as MeterWithStatus[]).map((meter) => (
                             <TableRow key={meter.serial_number}>
                               <TableCell className='font-medium'>
                                 {meter.serial_number}

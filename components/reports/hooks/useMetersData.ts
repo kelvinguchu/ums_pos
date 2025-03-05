@@ -8,6 +8,7 @@ import {
 // Define query keys
 const QUERY_KEYS = {
   allMeters: "allMeters",
+  metersByStatus: "metersByStatus",
 } as const;
 
 export type MeterStatusFilter =
@@ -38,7 +39,6 @@ export function useMetersData(initialPageSize: number = 20) {
     searchTerm,
   ];
 
-
   // The main query
   const { data, isLoading, error, refetch } = useQuery({
     queryKey,
@@ -54,21 +54,31 @@ export function useMetersData(initialPageSize: number = 20) {
           searchTerm || undefined
         );
 
-
         return result;
       } catch (error) {
         console.error("Error in useMetersData query:", error);
         throw error;
       }
     },
-    staleTime: 1000 * 60, // 1 minute
+    staleTime: 1000 * 60 * 5, // 5 minutes - increased from 1 minute
+    gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    refetchOnMount: true, // Refetch when component mounts
+    refetchOnReconnect: true, // Refetch when reconnecting
+    placeholderData: (previousData) => previousData, // Replace keepPreviousData with placeholderData
   });
 
-  // Prefetch next page
-  const prefetchNextPage = useCallback(() => {
-    if (page < Math.ceil((data?.totalCount || 0) / pageSize)) {
-      const nextPage = page + 1;
+  // Prefetch adjacent pages
+  const prefetchAdjacentPages = useCallback(() => {
+    // Only prefetch if we have data
+    if (!data) return;
 
+    const totalPages = Math.ceil((data.totalCount || 0) / pageSize);
+    const filterStatus = statusFilter === "all" ? undefined : statusFilter;
+
+    // Prefetch next page if available
+    if (page < totalPages) {
+      const nextPage = page + 1;
       const nextPageQueryKey = [
         QUERY_KEYS.allMeters,
         nextPage,
@@ -81,8 +91,6 @@ export function useMetersData(initialPageSize: number = 20) {
       queryClient.prefetchQuery({
         queryKey: nextPageQueryKey,
         queryFn: async () => {
-          const filterStatus =
-            statusFilter === "all" ? undefined : statusFilter;
           return getAllMetersWithStatus(
             nextPage,
             pageSize,
@@ -91,25 +99,94 @@ export function useMetersData(initialPageSize: number = 20) {
             searchTerm || undefined
           );
         },
-        staleTime: 1000 * 60, // 1 minute
+        staleTime: 1000 * 60 * 5, // 5 minutes
       });
     }
-  }, [
-    page,
-    pageSize,
-    statusFilter,
-    typeFilter,
-    searchTerm,
-    data?.totalCount,
-    queryClient,
-  ]);
 
-  // Prefetch next page when current page data is loaded
+    // Prefetch previous page if available
+    if (page > 1) {
+      const prevPage = page - 1;
+      const prevPageQueryKey = [
+        QUERY_KEYS.allMeters,
+        prevPage,
+        pageSize,
+        statusFilter,
+        typeFilter,
+        searchTerm,
+      ];
+
+      queryClient.prefetchQuery({
+        queryKey: prevPageQueryKey,
+        queryFn: async () => {
+          return getAllMetersWithStatus(
+            prevPage,
+            pageSize,
+            filterStatus,
+            typeFilter || undefined,
+            searchTerm || undefined
+          );
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      });
+    }
+  }, [page, pageSize, statusFilter, typeFilter, searchTerm, data, queryClient]);
+
+  // Prefetch adjacent pages when current page data is loaded
   useEffect(() => {
     if (!isLoading && data) {
-      prefetchNextPage();
+      prefetchAdjacentPages();
     }
-  }, [isLoading, data, prefetchNextPage]);
+  }, [isLoading, data, prefetchAdjacentPages]);
+
+  // Prefetch data for different status filters
+  useEffect(() => {
+    if (!isLoading && !searchTerm && !typeFilter) {
+      // Only prefetch other status filters when not searching or filtering by type
+      const statusesToPrefetch: MeterStatusFilter[] = [
+        "in_stock",
+        "with_agent",
+        "sold",
+        "replaced",
+        "faulty",
+      ].filter((status) => status !== statusFilter) as MeterStatusFilter[];
+
+      statusesToPrefetch.forEach((status) => {
+        const statusQueryKey = [
+          QUERY_KEYS.metersByStatus,
+          1, // First page
+          pageSize,
+          status,
+          null, // No type filter
+          "", // No search term
+        ];
+
+        queryClient.prefetchQuery({
+          queryKey: statusQueryKey,
+          queryFn: async () => {
+            return getAllMetersWithStatus(
+              1,
+              pageSize,
+              status,
+              undefined,
+              undefined
+            );
+          },
+          staleTime: 1000 * 60 * 5, // 5 minutes
+        });
+      });
+    }
+  }, [statusFilter, isLoading, searchTerm, typeFilter, pageSize, queryClient]);
+
+  // Function to manually invalidate cache and refetch
+  const invalidateAndRefetch = useCallback(() => {
+    // Invalidate all queries related to meters
+    queryClient.invalidateQueries({
+      queryKey: [QUERY_KEYS.allMeters],
+    });
+
+    // Then refetch current data
+    refetch();
+  }, [queryClient, refetch]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -140,7 +217,7 @@ export function useMetersData(initialPageSize: number = 20) {
     totalCount: data?.totalCount || 0,
     isLoading,
     error,
-    refetch,
+    refetch: invalidateAndRefetch, // Use our enhanced refetch function
     pagination: {
       page,
       pageSize,
