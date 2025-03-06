@@ -96,13 +96,13 @@ export async function getAllMetersForExport(
       try {
         let query = supabase.from("meters").select("id, serial_number, type");
 
-        if (filterType && filterType !== "all") {
-          query = query.eq("type", filterType);
-        }
+      if (filterType && filterType !== "all") {
+        query = query.eq("type", filterType);
+      }
 
-        if (searchTerm) {
-          query = query.ilike("serial_number", `%${searchTerm}%`);
-        }
+      if (searchTerm) {
+        query = query.ilike("serial_number", `%${searchTerm}%`);
+      }
 
         const { data: stockMeters, error } = await query;
 
@@ -127,20 +127,20 @@ export async function getAllMetersForExport(
       try {
         let query = supabase.from("agent_inventory").select(`
             id, 
-            serial_number, 
+          serial_number, 
             type, 
             assigned_at, 
             agent_id, 
             agents(id, name, phone_number, location)
           `);
 
-        if (filterType && filterType !== "all") {
-          query = query.eq("type", filterType);
-        }
+      if (filterType && filterType !== "all") {
+        query = query.eq("type", filterType);
+      }
 
-        if (searchTerm) {
-          query = query.ilike("serial_number", `%${searchTerm}%`);
-        }
+      if (searchTerm) {
+        query = query.ilike("serial_number", `%${searchTerm}%`);
+      }
 
         const { data: agentMeters, error } = await query;
 
@@ -175,78 +175,78 @@ export async function getAllMetersForExport(
     // 3. SOLD METERS - Query from sold_meters joined with sale_batches
     if (!filterStatus || filterStatus === "sold") {
       try {
-        let query = supabase
-          .from("sold_meters")
-          .select(
-            `
-            id, 
-            serial_number, 
-            sold_by, 
-            sold_at, 
-            destination, 
-            recipient, 
-            customer_contact, 
-            unit_price, 
-            batch_id,
-            status,
-            sale_batches(meter_type)
+      let query = supabase
+        .from("sold_meters")
+        .select(
           `
-          )
+            id, 
+          serial_number, 
+          sold_by, 
+          sold_at, 
+          destination, 
+          recipient, 
+          customer_contact, 
+          unit_price, 
+          batch_id,
+          status,
+            sale_batches(meter_type)
+        `
+        )
           .eq("status", "active");
 
-        if (filterType && filterType !== "all") {
-          query = query.eq("sale_batches.meter_type", filterType);
-        }
+      if (filterType && filterType !== "all") {
+        query = query.eq("sale_batches.meter_type", filterType);
+      }
 
-        if (searchTerm) {
-          query = query.ilike("serial_number", `%${searchTerm}%`);
-        }
+      if (searchTerm) {
+        query = query.ilike("serial_number", `%${searchTerm}%`);
+      }
 
         const { data: soldMeters, error } = await query;
 
         if (error) {
           console.error("Error fetching sold meters:", error);
         } else if (soldMeters && soldMeters.length > 0) {
-          // Get user profiles for sold meters
+        // Get user profiles for sold meters
           const userIds = [...new Set(soldMeters.map((m) => m.sold_by))];
-          const { data: userProfiles, error: userError } = await supabase
-            .from("user_profiles")
-            .select("id, name")
-            .in("id", userIds);
+        const { data: userProfiles, error: userError } = await supabase
+          .from("user_profiles")
+          .select("id, name")
+          .in("id", userIds);
 
-          if (userError) {
-            console.error("Error fetching user profiles:", userError);
-          }
+        if (userError) {
+          console.error("Error fetching user profiles:", userError);
+        }
 
-          const userMap: Record<string, string> = {};
-          if (userProfiles) {
+        const userMap: Record<string, string> = {};
+        if (userProfiles) {
             userProfiles.forEach((user) => {
-              userMap[user.id] = user.name;
-            });
-          }
+            userMap[user.id] = user.name;
+          });
+        }
 
           const processedSoldMeters = soldMeters.map((meter) => {
             // Type assertion for sale_batches
             const batchData = meter.sale_batches as any;
 
-            return {
-              serial_number: meter.serial_number,
+          return {
+            serial_number: meter.serial_number,
               type: batchData ? batchData.meter_type : "Unknown",
-              status: "sold" as const,
-              sale_details: {
-                sold_at: meter.sold_at,
-                sold_by: userMap[meter.sold_by] || meter.sold_by,
-                destination: meter.destination,
-                recipient: meter.recipient,
-                customer_contact: meter.customer_contact || "",
-                unit_price: meter.unit_price,
-                batch_id: meter.batch_id,
-                status: meter.status,
-              },
-            };
-          });
+            status: "sold" as const,
+            sale_details: {
+              sold_at: meter.sold_at,
+              sold_by: userMap[meter.sold_by] || meter.sold_by,
+              destination: meter.destination,
+              recipient: meter.recipient,
+              customer_contact: meter.customer_contact || "",
+              unit_price: meter.unit_price,
+              batch_id: meter.batch_id,
+              status: meter.status,
+            },
+          };
+        });
 
-          allMeters = [...allMeters, ...processedSoldMeters];
+        allMeters = [...allMeters, ...processedSoldMeters];
         }
       } catch (error) {
         console.error("Error in sold meters query:", error);
@@ -291,58 +291,58 @@ export async function getAllMetersForExport(
         if (error) {
           console.error("Error fetching replaced meters:", error);
         } else if (replacedMeters && replacedMeters.length > 0) {
-          // Get user profiles for sold_by and replacement_by
-          const userIds = [
-            ...new Set([
+        // Get user profiles for sold_by and replacement_by
+        const userIds = [
+          ...new Set([
               ...replacedMeters.map((m) => m.sold_by),
               ...replacedMeters.map((m) => m.replacement_by).filter(Boolean),
-            ]),
-          ];
+          ]),
+        ];
 
-          const { data: userProfiles, error: userError } = await supabase
-            .from("user_profiles")
-            .select("id, name")
-            .in("id", userIds);
+        const { data: userProfiles, error: userError } = await supabase
+          .from("user_profiles")
+          .select("id, name")
+          .in("id", userIds);
 
-          if (userError) {
-            console.error("Error fetching user profiles:", userError);
-          }
+        if (userError) {
+          console.error("Error fetching user profiles:", userError);
+        }
 
-          const userMap: Record<string, string> = {};
-          if (userProfiles) {
+        const userMap: Record<string, string> = {};
+        if (userProfiles) {
             userProfiles.forEach((user) => {
-              userMap[user.id] = user.name;
-            });
-          }
+            userMap[user.id] = user.name;
+          });
+        }
 
           const processedReplacedMeters = replacedMeters.map((meter) => {
             // Type assertion for sale_batches
             const batchData = meter.sale_batches as any;
 
-            return {
-              serial_number: meter.serial_number,
+          return {
+            serial_number: meter.serial_number,
               type: batchData ? batchData.meter_type : "Unknown",
-              status: "replaced" as const,
-              sale_details: {
-                sold_at: meter.sold_at,
-                sold_by: userMap[meter.sold_by] || meter.sold_by,
-                destination: meter.destination,
-                recipient: meter.recipient,
-                customer_contact: meter.customer_contact || "",
-                unit_price: meter.unit_price,
-                batch_id: meter.batch_id,
-                status: meter.status,
-              },
-              replacement_details: {
-                replacement_serial: meter.replacement_serial || "Unknown",
-                replacement_date: meter.replacement_date || "Unknown",
-                replacement_by:
-                  userMap[meter.replacement_by] || meter.replacement_by,
-              },
-            };
-          });
+            status: "replaced" as const,
+            sale_details: {
+              sold_at: meter.sold_at,
+              sold_by: userMap[meter.sold_by] || meter.sold_by,
+              destination: meter.destination,
+              recipient: meter.recipient,
+              customer_contact: meter.customer_contact || "",
+              unit_price: meter.unit_price,
+              batch_id: meter.batch_id,
+              status: meter.status,
+            },
+            replacement_details: {
+              replacement_serial: meter.replacement_serial || "Unknown",
+              replacement_date: meter.replacement_date || "Unknown",
+              replacement_by:
+                userMap[meter.replacement_by] || meter.replacement_by,
+            },
+          };
+        });
 
-          allMeters = [...allMeters, ...processedReplacedMeters];
+        allMeters = [...allMeters, ...processedReplacedMeters];
         }
       } catch (error) {
         console.error("Error in replaced meters query:", error);
@@ -381,20 +381,20 @@ export async function getAllMetersForExport(
           );
         } else if (faultyMeters && faultyMeters.length > 0) {
           const processedFaultyMeters = faultyMeters.map((meter) => ({
-            serial_number: meter.serial_number,
-            type: meter.type,
-            status: "faulty" as const,
-            fault_details: {
+          serial_number: meter.serial_number,
+          type: meter.type,
+          status: "faulty" as const,
+          fault_details: {
               reported_by: meter.returned_by || "",
               reported_at: meter.returned_at || "",
               fault_description: meter.fault_description || "",
               returner_name: meter.returner_name || "",
               fault_status: meter.status || "pending",
-            },
-          }));
+          },
+        }));
 
-          allMeters = [...allMeters, ...processedFaultyMeters];
-        }
+        allMeters = [...allMeters, ...processedFaultyMeters];
+      }
       } catch (error) {
         console.error("Error in faulty_returns query:", error);
       }
@@ -436,46 +436,46 @@ export async function getAllMetersForExport(
             error
           );
         } else if (faultySoldMeters && faultySoldMeters.length > 0) {
-          // Get user profiles for sold_by
+        // Get user profiles for sold_by
           const userIds = [...new Set(faultySoldMeters.map((m) => m.sold_by))];
-          const { data: userProfiles, error: userError } = await supabase
-            .from("user_profiles")
-            .select("id, name")
-            .in("id", userIds);
+        const { data: userProfiles, error: userError } = await supabase
+          .from("user_profiles")
+          .select("id, name")
+          .in("id", userIds);
 
-          if (userError) {
-            console.error("Error fetching user profiles:", userError);
-          }
+        if (userError) {
+          console.error("Error fetching user profiles:", userError);
+        }
 
-          const userMap: Record<string, string> = {};
-          if (userProfiles) {
+        const userMap: Record<string, string> = {};
+        if (userProfiles) {
             userProfiles.forEach((user) => {
-              userMap[user.id] = user.name;
-            });
-          }
+            userMap[user.id] = user.name;
+          });
+        }
 
           const processedFaultySoldMeters = faultySoldMeters.map((meter) => {
             // Type assertion for sale_batches
             const batchData = meter.sale_batches as any;
 
-            return {
-              serial_number: meter.serial_number,
+          return {
+            serial_number: meter.serial_number,
               type: batchData ? batchData.meter_type : "Unknown",
-              status: "faulty" as const,
-              sale_details: {
-                sold_at: meter.sold_at,
-                sold_by: userMap[meter.sold_by] || meter.sold_by,
-                destination: meter.destination,
-                recipient: meter.recipient,
-                customer_contact: meter.customer_contact || "",
-                unit_price: meter.unit_price,
-                batch_id: meter.batch_id,
-                status: meter.status,
-              },
-            };
-          });
+            status: "faulty" as const,
+            sale_details: {
+              sold_at: meter.sold_at,
+              sold_by: userMap[meter.sold_by] || meter.sold_by,
+              destination: meter.destination,
+              recipient: meter.recipient,
+              customer_contact: meter.customer_contact || "",
+              unit_price: meter.unit_price,
+              batch_id: meter.batch_id,
+              status: meter.status,
+            },
+          };
+        });
 
-          allMeters = [...allMeters, ...processedFaultySoldMeters];
+        allMeters = [...allMeters, ...processedFaultySoldMeters];
         }
       } catch (error) {
         console.error("Error in faulty sold_meters query:", error);

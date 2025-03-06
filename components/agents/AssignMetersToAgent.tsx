@@ -11,12 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import {
@@ -25,11 +19,25 @@ import {
   assignMetersToAgent,
   getAgentsList,
 } from "@/lib/actions/supabaseActions";
-import { X } from "lucide-react";
+import { X, Check, ChevronsUpDown, Users, Loader2 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import AgentAssignmentReceipt from "../agents/AgentAssignmentReceipt";
 import localFont from "next/font/local";
-import { ChevronDown, Users, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -77,6 +85,8 @@ export default function AssignMetersToAgent({
   const serialInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isAssigning, setIsAssigning] = useState(false);
+  const [openCombobox, setOpenCombobox] = useState(false);
+  const [agentSearchQuery, setAgentSearchQuery] = useState("");
 
   useEffect(() => {
     const loadAgents = async () => {
@@ -294,26 +304,73 @@ export default function AssignMetersToAgent({
         <div className='flex-1'>
           <div className='space-y-4 mb-6'>
             {!preSelectedAgent ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant='outline' className='w-full justify-between'>
+              <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant='outline'
+                    role='combobox'
+                    aria-expanded={openCombobox}
+                    className='w-full justify-between'>
                     {selectedAgent
                       ? agents.find((a) => a.id === selectedAgent)?.name
                       : "Select Agent"}
-                    <ChevronDown className='ml-2 h-4 w-4 opacity-50' />
+                    <ChevronsUpDown className='ml-2 h-4 w-4 opacity-50' />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className='w-full' align='start'>
-                  {agents.map((agent) => (
-                    <DropdownMenuItem
-                      key={agent.id}
-                      onSelect={() => setSelectedAgent(agent.id)}>
-                      <Users className='mr-2 h-4 w-4' />
-                      <span>{agent.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent className='w-full p-0' align='start'>
+                  <Command>
+                    <CommandInput
+                      placeholder='Search agent...'
+                      className='h-9'
+                      value={agentSearchQuery}
+                      onValueChange={setAgentSearchQuery}
+                    />
+                    <CommandList>
+                      <ScrollArea className='h-[200px]'>
+                        <CommandEmpty>No agent found.</CommandEmpty>
+                        <CommandGroup>
+                          {agents
+                            .filter(
+                              (agent) =>
+                                agent.name
+                                  .toLowerCase()
+                                  .includes(agentSearchQuery.toLowerCase()) ||
+                                agent.location
+                                  .toLowerCase()
+                                  .includes(agentSearchQuery.toLowerCase())
+                            )
+                            .map((agent) => (
+                              <CommandItem
+                                key={agent.id}
+                                value={agent.id}
+                                onSelect={(value) => {
+                                  setSelectedAgent(value);
+                                  setOpenCombobox(false);
+                                  if (serialInputRef.current) {
+                                    serialInputRef.current.focus();
+                                  }
+                                }}>
+                                <Users className='mr-2 h-4 w-4' />
+                                <span>{agent.name}</span>
+                                <span className='ml-2 text-xs text-muted-foreground'>
+                                  {agent.location}
+                                </span>
+                                <Check
+                                  className={cn(
+                                    "ml-auto h-4 w-4",
+                                    selectedAgent === agent.id
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </ScrollArea>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             ) : null}
 
             <Input
@@ -337,11 +394,11 @@ export default function AssignMetersToAgent({
               </Button>
               <Button
                 onClick={() => setIsSubmitted(false)}
-                variant="ghost"
-                size="icon"
+                variant='ghost'
+                size='icon'
                 className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
-                aria-label="Dismiss">
-                <X className="h-4 w-4" />
+                aria-label='Dismiss'>
+                <X className='h-4 w-4' />
               </Button>
             </div>
           )}
@@ -359,48 +416,42 @@ export default function AssignMetersToAgent({
                   </>
                 ) : (
                   `Assign ${meters.length} Meter${
-                    meters.length !== 1 ? "s" : ""
-                  } to Agent`
+                    meters.length > 1 ? "s" : ""
+                  } to ${
+                    agents.find((a) => a.id === selectedAgent)?.name || "Agent"
+                  }`
                 )}
               </Button>
 
-              <div className='mt-6'>
-                <div className='flex justify-between items-center mb-2'>
-                  <h3 className='text-lg font-semibold text-gray-700'>
-                    Meters to Assign
-                  </h3>
-                  <span className='text-sm text-gray-500'>
-                    Total: {meters.length} meter{meters.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className='max-h-[400px] overflow-y-auto border border-gray-200 rounded-md'>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Serial Number</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Action</TableHead>
+              <div className='overflow-x-auto'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Serial Number</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className='text-right'>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {meters.map((meter, index) => (
+                      <TableRow key={meter.id}>
+                        <TableCell className='font-medium'>
+                          {meter.serialNumber}
+                        </TableCell>
+                        <TableCell>{meter.type}</TableCell>
+                        <TableCell className='text-right'>
+                          <Button
+                            variant='ghost'
+                            size='icon'
+                            onClick={() => handleRemoveMeter(index)}
+                            className='h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100'>
+                            <X className='h-4 w-4' />
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {meters.map((meter, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{meter.serialNumber}</TableCell>
-                          <TableCell>{meter.type}</TableCell>
-                          <TableCell>
-                            <Button
-                              onClick={() => handleRemoveMeter(index)}
-                              variant='ghost'
-                              size='sm'
-                              className='hover:bg-red-100'>
-                              <X className='h-4 w-4 text-red-500' />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </>
           )}

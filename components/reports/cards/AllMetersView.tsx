@@ -274,10 +274,10 @@ const AllMetersView: React.FC = () => {
         switch (meter.status) {
           case "with_agent":
             if (meter.agent_details) {
-              additionalData = {
-                "Agent Name": meter.agent_details.agent_name,
+          additionalData = {
+            "Agent Name": meter.agent_details.agent_name,
                 "Agent Phone": meter.agent_details.agent_phone,
-                "Agent Location": meter.agent_details.agent_location,
+            "Agent Location": meter.agent_details.agent_location,
                 "Assigned Date": meter.agent_details.assigned_at
                   ? format(
                       new Date(meter.agent_details.assigned_at),
@@ -305,28 +305,28 @@ const AllMetersView: React.FC = () => {
 
           case "replaced":
             if (meter.sale_details) {
-              additionalData = {
-                "Sold Date": meter.sale_details.sold_at
-                  ? format(new Date(meter.sale_details.sold_at), "yyyy-MM-dd")
-                  : "",
-                "Sold By": meter.sale_details.sold_by,
-                Recipient: meter.sale_details.recipient,
-                Destination: meter.sale_details.destination,
+          additionalData = {
+            "Sold Date": meter.sale_details.sold_at
+              ? format(new Date(meter.sale_details.sold_at), "yyyy-MM-dd")
+              : "",
+            "Sold By": meter.sale_details.sold_by,
+            Recipient: meter.sale_details.recipient,
+            Destination: meter.sale_details.destination,
                 "Customer Contact": meter.sale_details.customer_contact,
-                "Unit Price": meter.sale_details.unit_price,
-              };
+            "Unit Price": meter.sale_details.unit_price,
+          };
 
               if (meter.replacement_details) {
-                additionalData = {
-                  ...additionalData,
-                  "Replacement Serial":
-                    meter.replacement_details.replacement_serial,
-                  "Replacement Date": meter.replacement_details.replacement_date
-                    ? format(
-                        new Date(meter.replacement_details.replacement_date),
-                        "yyyy-MM-dd"
-                      )
-                    : "",
+            additionalData = {
+              ...additionalData,
+              "Replacement Serial":
+                meter.replacement_details.replacement_serial,
+              "Replacement Date": meter.replacement_details.replacement_date
+                ? format(
+                    new Date(meter.replacement_details.replacement_date),
+                    "yyyy-MM-dd"
+                  )
+                : "",
                   "Replaced By": meter.replacement_details.replacement_by,
                 };
               }
@@ -335,7 +335,7 @@ const AllMetersView: React.FC = () => {
 
           case "faulty":
             if (meter.fault_details) {
-              additionalData = {
+          additionalData = {
                 "Reported Date": meter.fault_details.reported_at
                   ? format(
                       new Date(meter.fault_details.reported_at),
@@ -344,9 +344,9 @@ const AllMetersView: React.FC = () => {
                   : "",
                 "Reported By": meter.fault_details.reported_by,
                 "Returner Name": meter.fault_details.returner_name,
-                "Fault Description": meter.fault_details.fault_description,
-                "Fault Status": meter.fault_details.fault_status,
-              };
+            "Fault Description": meter.fault_details.fault_description,
+            "Fault Status": meter.fault_details.fault_status,
+          };
             }
 
             if (meter.sale_details) {
@@ -577,12 +577,12 @@ const AllMetersView: React.FC = () => {
           <div className='relative w-64' ref={searchRef}>
             <div className='relative w-full'>
               <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
-              <Input
-                type='text'
-                placeholder='Search by serial number...'
-                value={searchInput}
+          <Input
+            type='text'
+            placeholder='Search by serial number...'
+            value={searchInput}
                 onChange={handleSearchInputChange}
-                onKeyDown={handleKeyDown}
+            onKeyDown={handleKeyDown}
                 className='pl-8 pr-8 w-full bg-gray-50/50 border-gray-200 focus:bg-white transition-colors'
                 onFocus={() => setIsSearchOpen(searchInput.length >= 3)}
               />
