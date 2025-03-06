@@ -86,7 +86,6 @@ export default function AssignMetersToAgent({
   const { toast } = useToast();
   const [isAssigning, setIsAssigning] = useState(false);
   const [openCombobox, setOpenCombobox] = useState(false);
-  const [agentSearchQuery, setAgentSearchQuery] = useState("");
 
   useEffect(() => {
     const loadAgents = async () => {
@@ -318,53 +317,46 @@ export default function AssignMetersToAgent({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className='w-full p-0' align='start'>
-                  <Command>
+                  <Command
+                    filter={(value, search) => {
+                      if (value.toLowerCase().includes(search.toLowerCase()))
+                        return 1;
+                      return 0;
+                    }}>
                     <CommandInput
                       placeholder='Search agent...'
                       className='h-9'
-                      value={agentSearchQuery}
-                      onValueChange={setAgentSearchQuery}
                     />
                     <CommandList>
                       <ScrollArea className='h-[200px]'>
                         <CommandEmpty>No agent found.</CommandEmpty>
                         <CommandGroup>
-                          {agents
-                            .filter(
-                              (agent) =>
-                                agent.name
-                                  .toLowerCase()
-                                  .includes(agentSearchQuery.toLowerCase()) ||
-                                agent.location
-                                  .toLowerCase()
-                                  .includes(agentSearchQuery.toLowerCase())
-                            )
-                            .map((agent) => (
-                              <CommandItem
-                                key={agent.id}
-                                value={agent.id}
-                                onSelect={(value) => {
-                                  setSelectedAgent(value);
-                                  setOpenCombobox(false);
-                                  if (serialInputRef.current) {
-                                    serialInputRef.current.focus();
-                                  }
-                                }}>
-                                <Users className='mr-2 h-4 w-4' />
-                                <span>{agent.name}</span>
-                                <span className='ml-2 text-xs text-muted-foreground'>
-                                  {agent.location}
-                                </span>
-                                <Check
-                                  className={cn(
-                                    "ml-auto h-4 w-4",
-                                    selectedAgent === agent.id
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
+                          {agents.map((agent) => (
+                            <CommandItem
+                              key={agent.id}
+                              value={`${agent.name} ${agent.location}`}
+                              onSelect={() => {
+                                setSelectedAgent(agent.id);
+                                setOpenCombobox(false);
+                                if (serialInputRef.current) {
+                                  serialInputRef.current.focus();
+                                }
+                              }}>
+                              <Users className='mr-2 h-4 w-4' />
+                              <span>{agent.name}</span>
+                              <span className='ml-2 text-xs text-muted-foreground'>
+                                {agent.location}
+                              </span>
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  selectedAgent === agent.id
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
                         </CommandGroup>
                       </ScrollArea>
                     </CommandList>
