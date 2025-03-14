@@ -454,6 +454,7 @@ interface SaleBatchData {
   customer_type: CustomerType;
   customer_county: KenyaCounty;
   customer_contact: string;
+  sale_date?: string;
 }
 
 export async function addSaleBatch(batchData: SaleBatchData) {
@@ -2384,28 +2385,28 @@ export async function getAllMetersWithStatus(
 
       switch (queryType) {
         case "stock":
-        allMeters = [
-          ...allMeters,
+          allMeters = [
+            ...allMeters,
             ...(data as StockMeter[]).map((meter) => ({
-            serial_number: meter.serial_number,
-            type: meter.type,
-            status: "in_stock" as const,
-          })),
-        ];
+              serial_number: meter.serial_number,
+              type: meter.type,
+              status: "in_stock" as const,
+            })),
+          ];
           totalCount += count || 0;
           break;
 
         case "agent":
-        allMeters = [
-          ...allMeters,
+          allMeters = [
+            ...allMeters,
             ...(data as AgentMeter[]).map((meter) => {
               // Type assertion for agents
               const agentData = meter.agents as any;
 
               return {
-            serial_number: meter.serial_number,
-            type: meter.type,
-            status: "with_agent" as const,
+                serial_number: meter.serial_number,
+                type: meter.type,
+                status: "with_agent" as const,
                 agent_details: {
                   agent_id: meter.agent_id,
                   agent_name: agentData ? agentData.name : "Unknown",
@@ -2457,7 +2458,7 @@ export async function getAllMetersWithStatus(
             const replacedMeters = data as SoldMeter[];
 
             // Get unique user IDs for both sold_by and replacement_by
-        const userIds = [
+            const userIds = [
               ...new Set([
                 ...replacedMeters.map((m) => m.sold_by),
                 ...replacedMeters
@@ -2468,7 +2469,7 @@ export async function getAllMetersWithStatus(
 
             const userMap = await getUserProfiles(userIds);
 
-        const batchIds = [
+            const batchIds = [
               ...new Set(replacedMeters.map((m) => m.batch_id)),
             ];
             const batchTypeMap = await getBatchData(batchIds);
@@ -2542,22 +2543,22 @@ export async function getAllMetersWithStatus(
 
               const processedFaultySoldMeters = faultySoldMeters.map(
                 (meter) => {
-          const meterType = batchTypeMap[meter.batch_id] || "unknown";
-          return {
-            serial_number: meter.serial_number,
-            type: meterType,
+                  const meterType = batchTypeMap[meter.batch_id] || "unknown";
+                  return {
+                    serial_number: meter.serial_number,
+                    type: meterType,
                     status: "faulty" as const,
-            sale_details: {
-              sold_at: meter.sold_at,
-              sold_by: userMap[meter.sold_by] || meter.sold_by,
-              destination: meter.destination,
-              recipient: meter.recipient,
+                    sale_details: {
+                      sold_at: meter.sold_at,
+                      sold_by: userMap[meter.sold_by] || meter.sold_by,
+                      destination: meter.destination,
+                      recipient: meter.recipient,
                       customer_contact: meter.customer_contact || "",
-              unit_price: meter.unit_price,
-              batch_id: meter.batch_id,
-              status: meter.status,
-            },
-          };
+                      unit_price: meter.unit_price,
+                      batch_id: meter.batch_id,
+                      status: meter.status,
+                    },
+                  };
                 }
               );
 

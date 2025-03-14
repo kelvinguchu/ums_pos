@@ -9,13 +9,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -31,6 +24,8 @@ import {
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import localFont from "next/font/local";
+import { ShadcnDatePicker } from "@/components/ui/shadcn-date-picker";
+import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date";
 import {
   KENYA_COUNTIES,
   CUSTOMER_TYPES,
@@ -55,6 +50,7 @@ interface SaleDetails {
   customerType: CustomerType;
   customerCounty: KenyaCounty;
   customerContact: string;
+  saleDate: CalendarDate;
 }
 
 interface SaleDetailsDialogProps {
@@ -74,27 +70,66 @@ const SaleDetailsDialog = ({
   meterTypes,
   trigger,
 }: SaleDetailsDialogProps) => {
-  const [formData, setFormData] = useState<SaleDetails>(
-    initialData || {
-      destination: "",
-      recipient: "",
-      unitPrices: {},
-      customerType: "walk in",
-      customerCounty: "Nairobi",
-      customerContact: "",
-    }
+  // Convert CalendarDate to JavaScript Date for the date picker
+  const getInitialJsDate = () => {
+    if (!initialData?.saleDate) return new Date();
+
+    return new Date(
+      initialData.saleDate.year,
+      initialData.saleDate.month - 1,
+      initialData.saleDate.day
+    );
+  };
+
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    getInitialJsDate()
   );
+
+  const [formData, setFormData] = useState<Omit<SaleDetails, "saleDate">>({
+    destination: initialData?.destination || "",
+    recipient: initialData?.recipient || "",
+    unitPrices: initialData?.unitPrices || {},
+    customerType: initialData?.customerType || "walk in",
+    customerCounty: initialData?.customerCounty || "Nairobi",
+    customerContact: initialData?.customerContact || "",
+  });
+
   const [openCombobox, setOpenCombobox] = useState(false);
 
   useEffect(() => {
     if (isOpen && initialData) {
-      setFormData(initialData);
+      setFormData({
+        destination: initialData.destination,
+        recipient: initialData.recipient,
+        unitPrices: initialData.unitPrices,
+        customerType: initialData.customerType,
+        customerCounty: initialData.customerCounty,
+        customerContact: initialData.customerContact,
+      });
+      setSelectedDate(getInitialJsDate());
     }
   }, [isOpen, initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    // Convert JavaScript Date back to CalendarDate
+    let calendarDate;
+    if (selectedDate) {
+      calendarDate = new CalendarDate(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth() + 1,
+        selectedDate.getDate()
+      );
+    } else {
+      // Default to today if no date selected
+      calendarDate = today(getLocalTimeZone());
+    }
+
+    onSubmit({
+      ...formData,
+      saleDate: calendarDate,
+    });
     onOpenChange(false);
   };
 
@@ -160,6 +195,18 @@ const SaleDetailsDialog = ({
                 className='w-full'
                 required
               />
+            </div>
+
+            <div className='space-y-2 w-full'>
+              <label className='text-sm font-medium'>Sale Date</label>
+              <ShadcnDatePicker
+                date={selectedDate}
+                setDate={setSelectedDate}
+                placeholder='Select sale date (default: today)'
+              />
+              <p className='text-xs text-muted-foreground mt-1'>
+                Default is today. Select a past date to backdate the sale.
+              </p>
             </div>
 
             <div className='space-y-2 w-full'>
