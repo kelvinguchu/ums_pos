@@ -260,21 +260,41 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
       let selectedDate;
       if (saleDate) {
         if (saleDate instanceof Date) {
-          selectedDate = saleDate;
+          // If date was selected, preserve the current time
+          selectedDate = new Date(
+            saleDate.getFullYear(),
+            saleDate.getMonth(),
+            saleDate.getDate(),
+            new Date().getHours(),
+            new Date().getMinutes(),
+            new Date().getSeconds()
+          );
         } else if (typeof saleDate === "string") {
-          selectedDate = new Date(saleDate);
+          const parsedDate = new Date(saleDate);
+          // If date was from a string, preserve the current time
+          selectedDate = new Date(
+            parsedDate.getFullYear(),
+            parsedDate.getMonth(),
+            parsedDate.getDate(),
+            new Date().getHours(),
+            new Date().getMinutes(),
+            new Date().getSeconds()
+          );
         } else if (saleDate.year && saleDate.month && saleDate.day) {
-          // CalendarDate object
+          // CalendarDate object - use with current time
           selectedDate = new Date(
             saleDate.year,
             saleDate.month - 1,
-            saleDate.day
+            saleDate.day,
+            new Date().getHours(),
+            new Date().getMinutes(),
+            new Date().getSeconds()
           );
         } else {
-          selectedDate = new Date();
+          selectedDate = new Date(); // Current date and time
         }
       } else {
-        selectedDate = new Date();
+        selectedDate = new Date(); // Current date and time
       }
 
       const formattedDate = selectedDate.toISOString();
