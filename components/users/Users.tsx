@@ -58,6 +58,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import Loader from "@/components/Loader";
 import { changePassword } from "@/lib/actions/supabaseActions";
+import { adminChangePassword } from "@/lib/actions/serverActions";
 import { useQueryClient } from "@tanstack/react-query";
 
 const geistMono = localFont({
@@ -75,20 +76,18 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [showChangePasswordDialog, setShowChangePasswordDialog] =
     useState(false);
+  const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [passwordChangeUserId, setPasswordChangeUserId] = useState<
+    string | null
+  >(null);
+  const [targetUserName, setTargetUserName] = useState<string>("");
   const itemsPerPage = 10;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const {
-    users,
-    currentUser,
-    isLoading,
-    error,
-    updateUser,
-    isPending,
-    refetch,
-  } = useUsersData(showDeactivated);
+  const { users, currentUser, isLoading, error, updateUser, refetch } =
+    useUsersData(showDeactivated);
 
   const handleUpdateName = async () => {
     if (!editingUser || !newName.trim()) {
@@ -113,6 +112,7 @@ export default function UsersPage() {
       });
       setEditingUser(null);
       setNewName("");
+      setShowEditNameDialog(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -122,9 +122,8 @@ export default function UsersPage() {
     }
   };
 
-  const handleToggleRole = async (user: any) => {
+  const handleChangeRole = async (user: any, newRole: string) => {
     try {
-      const newRole = user.role === "admin" ? "user" : "admin";
       await updateUser({
         userId: user.id,
         updates: { role: newRole },
@@ -149,7 +148,7 @@ export default function UsersPage() {
       const newStatus = !user.isActive;
       await updateUser({
         userId: user.id,
-        updates: { isActive: newStatus },
+        updates: { is_active: newStatus },
       });
 
       toast({
@@ -168,8 +167,15 @@ export default function UsersPage() {
     }
   };
 
-  const handleChangePassword = async (userId: string) => {
-    if (!newPassword.trim()) {
+  const openChangePasswordDialog = (userId: string, userName: string) => {
+    setPasswordChangeUserId(userId);
+    setTargetUserName(userName);
+    setNewPassword("");
+    setShowChangePasswordDialog(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordChangeUserId || !newPassword.trim()) {
       toast({
         title: "Error",
         description: "Password cannot be empty",
@@ -179,20 +185,35 @@ export default function UsersPage() {
     }
 
     try {
-      await changePassword(userId, newPassword);
+      // Use different methods based on whether it's the current user or admin changing someone else's password
+      if (passwordChangeUserId === currentUser?.id) {
+        await changePassword(passwordChangeUserId, newPassword);
+      } else {
+        await adminChangePassword(passwordChangeUserId, newPassword);
+      }
+
       toast({
         title: "Success",
-        description: "Password changed successfully. Please sign in again.",
+        description:
+          passwordChangeUserId === currentUser?.id
+            ? "Password changed successfully. Please sign in again."
+            : "User password changed successfully.",
         variant: "default",
       });
-      
-      // Clear any cached data
-      queryClient.clear();
-      
-      // Redirect to signin page after a short delay
-      setTimeout(() => {
-        window.location.href = "/signin";
-      }, 1500);
+
+      // If changing own password, clear cache and redirect
+      if (passwordChangeUserId === currentUser?.id) {
+        // Clear any cached data
+        queryClient.clear();
+
+        // Redirect to signin page after a short delay
+        setTimeout(() => {
+          window.location.href = "/signin";
+        }, 1500);
+      } else {
+        // Just invalidate queries if admin changing someone else's password
+        queryClient.invalidateQueries({ queryKey: ["users"] });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -202,6 +223,7 @@ export default function UsersPage() {
     } finally {
       setShowChangePasswordDialog(false);
       setNewPassword("");
+      setPasswordChangeUserId(null);
     }
   };
 
@@ -274,6 +296,63 @@ export default function UsersPage() {
 
   return (
     <div className={`${geistMono.className} container w-full md:w-[75vw]`}>
+      {/* Password Change Dialog - Shared for all users */}
+      <Dialog
+        open={showChangePasswordDialog}
+        onOpenChange={setShowChangePasswordDialog}>
+        <DialogContent className={geistMono.className}>
+          <DialogHeader>
+            <DialogTitle>
+              {passwordChangeUserId === currentUser?.id
+                ? "Change Your Password"
+                : `Change Password for ${targetUserName}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className='relative'>
+            <Input
+              id='new-password'
+              className='pe-9'
+              placeholder='Enter new password'
+              type={isVisible ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <button
+              className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
+              type='button'
+              onClick={toggleVisibility}
+              aria-label={isVisible ? "Hide password" : "Show password"}
+              aria-pressed={isVisible}
+              aria-controls='new-password'>
+              {isVisible ? (
+                <EyeOff size={16} strokeWidth={2} aria-hidden='true' />
+              ) : (
+                <Eye size={16} strokeWidth={2} aria-hidden='true' />
+              )}
+            </button>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setNewPassword("");
+                  setPasswordChangeUserId(null);
+                }}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                handleChangePassword();
+              }}>
+              Change Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <h1 className='text-3xl font-bold mb-6 text-center drop-shadow-lg'>
         Users
       </h1>
@@ -294,8 +373,7 @@ export default function UsersPage() {
               variant='outline'
               size='icon'
               onClick={handleRefresh}
-              className='hover:bg-gray-100'
-            >
+              className='hover:bg-gray-100'>
               <RefreshCw className='h-4 w-4' />
             </Button>
             <div className='text-sm text-muted-foreground font-medium'>
@@ -350,11 +428,11 @@ export default function UsersPage() {
                       <Badge
                         variant='outline'
                         className={`${
-                          user.role === "admin" 
-                            ? "bg-green-100" 
+                          user.role === "admin"
+                            ? "bg-green-100"
                             : user.role === "accountant"
-                              ? "bg-purple-100" 
-                              : "bg-yellow-100"
+                            ? "bg-purple-100"
+                            : "bg-yellow-100"
                         }`}>
                         {user.role}
                       </Badge>
@@ -380,96 +458,34 @@ export default function UsersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align='end'>
                               {user.id === currentUser.id && (
-                                <Dialog
-                                  open={showChangePasswordDialog}
-                                  onOpenChange={setShowChangePasswordDialog}>
-                                  <DialogTrigger asChild>
-                                    <DropdownMenuItem
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setNewPassword("");
-                                        setShowChangePasswordDialog(true);
-                                      }}>
-                                      <Edit2 className='mr-2 h-4 w-4' />
-                                      Change Password
-                                    </DropdownMenuItem>
-                                  </DialogTrigger>
-                                  <DialogContent
-                                    className={geistMono.className}>
-                                    <DialogHeader>
-                                      <DialogTitle>Change Password</DialogTitle>
-                                    </DialogHeader>
-                                    <div className='relative'>
-                                      <Input
-                                        id='new-password'
-                                        className='pe-9'
-                                        placeholder='Enter new password'
-                                        type={isVisible ? "text" : "password"}
-                                        value={newPassword}
-                                        onChange={(e) =>
-                                          setNewPassword(e.target.value)
-                                        }
-                                        required
-                                      />
-                                      <button
-                                        className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
-                                        type='button'
-                                        onClick={toggleVisibility}
-                                        aria-label={
-                                          isVisible
-                                            ? "Hide password"
-                                            : "Show password"
-                                        }
-                                        aria-pressed={isVisible}
-                                        aria-controls='new-password'>
-                                        {isVisible ? (
-                                          <EyeOff
-                                            size={16}
-                                            strokeWidth={2}
-                                            aria-hidden='true'
-                                          />
-                                        ) : (
-                                          <Eye
-                                            size={16}
-                                            strokeWidth={2}
-                                            aria-hidden='true'
-                                          />
-                                        )}
-                                      </button>
-                                    </div>
-                                    <DialogFooter>
-                                      <DialogClose asChild>
-                                        <Button
-                                          variant='outline'
-                                          onClick={() => {
-                                            setNewPassword("");
-                                          }}>
-                                          Cancel
-                                        </Button>
-                                      </DialogClose>
-                                      <Button
-                                        onClick={() => {
-                                          handleChangePassword(currentUser.id);
-                                        }}>
-                                        Change Password
-                                      </Button>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openChangePasswordDialog(
+                                      user.id,
+                                      user.name
+                                    );
+                                  }}>
+                                  <Edit2 className='mr-2 h-4 w-4' />
+                                  Change Password
+                                </DropdownMenuItem>
                               )}
 
                               {currentUser.role === "admin" &&
                                 user.id !== currentUser.id && (
                                   <>
                                     <DropdownMenuSeparator />
-                                    <Dialog>
+                                    <Dialog
+                                      open={showEditNameDialog}
+                                      onOpenChange={setShowEditNameDialog}>
                                       <DialogTrigger asChild>
                                         <DropdownMenuItem
                                           onSelect={(e) => {
                                             e.preventDefault();
                                             setEditingUser(user);
                                             setNewName(user.name);
+                                            setShowEditNameDialog(true);
                                           }}>
                                           <Edit2 className='mr-2 h-4 w-4' />
                                           Edit Name
@@ -496,6 +512,7 @@ export default function UsersPage() {
                                               onClick={() => {
                                                 setEditingUser(null);
                                                 setNewName("");
+                                                setShowEditNameDialog(false);
                                               }}>
                                               Cancel
                                             </Button>
@@ -512,18 +529,30 @@ export default function UsersPage() {
                                     </Dialog>
 
                                     <DropdownMenuItem
-                                      onClick={() => handleToggleRole(user)}>
-                                      {user.role === "admin" ? (
-                                        <>
-                                          <ShieldOff className='mr-2 h-4 w-4' />
-                                          Remove Admin
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Shield className='mr-2 h-4 w-4' />
-                                          Make Admin
-                                        </>
-                                      )}
+                                      onClick={() =>
+                                        handleChangeRole(user, "admin")
+                                      }
+                                      disabled={user.role === "admin"}>
+                                      <Shield className='mr-2 h-4 w-4' />
+                                      Set as Admin
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleChangeRole(user, "accountant")
+                                      }
+                                      disabled={user.role === "accountant"}>
+                                      <Shield className='mr-2 h-4 w-4 text-purple-500' />
+                                      Set as Accountant
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleChangeRole(user, "user")
+                                      }
+                                      disabled={user.role === "user"}>
+                                      <Shield className='mr-2 h-4 w-4 text-yellow-500' />
+                                      Set as User
                                     </DropdownMenuItem>
 
                                     <DropdownMenuItem
@@ -539,6 +568,17 @@ export default function UsersPage() {
                                           Activate User
                                         </>
                                       )}
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        openChangePasswordDialog(
+                                          user.id,
+                                          user.name
+                                        )
+                                      }>
+                                      <Edit2 className='mr-2 h-4 w-4 text-blue-500' />
+                                      Change Password
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -582,11 +622,11 @@ export default function UsersPage() {
                       <Badge
                         variant='outline'
                         className={`${
-                          user.role === "admin" 
-                            ? "bg-green-100" 
+                          user.role === "admin"
+                            ? "bg-green-100"
                             : user.role === "accountant"
-                              ? "bg-purple-100" 
-                              : "bg-yellow-100"
+                            ? "bg-purple-100"
+                            : "bg-yellow-100"
                         }`}>
                         {user.role}
                       </Badge>
@@ -612,96 +652,34 @@ export default function UsersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align='end'>
                               {user.id === currentUser.id && (
-                                <Dialog
-                                  open={showChangePasswordDialog}
-                                  onOpenChange={setShowChangePasswordDialog}>
-                                  <DialogTrigger asChild>
-                                    <DropdownMenuItem
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setNewPassword("");
-                                        setShowChangePasswordDialog(true);
-                                      }}>
-                                      <Edit2 className='mr-2 h-4 w-4' />
-                                      Change Password
-                                    </DropdownMenuItem>
-                                  </DialogTrigger>
-                                  <DialogContent
-                                    className={geistMono.className}>
-                                    <DialogHeader>
-                                      <DialogTitle>Change Password</DialogTitle>
-                                    </DialogHeader>
-                                    <div className='relative'>
-                                      <Input
-                                        id='new-password'
-                                        className='pe-9'
-                                        placeholder='Enter new password'
-                                        type={isVisible ? "text" : "password"}
-                                        value={newPassword}
-                                        onChange={(e) =>
-                                          setNewPassword(e.target.value)
-                                        }
-                                        required
-                                      />
-                                      <button
-                                        className='absolute inset-y-px end-px flex h-full w-9 items-center justify-center rounded-e-lg text-muted-foreground/80 ring-offset-background transition-shadow hover:text-foreground focus-visible:border focus-visible:border-ring focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50'
-                                        type='button'
-                                        onClick={toggleVisibility}
-                                        aria-label={
-                                          isVisible
-                                            ? "Hide password"
-                                            : "Show password"
-                                        }
-                                        aria-pressed={isVisible}
-                                        aria-controls='new-password'>
-                                        {isVisible ? (
-                                          <EyeOff
-                                            size={16}
-                                            strokeWidth={2}
-                                            aria-hidden='true'
-                                          />
-                                        ) : (
-                                          <Eye
-                                            size={16}
-                                            strokeWidth={2}
-                                            aria-hidden='true'
-                                          />
-                                        )}
-                                      </button>
-                                    </div>
-                                    <DialogFooter>
-                                      <DialogClose asChild>
-                                        <Button
-                                          variant='outline'
-                                          onClick={() => {
-                                            setNewPassword("");
-                                          }}>
-                                          Cancel
-                                        </Button>
-                                      </DialogClose>
-                                      <Button
-                                        onClick={() => {
-                                          handleChangePassword(currentUser.id);
-                                        }}>
-                                        Change Password
-                                      </Button>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openChangePasswordDialog(
+                                      user.id,
+                                      user.name
+                                    );
+                                  }}>
+                                  <Edit2 className='mr-2 h-4 w-4' />
+                                  Change Password
+                                </DropdownMenuItem>
                               )}
 
                               {currentUser.role === "admin" &&
                                 user.id !== currentUser.id && (
                                   <>
                                     <DropdownMenuSeparator />
-                                    <Dialog>
+                                    <Dialog
+                                      open={showEditNameDialog}
+                                      onOpenChange={setShowEditNameDialog}>
                                       <DialogTrigger asChild>
                                         <DropdownMenuItem
                                           onSelect={(e) => {
                                             e.preventDefault();
                                             setEditingUser(user);
                                             setNewName(user.name);
+                                            setShowEditNameDialog(true);
                                           }}>
                                           <Edit2 className='mr-2 h-4 w-4' />
                                           Edit Name
@@ -728,6 +706,7 @@ export default function UsersPage() {
                                               onClick={() => {
                                                 setEditingUser(null);
                                                 setNewName("");
+                                                setShowEditNameDialog(false);
                                               }}>
                                               Cancel
                                             </Button>
@@ -744,18 +723,30 @@ export default function UsersPage() {
                                     </Dialog>
 
                                     <DropdownMenuItem
-                                      onClick={() => handleToggleRole(user)}>
-                                      {user.role === "admin" ? (
-                                        <>
-                                          <ShieldOff className='mr-2 h-4 w-4' />
-                                          Remove Admin
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Shield className='mr-2 h-4 w-4' />
-                                          Make Admin
-                                        </>
-                                      )}
+                                      onClick={() =>
+                                        handleChangeRole(user, "admin")
+                                      }
+                                      disabled={user.role === "admin"}>
+                                      <Shield className='mr-2 h-4 w-4' />
+                                      Set as Admin
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleChangeRole(user, "accountant")
+                                      }
+                                      disabled={user.role === "accountant"}>
+                                      <Shield className='mr-2 h-4 w-4 text-purple-500' />
+                                      Set as Accountant
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleChangeRole(user, "user")
+                                      }
+                                      disabled={user.role === "user"}>
+                                      <Shield className='mr-2 h-4 w-4 text-yellow-500' />
+                                      Set as User
                                     </DropdownMenuItem>
 
                                     <DropdownMenuItem
@@ -771,6 +762,17 @@ export default function UsersPage() {
                                           Activate User
                                         </>
                                       )}
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        openChangePasswordDialog(
+                                          user.id,
+                                          user.name
+                                        )
+                                      }>
+                                      <Edit2 className='mr-2 h-4 w-4 text-blue-500' />
+                                      Change Password
                                     </DropdownMenuItem>
                                   </>
                                 )}

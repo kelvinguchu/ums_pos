@@ -22,6 +22,10 @@ import {
   removeFromAgentInventory,
   getUserProfile,
 } from "@/lib/actions/supabaseActions";
+import {
+  createSalesTransaction,
+  linkBatchToTransaction,
+} from "@/lib/actions/supabaseActions2";
 import { pdf } from "@react-pdf/renderer";
 import MeterSalesReceipt from "@/components/sharedcomponents/MeterSalesReceipt";
 import { KenyaCounty, CustomerType } from "@/lib/constants/locationData";
@@ -164,6 +168,29 @@ export default function RecordAgentSale({
         {}
       );
 
+      // Calculate total amount for the entire transaction
+      const totalAmount = Object.entries(metersByType).reduce(
+        (total, [type, typeMeters]) => {
+          const batchAmount = typeMeters.length;
+          const typeUnitPrice = parseFloat(unitPrices[type]);
+          return total + typeUnitPrice * batchAmount;
+        },
+        0
+      );
+
+      // Create a sales transaction first
+      const transactionData = await createSalesTransaction({
+        user_id: currentUser.id,
+        user_name: userName,
+        sale_date: saleDate.toISOString(),
+        destination: agent.location,
+        recipient: agent.name,
+        customer_type: "agent",
+        customer_county: agent.county,
+        customer_contact: agent.phone_number,
+        total_amount: totalAmount,
+      });
+
       // Process each meter type as a separate batch
       for (const [type, typeMeters] of Object.entries(metersByType)) {
         const batchAmount = typeMeters.length;
@@ -185,6 +212,9 @@ export default function RecordAgentSale({
           customer_contact: agent.phone_number,
           sale_date: saleDate.toISOString(), // Use the selected date
         });
+
+        // Link this batch to the transaction
+        await linkBatchToTransaction(batchData.id, transactionData.id);
 
         // Process individual meters in the batch
         for (const meter of typeMeters) {
@@ -230,6 +260,7 @@ export default function RecordAgentSale({
         customerCounty: agent.county,
         customerContact: agent.phone_number,
         saleDate: saleDate.toISOString(), // Include the sale date in receipt data
+        referenceNumber: transactionData.reference_number, // Include reference number
       };
 
       localStorage.setItem(
@@ -276,6 +307,7 @@ export default function RecordAgentSale({
           customerCounty={lastSubmittedData.customerCounty}
           customerContact={lastSubmittedData.customerContact}
           saleDate={lastSubmittedData.saleDate}
+          referenceNumber={lastSubmittedData.referenceNumber}
         />
       ).toBlob();
 

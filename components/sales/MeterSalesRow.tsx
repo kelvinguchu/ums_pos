@@ -9,7 +9,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { getMetersByBatchId } from "@/lib/actions/supabaseActions";
-import { format } from "date-fns";
+import { getTransactionReferenceForBatch } from "@/lib/actions/supabaseActions2";
+
 import { Loader2, Search, Download, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import localFont from "next/font/local";
@@ -67,19 +68,27 @@ export function MeterSalesRow({
   const itemsPerPage = 20; // Show 20 serial numbers per page
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [transactionRef, setTransactionRef] = useState<string | null>(null);
+  const [isRefLoading, setIsRefLoading] = useState(true);
 
   // Add useEffect to fetch data when sheet opens
   useEffect(() => {
     async function fetchData() {
       if (isOpen) {
         setLoading(true);
+        setIsRefLoading(true);
         try {
           const data = await getMetersByBatchId(batch.id);
           setMeters(data);
+
+          // Fetch the transaction reference number
+          const refNumber = await getTransactionReferenceForBatch(batch.id);
+          setTransactionRef(refNumber);
         } catch (error) {
           console.error("Error fetching meter details:", error);
         } finally {
           setLoading(false);
+          setIsRefLoading(false);
         }
       }
     }
@@ -127,7 +136,12 @@ export function MeterSalesRow({
       "SN#": meter.serial_number,
     }));
 
-    generateCSV(csvData, `meter_serials_batch_${batch.id}`);
+    // Use transaction reference in filename if available
+    const filename = transactionRef
+      ? `meter_serials_${transactionRef.replace(/\//g, "-")}`
+      : `meter_serials_batch_${batch.id}`;
+
+    generateCSV(csvData, filename);
   };
 
   return (
@@ -137,7 +151,11 @@ export function MeterSalesRow({
           <SheetTitle className='flex items-center gap-2 text-xl'>
             <span>Sale Details</span>
             <Badge variant='outline' className='bg-blue-100'>
-              Batch #{batch.id}
+              {isRefLoading ? (
+                <span className='animate-pulse'>Loading...</span>
+              ) : (
+                transactionRef || "No Reference"
+              )}
             </Badge>
           </SheetTitle>
           <SheetDescription className='flex items-center gap-2 text-sm'>

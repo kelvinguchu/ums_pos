@@ -52,6 +52,7 @@ import Loader from "@/components/Loader";
 import { RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CUSTOMER_TYPES } from "@/lib/constants/locationData";
+import GenerateReceiptDialog from "./GenerateReceiptDialog";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -402,13 +403,16 @@ export default function MeterSales() {
         <CardHeader className='p-4 md:p-6'>
           <div className='flex justify-between items-center'>
             <CardTitle className='text-lg md:text-xl'>Meter Sales</CardTitle>
-            <Button
-              variant='outline'
-              size='icon'
-              onClick={handleRefresh}
-              className='hover:bg-gray-100'>
-              <RefreshCw className='h-4 w-4' />
-            </Button>
+            <div className='flex items-center gap-2'>
+              <GenerateReceiptDialog />
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={handleRefresh}
+                className='hover:bg-gray-100'>
+                <RefreshCw className='h-4 w-4' />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className='p-0 md:p-6 -mt-0 md:-mt-8'>
@@ -470,16 +474,16 @@ export default function MeterSales() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className='w-[16%]'>Seller</TableHead>
-                      <TableHead className='w-[8%]'>Meter Type</TableHead>
+                      <TableHead className='w-[18%]'>Seller</TableHead>
+                      <TableHead className='w-[6%]'>Type</TableHead>
                       <TableHead className='w-[7%] text-center'>
                         Quantity
                       </TableHead>
                       <TableHead className='w-[15%]'>Sale Amount</TableHead>
                       <TableHead className='w-[12%]'>Sale Date</TableHead>
-                      <TableHead className='w-[18%]'>Recipient</TableHead>
-                      <TableHead className='w-[12%]'>Customer Type</TableHead>
-                      <TableHead className='w-[13%]'>County</TableHead>
+                      <TableHead className='w-[16%]'>Recipient</TableHead>
+                      <TableHead className='w-[16%]'>Customer Type</TableHead>
+                      <TableHead className='w-[11%]'>County</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

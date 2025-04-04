@@ -20,6 +20,10 @@ import {
   addSaleBatch,
   getUserProfile,
 } from "@/lib/actions/supabaseActions";
+import {
+  createSalesTransaction,
+  linkBatchToTransaction,
+} from "@/lib/actions/supabaseActions2";
 import localFont from "next/font/local";
 import { X, Edit2, Loader2 } from "lucide-react";
 import { pdf, PDFDownloadLink } from "@react-pdf/renderer";
@@ -285,13 +289,30 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
         {}
       );
 
-      // Create a sale batch for each type
+      // Create a sales transaction
+      const transactionData = await createSalesTransaction({
+        user_id: currentUser.id,
+        user_name: userName,
+        sale_date: formattedDate,
+        destination: saleDetails.destination,
+        recipient: saleDetails.recipient,
+        customer_type: saleDetails.customerType,
+        customer_county: saleDetails.customerCounty,
+        customer_contact: saleDetails.customerContact,
+        total_amount: Object.entries(metersByType).reduce(
+          (total, [type, meters]) =>
+            total + meters.length * parseFloat(unitPrices[type]),
+          0
+        ),
+      });
+
+      // Create sale batches for each type
       for (const [type, typeMeters] of Object.entries(metersByType)) {
         const batchAmount = typeMeters.length;
         const typeUnitPrice = parseFloat(unitPrices[type]);
         const totalPrice = typeUnitPrice * batchAmount;
 
-        // Add sale batch and get the batch id
+        // Add sale batch and link to transaction
         const batchData = await addSaleBatch({
           user_id: currentUser.id,
           user_name: userName,
@@ -306,6 +327,8 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
           customer_contact: saleDetails.customerContact,
           sale_date: formattedDate,
         });
+
+        await linkBatchToTransaction(batchData.id, transactionData.id);
 
         // Remove meters and add to sold_meters with batch_id
         for (const meter of typeMeters) {
@@ -339,6 +362,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
           customerCounty: saleDetails.customerCounty,
           customerContact: saleDetails.customerContact,
           saleDate: formattedDate, // Add the sale date to the receipt data
+          referenceNumber: transactionData.reference_number, // Include reference number
         })
       );
 
@@ -410,6 +434,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
           customerCounty={lastSubmittedData.customerCounty}
           customerContact={lastSubmittedData.customerContact}
           saleDate={lastSubmittedData.saleDate}
+          referenceNumber={lastSubmittedData.referenceNumber}
         />
       ).toBlob();
 

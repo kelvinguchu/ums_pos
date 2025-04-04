@@ -153,6 +153,7 @@ interface MeterSalesReceiptProps {
   customerCounty: string;
   customerContact: string;
   saleDate?: string;
+  referenceNumber?: string;
 }
 
 const MeterSalesReceipt = ({
@@ -165,6 +166,7 @@ const MeterSalesReceipt = ({
   customerCounty,
   customerContact,
   saleDate,
+  referenceNumber,
 }: MeterSalesReceiptProps) => {
   const metersByType = meters.reduce(
     (acc: { [key: string]: typeof meters }, meter) => {
@@ -206,6 +208,9 @@ const MeterSalesReceipt = ({
         <Text style={styles.title}>Store Transaction Report</Text>
 
         <Text style={styles.dateTime}>Sale Date: {displayDate}</Text>
+        {referenceNumber && (
+          <Text style={styles.dateTime}>Reference No: {referenceNumber}</Text>
+        )}
         <Text style={styles.dateTime}>
           Receipt Generated: {currentDateTime}
         </Text>
