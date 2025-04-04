@@ -33,6 +33,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { ShadcnDatePicker } from "@/components/ui/shadcn-date-picker";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -89,6 +90,9 @@ export default function RecordAgentSale({
   const [userName, setUserName] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPage, setSelectedPage] = useState(1);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    new Date()
+  );
   const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
@@ -147,6 +151,9 @@ export default function RecordAgentSale({
 
     setIsSubmitting(true);
     try {
+      // Get the sale date from selectedDate or default to current date
+      const saleDate = selectedDate || new Date();
+
       // Group meters by type for batch processing
       const metersByType = selectedMeters.reduce(
         (acc: { [key: string]: typeof selectedMeters }, meter) => {
@@ -176,6 +183,7 @@ export default function RecordAgentSale({
           customer_type: "agent" as CustomerType,
           customer_county: agent.county as KenyaCounty,
           customer_contact: agent.phone_number,
+          sale_date: saleDate.toISOString(), // Use the selected date
         });
 
         // Process individual meters in the batch
@@ -187,7 +195,7 @@ export default function RecordAgentSale({
           await addSoldMeter({
             meter_id: meter.id,
             sold_by: currentUser.id,
-            sold_at: new Date().toISOString(),
+            sold_at: saleDate.toISOString(), // Use the selected date
             destination: agent.location,
             recipient: agent.name,
             serial_number: meter.serial_number,
@@ -221,6 +229,7 @@ export default function RecordAgentSale({
         customerType: "agent" as const,
         customerCounty: agent.county,
         customerContact: agent.phone_number,
+        saleDate: saleDate.toISOString(), // Include the sale date in receipt data
       };
 
       localStorage.setItem(
@@ -266,6 +275,7 @@ export default function RecordAgentSale({
           customerType={lastSubmittedData.customerType}
           customerCounty={lastSubmittedData.customerCounty}
           customerContact={lastSubmittedData.customerContact}
+          saleDate={lastSubmittedData.saleDate}
         />
       ).toBlob();
 
@@ -332,7 +342,7 @@ export default function RecordAgentSale({
           />
         </div>
 
-        <div className="flex flex-col h-[calc(100%-120px)]">
+        <div className='flex flex-col h-[calc(100%-120px)]'>
           <div className={`${tableStyles.container} flex-1`}>
             <Table className={tableStyles.table}>
               <TableHeader>
@@ -364,7 +374,9 @@ export default function RecordAgentSale({
                     <TableRow key={meter.id}>
                       <TableCell className={tableStyles.cell}>
                         <Checkbox
-                          checked={selectedMeters.some((m) => m.id === meter.id)}
+                          checked={selectedMeters.some(
+                            (m) => m.id === meter.id
+                          )}
                           onCheckedChange={() => handleCheckMeter(meter)}
                           className={`border-[#000080] ${tableStyles.checkbox}`}
                         />
@@ -383,30 +395,37 @@ export default function RecordAgentSale({
               </TableBody>
             </Table>
           </div>
-          
+
           {totalPages > 1 && (
-            <Pagination className="mt-4">
+            <Pagination className='mt-4'>
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      currentPage === 1 ? "pointer-events-none opacity-50" : ""
+                    }
                   />
                 </PaginationItem>
                 {Array.from({ length: totalPages }, (_, i) => (
                   <PaginationItem key={i + 1}>
                     <PaginationLink
                       onClick={() => setCurrentPage(i + 1)}
-                      isActive={currentPage === i + 1}
-                    >
+                      isActive={currentPage === i + 1}>
                       {i + 1}
                     </PaginationLink>
                   </PaginationItem>
                 ))}
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    className={
+                      currentPage === totalPages
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -417,9 +436,19 @@ export default function RecordAgentSale({
 
       {/* Right section - Selected Meters */}
       <div className='flex-1 md:pl-4'>
-        <h3 className='font-semibold mb-4 text-sm md:text-base'>
-          Selected Meters ({selectedMeters.length})
-        </h3>
+        <div className='flex items-center mb-4 gap-4'>
+          <h3 className='font-semibold text-sm md:text-base flex-shrink-0'>
+            Selected Meters ({selectedMeters.length})
+          </h3>
+
+          <div className='flex-grow max-w-[220px]'>
+            <ShadcnDatePicker
+              date={selectedDate}
+              setDate={setSelectedDate}
+              placeholder='Select date'
+            />
+          </div>
+        </div>
 
         {/* Unit Prices Section */}
         <div className='grid grid-cols-1 gap-3 mb-4'>
@@ -441,7 +470,7 @@ export default function RecordAgentSale({
           )}
         </div>
 
-        <div className="flex flex-col h-[calc(100%-280px)]">
+        <div className='flex flex-col h-[calc(100%-280px)]'>
           <div className={`${tableStyles.container} flex-1`}>
             <Table className={tableStyles.table}>
               <TableHeader>
@@ -470,28 +499,37 @@ export default function RecordAgentSale({
           </div>
 
           {totalSelectedPages > 1 && (
-            <Pagination className="mt-4">
+            <Pagination className='mt-4'>
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => setSelectedPage((p) => Math.max(1, p - 1))}
-                    className={selectedPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      selectedPage === 1 ? "pointer-events-none opacity-50" : ""
+                    }
                   />
                 </PaginationItem>
                 {Array.from({ length: totalSelectedPages }, (_, i) => (
                   <PaginationItem key={i + 1}>
                     <PaginationLink
                       onClick={() => setSelectedPage(i + 1)}
-                      isActive={selectedPage === i + 1}
-                    >
+                      isActive={selectedPage === i + 1}>
                       {i + 1}
                     </PaginationLink>
                   </PaginationItem>
                 ))}
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => setSelectedPage((p) => Math.min(totalSelectedPages, p + 1))}
-                    className={selectedPage === totalSelectedPages ? "pointer-events-none opacity-50" : ""}
+                    onClick={() =>
+                      setSelectedPage((p) =>
+                        Math.min(totalSelectedPages, p + 1)
+                      )
+                    }
+                    className={
+                      selectedPage === totalSelectedPages
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -524,11 +562,11 @@ export default function RecordAgentSale({
               </Button>
               <Button
                 onClick={() => setIsSubmitted(false)}
-                variant="ghost"
-                size="icon"
+                variant='ghost'
+                size='icon'
                 className='absolute -right-2 -top-2 h-6 w-6 rounded-full bg-gray-200 hover:bg-gray-300'
-                aria-label="Dismiss">
-                <X className="h-4 w-4" />
+                aria-label='Dismiss'>
+                <X className='h-4 w-4' />
               </Button>
             </div>
           )}

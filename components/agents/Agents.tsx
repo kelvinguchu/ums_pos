@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import {
-  getUserProfile,
-  getCurrentUser,
-  getAgentsList,
   updateAgentStatus,
   deleteAgent,
   getAgentInventory,
