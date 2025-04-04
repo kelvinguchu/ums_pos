@@ -1,6 +1,9 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSaleBatches, getRemainingMetersByType } from "@/lib/actions/supabaseActions";
+import {
+  getSaleBatches,
+  getRemainingMetersByType,
+} from "@/lib/actions/supabaseActions";
 import { supabase } from "@/lib/supabase";
 import type { SaleBatch, RemainingMetersByType } from "../types";
 import { startOfDay, endOfDay } from "date-fns";
@@ -22,33 +25,33 @@ export function useSalesData() {
   useEffect(() => {
     // Subscribe to sales changes
     const salesSubscription = supabase
-      .channel('sales_changes')
+      .channel("sales_changes")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'sale_batches'
+          event: "*",
+          schema: "public",
+          table: "sale_batches",
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['sales'] });
-          queryClient.invalidateQueries({ queryKey: ['remainingMeters'] });
+          queryClient.invalidateQueries({ queryKey: ["sales"] });
+          queryClient.invalidateQueries({ queryKey: ["remainingMeters"] });
         }
       )
       .subscribe();
 
     // Subscribe to meter inventory changes
     const inventorySubscription = supabase
-      .channel('inventory_changes')
+      .channel("inventory_changes")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'meters'
+          event: "*",
+          schema: "public",
+          table: "meters",
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['remainingMeters'] });
+          queryClient.invalidateQueries({ queryKey: ["remainingMeters"] });
         }
       )
       .subscribe();
@@ -61,7 +64,7 @@ export function useSalesData() {
 
   // Fetch sales data with caching
   const salesQuery = useQuery({
-    queryKey: ['sales'],
+    queryKey: ["sales"],
     queryFn: getSaleBatches,
     gcTime: GC_TIME,
     staleTime: STALE_TIME,
@@ -69,7 +72,7 @@ export function useSalesData() {
 
   // Fetch remaining meters with caching
   const remainingMetersQuery = useQuery({
-    queryKey: ['remainingMeters'],
+    queryKey: ["remainingMeters"],
     queryFn: getRemainingMetersByType,
     gcTime: GC_TIME,
     staleTime: STALE_TIME,
@@ -85,7 +88,7 @@ export function useSalesData() {
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
 
-    const todaySales = sales.filter(sale => {
+    const todaySales = sales.filter((sale) => {
       const saleDate = new Date(sale.sale_date);
       return saleDate >= todayStart && saleDate <= todayEnd;
     });
@@ -93,7 +96,10 @@ export function useSalesData() {
     return {
       todaySales,
       totalSales: todaySales.length,
-      totalEarnings: todaySales.reduce((sum, sale) => sum + sale.total_price, 0),
+      totalEarnings: todaySales.reduce(
+        (sum, sale) => sum + sale.total_price,
+        0
+      ),
       remainingMetersByType: remainingMeters,
     };
   }, [salesQuery.data, remainingMetersQuery.data]);
@@ -106,6 +112,6 @@ export function useSalesData() {
     refetch: () => {
       salesQuery.refetch();
       remainingMetersQuery.refetch();
-    }
+    },
   };
 }

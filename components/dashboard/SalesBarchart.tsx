@@ -158,12 +158,20 @@ export function SalesBarchart() {
         const processedData: { [key: string]: ChartData } = {};
 
         batches.forEach((batch) => {
-          const date = new Date(batch.sale_date).toISOString().split("T")[0];
-          if (!processedData[date]) {
-            processedData[date] = { date, userSales: {} };
+          const localDate = new Date(batch.sale_date);
+          const year = localDate.getFullYear();
+          const month = (localDate.getMonth() + 1).toString().padStart(2, "0");
+          const day = localDate.getDate().toString().padStart(2, "0");
+          const localDateString = `${year}-${month}-${day}`;
+
+          if (!processedData[localDateString]) {
+            processedData[localDateString] = {
+              date: localDateString,
+              userSales: {},
+            };
             Object.keys(chartConfig).forEach((key) => {
-              processedData[date][key] = 0;
-              processedData[date].userSales[key] = {};
+              processedData[localDateString][key] = 0;
+              processedData[localDateString].userSales[key] = {};
             });
           }
 
@@ -173,14 +181,22 @@ export function SalesBarchart() {
           );
 
           if (chartKey) {
-            processedData[date][chartKey] =
-              (processedData[date][chartKey] as number) + batch.batch_amount;
-
-            if (!processedData[date].userSales[chartKey][batch.user_name]) {
-              processedData[date].userSales[chartKey][batch.user_name] = 0;
-            }
-            processedData[date].userSales[chartKey][batch.user_name] +=
+            processedData[localDateString][chartKey] =
+              (processedData[localDateString][chartKey] as number) +
               batch.batch_amount;
+
+            if (
+              !processedData[localDateString].userSales[chartKey][
+                batch.user_name
+              ]
+            ) {
+              processedData[localDateString].userSales[chartKey][
+                batch.user_name
+              ] = 0;
+            }
+            processedData[localDateString].userSales[chartKey][
+              batch.user_name
+            ] += batch.batch_amount;
           }
         });
 
