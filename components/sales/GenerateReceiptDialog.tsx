@@ -39,6 +39,7 @@ export default function GenerateReceiptDialog({
 }: GenerateReceiptDialogProps) {
   const [referenceNumber, setReferenceNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -98,6 +99,7 @@ export default function GenerateReceiptDialog({
       return;
     }
 
+    setIsDownloading(true);
     try {
       const { transactionData, meters, unitPrices, userName } = receiptData;
 
@@ -142,6 +144,8 @@ export default function GenerateReceiptDialog({
         description: "Failed to generate receipt",
         variant: "destructive",
       });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -264,14 +268,27 @@ export default function GenerateReceiptDialog({
         <DialogFooter>
           {receiptData ? (
             <div className='flex gap-2'>
-              <Button variant='outline' onClick={handleReset}>
+              <Button
+                variant='outline'
+                onClick={handleReset}
+                disabled={isDownloading}>
                 Reset
               </Button>
               <Button
                 onClick={handleDownloadReceipt}
+                disabled={isDownloading}
                 className='gap-2 bg-[#000080] hover:bg-[#000066] text-white'>
-                <Download className='h-4 w-4' />
-                Download Receipt
+                {isDownloading ? (
+                  <>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className='h-4 w-4' />
+                    Download Receipt
+                  </>
+                )}
               </Button>
             </div>
           ) : (
