@@ -11,7 +11,7 @@ import {
 import { getMetersByBatchId } from "@/lib/actions/supabaseActions";
 import { getTransactionReferenceForBatch } from "@/lib/actions/supabaseActions2";
 
-import { Loader2, Search, Download, ArrowUp } from "lucide-react";
+import { Loader2, Search, Download, ArrowUp, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import localFont from "next/font/local";
 import {
@@ -26,6 +26,7 @@ import {
 import { generateCSV } from "@/lib/utils/csvGenerator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 const geistMono = localFont({
   src: "../../public/fonts/GeistMonoVF.woff",
@@ -70,6 +71,8 @@ export function MeterSalesRow({
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [transactionRef, setTransactionRef] = useState<string | null>(null);
   const [isRefLoading, setIsRefLoading] = useState(true);
+  const [isCopying, setIsCopying] = useState(false);
+  const { toast } = useToast();
 
   // Add useEffect to fetch data when sheet opens
   useEffect(() => {
@@ -144,6 +147,31 @@ export function MeterSalesRow({
     generateCSV(csvData, filename);
   };
 
+  const copyToClipboard = async () => {
+    if (!transactionRef) return;
+
+    try {
+      await navigator.clipboard.writeText(transactionRef);
+      setIsCopying(true);
+      toast({
+        title: "Copied!",
+        description: "Reference number copied to clipboard",
+        style: { backgroundColor: "#2ECC40", color: "white" },
+      });
+
+      // Reset the copy button after 2 seconds
+      setTimeout(() => {
+        setIsCopying(false);
+      }, 2000);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy reference number",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className={`${geistMono.className} min-w-[60vw] w-full `}>
@@ -154,7 +182,23 @@ export function MeterSalesRow({
               {isRefLoading ? (
                 <span className='animate-pulse'>Loading...</span>
               ) : (
-                transactionRef || "No Reference"
+                <div className='flex items-center gap-1'>
+                  <span>{transactionRef || "No Reference"}</span>
+                  {transactionRef && (
+                    <Button
+                      variant='ghost'
+                      size='icon'
+                      className='h-5 w-5 ml-1 rounded-full'
+                      onClick={copyToClipboard}
+                      title='Copy reference number'>
+                      {isCopying ? (
+                        <Check className='h-3 w-3 text-green-600' />
+                      ) : (
+                        <Copy className='h-3 w-3 text-gray-500 hover:text-gray-800' />
+                      )}
+                    </Button>
+                  )}
+                </div>
               )}
             </Badge>
           </SheetTitle>
