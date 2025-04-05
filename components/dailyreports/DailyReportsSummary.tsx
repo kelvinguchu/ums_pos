@@ -45,7 +45,7 @@ export const DailyReportsSummary = memo(function DailyReportsSummary({
     const inventory = agentInventory.find(
       (item) => item.type.toLowerCase() === meterType.toLowerCase()
     );
-    return inventory?.with_agents || 0;
+    return inventory?.with_agents ?? 0;
   };
 
   // Function to calculate total for each row
