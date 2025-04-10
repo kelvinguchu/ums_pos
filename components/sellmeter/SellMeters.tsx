@@ -25,8 +25,8 @@ import {
   linkBatchToTransaction,
 } from "@/lib/actions/supabaseActions2";
 import localFont from "next/font/local";
-import { X, Edit2, Loader2 } from "lucide-react";
-import { pdf, PDFDownloadLink } from "@react-pdf/renderer";
+import { X, Edit2 } from "lucide-react";
+import { pdf } from "@react-pdf/renderer";
 import MeterSalesReceipt from "../sharedcomponents/MeterSalesReceipt";
 import { Badge } from "@/components/ui/badge";
 import SaleDetailsDialog from "./SaleDetailsDialog";
@@ -327,45 +327,76 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
       });
 
       // Create sale batches for each type
+      console.log(
+        "Step 2: Creating sale batches and linking to transaction..."
+      );
       for (const [type, typeMeters] of Object.entries(metersByType)) {
         const batchAmount = typeMeters.length;
         const typeUnitPrice = parseFloat(unitPrices[type]);
         const totalPrice = typeUnitPrice * batchAmount;
 
-        // Add sale batch and link to transaction
-        const batchData = await addSaleBatch({
-          user_id: currentUser.id,
-          user_name: userName,
-          meter_type: type,
-          batch_amount: batchAmount,
-          unit_price: typeUnitPrice,
-          total_price: totalPrice,
-          destination: saleDetails.destination,
-          recipient: saleDetails.recipient,
-          customer_type: saleDetails.customerType,
-          customer_county: saleDetails.customerCounty,
-          customer_contact: saleDetails.customerContact,
-          sale_date: formattedDate,
-        });
+        console.log(
+          `Processing batch for type: ${type}, amount: ${batchAmount}, unit price: ${typeUnitPrice}`
+        );
 
-        await linkBatchToTransaction(batchData.id, transactionData.id);
-
-        // Remove meters and add to sold_meters with batch_id
-        for (const meter of typeMeters) {
-          await removeMeter(meter.id);
-          await addSoldMeter({
-            meter_id: meter.id,
-            sold_by: currentUser.id,
-            sold_at: formattedDate,
+        try {
+          // Add sale batch with transaction_id included from the start
+          console.log(
+            `Creating batch for ${type} meters with transaction ID...`
+          );
+          const batchData = await addSaleBatch({
+            user_id: currentUser.id,
+            user_name: userName,
+            meter_type: type,
+            batch_amount: batchAmount,
+            unit_price: typeUnitPrice,
+            total_price: totalPrice,
             destination: saleDetails.destination,
             recipient: saleDetails.recipient,
-            serial_number: meter.serialNumber,
-            unit_price: typeUnitPrice,
-            batch_id: batchData.id,
             customer_type: saleDetails.customerType,
             customer_county: saleDetails.customerCounty,
             customer_contact: saleDetails.customerContact,
+            sale_date: formattedDate,
+            transaction_id: transactionData.id, // Include transaction ID during creation
           });
+
+          if (!batchData || !batchData.id) {
+            console.error(
+              `Failed to create batch for ${type} meters - no batch ID returned`
+            );
+            throw new Error(`Failed to create batch for ${type} meters`);
+          }
+
+          console.log(`Batch created successfully with transaction ID:`, {
+            id: batchData.id,
+            type,
+            amount: batchAmount,
+            transaction_id: transactionData.id,
+          });
+
+          // Remove meters and add to sold_meters with batch_id
+          console.log(
+            `Step 3: Processing ${typeMeters.length} individual meters for type ${type}...`
+          );
+          for (const meter of typeMeters) {
+            await removeMeter(meter.id);
+            await addSoldMeter({
+              meter_id: meter.id,
+              sold_by: currentUser.id,
+              sold_at: formattedDate,
+              destination: saleDetails.destination,
+              recipient: saleDetails.recipient,
+              serial_number: meter.serialNumber,
+              unit_price: typeUnitPrice,
+              batch_id: batchData.id,
+              customer_type: saleDetails.customerType,
+              customer_county: saleDetails.customerCounty,
+              customer_contact: saleDetails.customerContact,
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing batch for type ${type}:`, error);
+          throw error;
         }
       }
 
@@ -421,7 +452,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
     setSaleDetails(null);
     setIsDialogOpen(false);
     localStorage.removeItem("cachedSellMeters");
-    localStorage.removeItem("cachedSaleDetails"); // Add this line
+    localStorage.removeItem("cachedSaleDetails");
   };
 
   const handleSerialNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -440,7 +471,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
   const handleDownloadReceipt = async () => {
     try {
       const lastSubmittedData = JSON.parse(
-        localStorage.getItem("lastSubmittedSaleMeters") || "{}"
+        localStorage.getItem("lastSubmittedSaleMeters") ?? "{}"
       );
 
       const blob = await pdf(
@@ -520,7 +551,7 @@ export default function SellMeters({ currentUser }: { currentUser: any }) {
               placeholder='Serial Number'
               value={serialNumber.toUpperCase()}
               onChange={handleSerialNumberChange}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               required
               maxLength={12}
               className='w-full'

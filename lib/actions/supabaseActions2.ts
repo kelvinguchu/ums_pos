@@ -559,10 +559,27 @@ export async function createSalesTransaction({
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // Provide more details about the error
+      if (error.code === "42501") {
+        throw new Error(
+          "Permission denied: You don't have access to create sales transactions"
+        );
+      } else if (error.code === "PGRST116") {
+        throw new Error(
+          "Database error: Could not retrieve the created transaction"
+        );
+      } else {
+        throw error;
+      }
+    }
+
+    if (!data || !data.id) {
+      throw new Error("Failed to create sales transaction: No data returned");
+    }
+
     return data;
   } catch (error) {
-    console.error("Error creating sales transaction:", error);
     throw error;
   }
 }
@@ -575,17 +592,62 @@ export async function linkBatchToTransaction(
   transactionId: string
 ) {
   try {
-    const { data, error } = await supabase
+    // Validate inputs
+    if (!batchId || !transactionId) {
+      throw new Error(
+        "Missing required parameters: batch ID or transaction ID"
+      );
+    }
+
+    // Check if the transaction exists first
+    const { data: transactionExists, error: transactionCheckError } =
+      await supabase
+        .from("sales_transactions")
+        .select("id")
+        .eq("id", transactionId)
+        .single();
+
+    if (transactionCheckError) {
+      throw new Error(`Transaction with ID ${transactionId} not found`);
+    }
+
+    // Check if the batch exists
+    const { data: batchExists, error: batchCheckError } = await supabase
       .from("sale_batches")
-      .update({ transaction_id: transactionId })
+      .select("id")
       .eq("id", batchId)
-      .select()
       .single();
 
-    if (error) throw error;
+    if (batchCheckError) {
+      throw new Error(`Batch with ID ${batchId} not found`);
+    }
+
+    // Update the batch with the transaction ID - SEPARATED FROM SELECT
+    const { error: updateError } = await supabase
+      .from("sale_batches")
+      .update({ transaction_id: transactionId })
+      .eq("id", batchId);
+
+    if (updateError) {
+      throw new Error(
+        `Failed to link batch to transaction: ${updateError.message}`
+      );
+    }
+
+    // After successful update, fetch the updated batch data separately
+    const { data, error: fetchError } = await supabase
+      .from("sale_batches")
+      .select("*")
+      .eq("id", batchId)
+      .single();
+
+    if (fetchError) {
+      // Don't throw error here, the update succeeded which is the important part
+      return { id: batchId, transaction_id: transactionId }; // Return minimal data
+    }
+
     return data;
   } catch (error) {
-    console.error("Error linking batch to transaction:", error);
     throw error;
   }
 }

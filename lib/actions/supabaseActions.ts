@@ -455,6 +455,7 @@ interface SaleBatchData {
   customer_county: KenyaCounty;
   customer_contact: string;
   sale_date?: string;
+  transaction_id?: string;
 }
 
 export async function addSaleBatch(batchData: SaleBatchData) {
